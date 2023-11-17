@@ -969,7 +969,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                                  HiTRes = HiTRes,
                                  chunks = chunks,
                                  verbose = verbose)
-
+                
             mfattrs = [key for key in site_ds.mf.attrs]
             if "units" in mfattrs:
                 if is_number(site_ds.mf.attrs["units"]):
@@ -1148,47 +1148,51 @@ def add_bc(fp_and_data, load_bc, species):
     
         sites = [key for key in list(fp_and_data.keys()) if key[0] != '.']
         for site in sites:
-            bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
-            
-            if 'lifetime' in species_info[species_obs].keys():
-                lifetime = species_info[species_obs]["lifetime"]
-                lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
-                # calculate the lifetime_hrs associated with each time point in fp_and_data
-                # this is because lifetime can be a list of monthly values
+            print(site)
+            if len(fp_and_data[site]) == 0:
+                print(f"No data for {site}. Not calculating bcs.")
+            else:
+                bc_reindex = fp_and_data['.bc'].reindex_like(fp_and_data[site], 'ffill')
                 
-                time_month = fp_and_data[site].time.dt.month
-                if type(lifetime_hrs_list_or_float) is list:
-                    lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+                if 'lifetime' in species_info[species_obs].keys():
+                    lifetime = species_info[species_obs]["lifetime"]
+                    lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
+                    # calculate the lifetime_hrs associated with each time point in fp_and_data
+                    # this is because lifetime can be a list of monthly values
+                    
+                    time_month = fp_and_data[site].time.dt.month
+                    if type(lifetime_hrs_list_or_float) is list:
+                        lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+                    else:
+                        lifetime_hrs = lifetime_hrs_list_or_float
+                                    
+                    loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
+                    loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
+                    loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
+                    loss_w = np.exp(-1*fp_and_data[site].mean_age_particles_w/lifetime_hrs).rename('loss_w')
                 else:
-                    lifetime_hrs = lifetime_hrs_list_or_float
+                    loss_n = 1
+                    loss_e = 1
+                    loss_s = 1
+                    loss_w = 1
+
+                if 0 in np.sum(fp_and_data[site].particle_locations_s.values, axis = (0,1)):
+
+                    fp_and_data[site]['particle_locations_n'] = xr.zeros_like(fp_and_data[site].mean_age_particles_n)
+                    fp_and_data[site]['particle_locations_e'] = xr.zeros_like(fp_and_data[site].mean_age_particles_e)
+                    fp_and_data[site]['particle_locations_s'] = xr.ones_like(fp_and_data[site].mean_age_particles_s)*(1/20)*(1/1024)
+                    fp_and_data[site]['particle_locations_w'] = xr.zeros_like(fp_and_data[site].mean_age_particles_w)
+                    
+                    fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
+                                                (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
                                 
-                loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
-                loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
-                loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
-                loss_w = np.exp(-1*fp_and_data[site].mean_age_particles_w/lifetime_hrs).rename('loss_w')
-            else:
-                loss_n = 1
-                loss_e = 1
-                loss_s = 1
-                loss_w = 1
-
-            if 0 in np.sum(fp_and_data[site].particle_locations_s.values, axis = (0,1)):
-
-                fp_and_data[site]['particle_locations_n'] = xr.zeros_like(fp_and_data[site].mean_age_particles_n)
-                fp_and_data[site]['particle_locations_e'] = xr.zeros_like(fp_and_data[site].mean_age_particles_e)
-                fp_and_data[site]['particle_locations_s'] = xr.ones_like(fp_and_data[site].mean_age_particles_s)*(1/20)*(1/1024)
-                fp_and_data[site]['particle_locations_w'] = xr.zeros_like(fp_and_data[site].mean_age_particles_w)
-                
-                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
-                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
-                               
-            else:
-                fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
-                                            (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
-                                            (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
+                else:
+                    fp_and_data[site]['bc'] = (fp_and_data[site].particle_locations_n*bc_reindex.vmr_n*loss_n).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_e*bc_reindex.vmr_e*loss_e).sum(["height", "lat"]) + \
+                                                (fp_and_data[site].particle_locations_s*bc_reindex.vmr_s*loss_s).sum(["height", "lon"]) + \
+                                                (fp_and_data[site].particle_locations_w*bc_reindex.vmr_w*loss_w).sum(["height", "lat"])
     return fp_and_data
 
 def fp_sensitivity(fp_and_data, domain, basis_case,
@@ -1234,132 +1238,137 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     as the number of sources.")    
 
     for site in sites:
+
+        if len(fp_and_data[site]) == 0:
+                print(f"No data for {site}. Not calculating fp_sensitivity.")
+
+        else:
         
-        for si, source in enumerate(flux_sources):
-        
-            if source in list(basis_case.keys()):
-                basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
-            else:
-                basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
+            for si, source in enumerate(flux_sources):
             
-            if type(fp_and_data['.flux'][source]) == dict:
-                if 'fp_HiTRes' in list(fp_and_data[site].keys()):
-                    site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
-                                            "fp":fp_and_data[site]["fp"]})
-                    
-                    fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
-                    
-                    # calculate the H matrix
-                    H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
-                                                output_fpXflux = True, output_type = 'DataArray',
-                                                time_resolution = f'{fp_time}H', verbose = verbose)
+                if source in list(basis_case.keys()):
+                    basis_func = basis(domain = domain, basis_case = basis_case[source], basis_directory = basis_directory)
                 else:
-                    print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
-        
-            else:
-                site_bf = combine_datasets(fp_and_data[site]["fp"].to_dataset(), fp_and_data['.flux'][source])
-                H_all=site_bf.fp*site_bf.flux
-            
-            H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
-        
-        
-            if 'region' in list(basis_func.dims.keys()):
-            
-                if 'time' in basis_func.basis.dims:
-                    basis_func = basis_func.isel(time=0)
-            
-                site_bf = xr.merge([site_bf, basis_func])
+                    basis_func = basis(domain = domain, basis_case = basis_case['all'], basis_directory = basis_directory)
                 
-                H = np.zeros((len(site_bf.region),len(site_bf.time)))
+                if type(fp_and_data['.flux'][source]) == dict:
+                    if 'fp_HiTRes' in list(fp_and_data[site].keys()):
+                        site_bf = xr.Dataset({"fp_HiTRes":fp_and_data[site]["fp_HiTRes"],
+                                                "fp":fp_and_data[site]["fp"]})
+                        
+                        fp_time = (fp_and_data[site].time[1] - fp_and_data[site].time[0]).values.astype('timedelta64[h]').astype(int)
+                        
+                        # calculate the H matrix
+                        H_all = timeseries_HiTRes(fp_HiTRes_ds = site_bf, flux_dict = fp_and_data['.flux'][source], output_TS = False,
+                                                    output_fpXflux = True, output_type = 'DataArray',
+                                                    time_resolution = f'{fp_time}H', verbose = verbose)
+                    else:
+                        print("fp_and_data needs the variable fp_HiTRes to use the emissions dictionary with high_freq and low_freq emissions.")
             
-                base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
-            
-                for i in range(len(site_bf.region)):
-                    H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
+                else:
+                    site_bf = combine_datasets(fp_and_data[site]["fp"].to_dataset(), fp_and_data['.flux'][source])
+                    H_all=site_bf.fp*site_bf.flux
                 
-                if source == all:
-                    if (sys.version_info < (3,0)):
-                        region_name = site_bf.region
-                    else:
-                        region_name = site_bf.region.decode('ascii')
-                else:
-                    if (sys.version_info < (3,0)):
-                        region_name = [source+'-'+reg for reg in site_bf.region.values]
-                    else:
-                        region_name = [source+'-'+reg.decode('ascii') for reg in site_bf.region.values]
-
-                sensitivity = xr.DataArray(H, 
-                                                coords=[('region', region_name), 
-                                                        ('time', fp_and_data[site].coords['time'])])
-        
-            else:
-                print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
-
-                ## FOR THE CASE WHERE USING A BASIS FUNCTION WITH THE WRONG DATE ON PURPOSE
-                # basis_func.time.values[0] = site_bf.time.values[0]
-
-                site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-    
-                H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
-
-                basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
-
-                                                    np.zeros(np.shape(site_bf.basis)))},
-                                        coords = site_bf.coords)
-                site_bf = site_bf.merge(basis_scale)
-
-                base_v = np.ravel(site_bf.basis.values[:,:,0])
-                for i in range(int(np.max(site_bf.basis))):
-                    wh_ri = np.where(base_v == i+1)
-                    H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
+                H_all_v=H_all.values.reshape((len(site_bf.lat)*len(site_bf.lon),len(site_bf.time)))        
+            
+            
+                if 'region' in list(basis_func.dims.keys()):
+                
+                    if 'time' in basis_func.basis.dims:
+                        basis_func = basis_func.isel(time=0)
+                
+                    site_bf = xr.merge([site_bf, basis_func])
                     
-                if source == all:
-                    region_name = list(range(1,np.max(site_bf.basis.values)+1))
-                else:
-                    region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
+                    H = np.zeros((len(site_bf.region),len(site_bf.time)))
+                
+                    base_v = site_bf.basis.values.reshape((len(site_bf.lat)*len(site_bf.lon), len(site_bf.region)))
+                
+                    for i in range(len(site_bf.region)):
+                        H[i,:] = np.sum(H_all_v*base_v[:,i,np.newaxis], axis = 0)
+                    
+                    if source == all:
+                        if (sys.version_info < (3,0)):
+                            region_name = site_bf.region
+                        else:
+                            region_name = site_bf.region.decode('ascii')
+                    else:
+                        if (sys.version_info < (3,0)):
+                            region_name = [source+'-'+reg for reg in site_bf.region.values]
+                        else:
+                            region_name = [source+'-'+reg.decode('ascii') for reg in site_bf.region.values]
 
-                sensitivity = xr.DataArray(H.data, 
-                                                coords=[('region', region_name), 
-                                                        ('time', fp_and_data[site].coords['time'].data)])
-                                        
-            if si == 0:
-                concat_sensitivity = sensitivity
-            else:
-                concat_sensitivity = xr.concat((concat_sensitivity,sensitivity), dim='region')
+                    sensitivity = xr.DataArray(H, 
+                                                    coords=[('region', region_name), 
+                                                            ('time', fp_and_data[site].coords['time'])])
             
-            sub_basis_cases = 0
-            
-            if basis_case[source].startswith('sub'):
-                """
-                To genrate sub_lon and sub_lat grids basis case must start with 'sub'
-                e.g.
-                'sub-transd', 'sub_transd', sub-intem' will work
-                'transd' or 'transd-sub' won't work
-                """
-                sub_basis_cases += 1
-                if sub_basis_cases > 1:
-                    print("Can currently only use a sub basis case for one source. Skipping...")
                 else:
-                    sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                                    method="nearest") 
-                    sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp.data)},
-                                            coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                    print("Warning: Using basis functions without a region dimension may be deprecated shortly.")
+
+                    ## FOR THE CASE WHERE USING A BASIS FUNCTION WITH THE WRONG DATE ON PURPOSE
+                    # basis_func.time.values[0] = site_bf.time.values[0]
+
+                    site_bf = combine_datasets(site_bf,basis_func, method='ffill')
+        
+                    H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
+
+                    basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
+
+                                                        np.zeros(np.shape(site_bf.basis)))},
+                                            coords = site_bf.coords)
+                    site_bf = site_bf.merge(basis_scale)
+
+                    base_v = np.ravel(site_bf.basis.values[:,:,0])
+                    for i in range(int(np.max(site_bf.basis))):
+                        wh_ri = np.where(base_v == i+1)
+                        H[i,:]=np.sum(H_all_v[wh_ri[0],:], axis = 0)      
+                        
+                    if source == all:
+                        region_name = list(range(1,np.max(site_bf.basis.values)+1))
+                    else:
+                        region_name = [source+'-'+str(reg) for reg in range(1,int(np.max(site_bf.basis.values)+1))]
+
+                    sensitivity = xr.DataArray(H.data, 
+                                                    coords=[('region', region_name), 
+                                                            ('time', fp_and_data[site].coords['time'].data)])
+                                            
+                if si == 0:
+                    concat_sensitivity = sensitivity
+                else:
+                    concat_sensitivity = xr.concat((concat_sensitivity,sensitivity), dim='region')
+                
+                sub_basis_cases = 0
+                
+                if basis_case[source].startswith('sub'):
+                    """
+                    To genrate sub_lon and sub_lat grids basis case must start with 'sub'
+                    e.g.
+                    'sub-transd', 'sub_transd', sub-intem' will work
+                    'transd' or 'transd-sub' won't work
+                    """
+                    sub_basis_cases += 1
+                    if sub_basis_cases > 1:
+                        print("Can currently only use a sub basis case for one source. Skipping...")
+                    else:
+                        sub_fp_temp = site_bf.fp.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                                        method="nearest") 
+                        sub_fp = xr.Dataset({'sub_fp': (['sub_lat','sub_lon','time'], sub_fp_temp.data)},
+                                                coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
+                                                            'sub_lon': (site_bf.coords['sub_lon'].data),
+                                                            'time' : (fp_and_data[site].coords['time'].data)})
+                                    
+                        sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
+                                                method="nearest")                             
+                        sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp.data)},
+                                                coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
                                                         'sub_lon': (site_bf.coords['sub_lon'].data),
-                                                        'time' : (fp_and_data[site].coords['time'].data)})
-                                
-                    sub_H_temp = H_all.sel(lon=site_bf.sub_lon, lat=site_bf.sub_lat,
-                                            method="nearest")                             
-                    sub_H = xr.Dataset({'sub_H': (['sub_lat','sub_lon','time'], sub_H_temp.data)},
-                                            coords = {'sub_lat': (site_bf.coords['sub_lat'].data),
-                                                    'sub_lon': (site_bf.coords['sub_lon'].data),
-                                                    'time' : (fp_and_data[site].coords['time'].data)},
-                                            attrs = {'flux_source_used_to_create_sub_H':source})
-        
-                    fp_and_data[site] = fp_and_data[site].merge(sub_fp)
-                    fp_and_data[site] = fp_and_data[site].merge(sub_H)
+                                                        'time' : (fp_and_data[site].coords['time'].data)},
+                                                attrs = {'flux_source_used_to_create_sub_H':source})
             
-        fp_and_data[site]['H'] = concat_sensitivity                             
-        fp_and_data['.basis'] = site_bf.basis[:,:,0]
+                        fp_and_data[site] = fp_and_data[site].merge(sub_fp)
+                        fp_and_data[site] = fp_and_data[site].merge(sub_H)
+                
+            fp_and_data[site]['H'] = concat_sensitivity                             
+            fp_and_data['.basis'] = site_bf.basis[:,:,0]
 
     return fp_and_data
 
@@ -1394,86 +1403,89 @@ def bc_sensitivity(fp_and_data, domain, basis_case, bc_basis_directory = None):
     species = obs.read.synonyms(species, species_info)
             
     for site in sites:
-        if fp_and_data[site].bc.chunks is not None:
-            for particles in ['particle_locations_n', 'particle_locations_e',
-                              'particle_locations_s', 'particle_locations_w']:
-                fp_and_data[site][particles] = fp_and_data[site][particles].compute()
-        # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
-        if 'lifetime' in species_info[species].keys():
-            lifetime = species_info[species]["lifetime"]
-            lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
-
-            # calculate the lifetime_hrs associated with each time point in fp_and_data
-            # this is because lifetime can be a list of monthly values
-
-            time_month = fp_and_data[site].time.dt.month
-            if type(lifetime_hrs_list_or_float) is list:
-                lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
-            else:
-                lifetime_hrs = lifetime_hrs_list_or_float
-
-            loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
-            loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
-            loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
-            loss_w = np.exp(-1*fp_and_data[site].mean_age_particles_w/lifetime_hrs).rename('loss_w')
+        if len(fp_and_data[site]) == 0:
+            print(f"No data for {site}. Not calculating bc_sensitivity.")
         else:
-            loss_n = fp_and_data[site].particle_locations_n.copy()
-            loss_e = fp_and_data[site].particle_locations_e.copy()
-            loss_s = fp_and_data[site].particle_locations_s.copy()
-            loss_w = fp_and_data[site].particle_locations_w.copy()
-            loss_n[:]=1
-            loss_e[:]=1
-            loss_s[:]=1
-            loss_w[:]=1
+            if fp_and_data[site].bc.chunks is not None:
+                for particles in ['particle_locations_n', 'particle_locations_e',
+                                'particle_locations_s', 'particle_locations_w']:
+                    fp_and_data[site][particles] = fp_and_data[site][particles].compute()
+            # compute any chemical loss to the BCs, use lifetime or else set loss to 1 (no loss)
+            if 'lifetime' in species_info[species].keys():
+                lifetime = species_info[species]["lifetime"]
+                lifetime_hrs_list_or_float = convert.convert_to_hours(lifetime)
 
-        DS_particle_loc = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
-                                "particle_locations_e":fp_and_data[site]["particle_locations_e"],
-                                "particle_locations_s":fp_and_data[site]["particle_locations_s"],
-                                "particle_locations_w":fp_and_data[site]["particle_locations_w"],
-                                "loss_n":loss_n,
-                                "loss_e":loss_e,
-                                "loss_s":loss_s,
-                                "loss_w":loss_w})                                     
-#                                 "bc":fp_and_data[site]["bc"]})
+                # calculate the lifetime_hrs associated with each time point in fp_and_data
+                # this is because lifetime can be a list of monthly values
 
-        DS_temp = combine_datasets(DS_particle_loc, fp_and_data[".bc"], method='ffill')
-                        
-        DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
-                               
-        DS = DS.transpose('height','lat','lon','region','time')
+                time_month = fp_and_data[site].time.dt.month
+                if type(lifetime_hrs_list_or_float) is list:
+                    lifetime_hrs = [lifetime_hrs_list_or_float[item-1] for item in time_month.values]
+                else:
+                    lifetime_hrs = lifetime_hrs_list_or_float
 
-        part_loc = np.hstack([DS.particle_locations_n,
-                                DS.particle_locations_e, 
-                                DS.particle_locations_s,
-                                DS.particle_locations_w])
-        
-        loss = np.hstack([DS.loss_n,
-                                DS.loss_e,
-                                DS.loss_s,
-                                DS.loss_w])
-        
-        vmr_ed = np.hstack([DS.vmr_n,
-                           DS.vmr_e,
-                           DS.vmr_s,
-                           DS.vmr_w])
-        
-        bf = np.hstack([DS.bc_basis_n,
-                        DS.bc_basis_e,
-                        DS.bc_basis_s,
-                        DS.bc_basis_w])
-        
-        H_bc = np.zeros((len(DS.coords['region']),len(DS["particle_locations_n"]["time"])))
-        
-        for i in range(len(DS.coords['region'])):
-            reg = bf[:,:,i,:]
-            H_bc[i,:] = np.sum((part_loc*loss*vmr_ed*reg), axis=(0,1))
-        
-        sensitivity = xr.Dataset({'H_bc': (['region_bc','time'], H_bc)},
-                                    coords = {'region_bc': (DS.coords['region'].values),
-                                              'time' : (DS.coords['time'])})
+                loss_n = np.exp(-1*fp_and_data[site].mean_age_particles_n/lifetime_hrs).rename('loss_n')
+                loss_e = np.exp(-1*fp_and_data[site].mean_age_particles_e/lifetime_hrs).rename('loss_e')
+                loss_s = np.exp(-1*fp_and_data[site].mean_age_particles_s/lifetime_hrs).rename('loss_s')
+                loss_w = np.exp(-1*fp_and_data[site].mean_age_particles_w/lifetime_hrs).rename('loss_w')
+            else:
+                loss_n = fp_and_data[site].particle_locations_n.copy()
+                loss_e = fp_and_data[site].particle_locations_e.copy()
+                loss_s = fp_and_data[site].particle_locations_s.copy()
+                loss_w = fp_and_data[site].particle_locations_w.copy()
+                loss_n[:]=1
+                loss_e[:]=1
+                loss_s[:]=1
+                loss_w[:]=1
 
-        fp_and_data[site] = fp_and_data[site].merge(sensitivity)
-    
+            DS_particle_loc = xr.Dataset({"particle_locations_n":fp_and_data[site]["particle_locations_n"],
+                                    "particle_locations_e":fp_and_data[site]["particle_locations_e"],
+                                    "particle_locations_s":fp_and_data[site]["particle_locations_s"],
+                                    "particle_locations_w":fp_and_data[site]["particle_locations_w"],
+                                    "loss_n":loss_n,
+                                    "loss_e":loss_e,
+                                    "loss_s":loss_s,
+                                    "loss_w":loss_w})                                     
+    #                                 "bc":fp_and_data[site]["bc"]})
+
+            DS_temp = combine_datasets(DS_particle_loc, fp_and_data[".bc"], method='ffill')
+                            
+            DS = combine_datasets(DS_temp, basis_func, method='ffill')                                    
+                                
+            DS = DS.transpose('height','lat','lon','region','time')
+
+            part_loc = np.hstack([DS.particle_locations_n,
+                                    DS.particle_locations_e, 
+                                    DS.particle_locations_s,
+                                    DS.particle_locations_w])
+            
+            loss = np.hstack([DS.loss_n,
+                                    DS.loss_e,
+                                    DS.loss_s,
+                                    DS.loss_w])
+            
+            vmr_ed = np.hstack([DS.vmr_n,
+                            DS.vmr_e,
+                            DS.vmr_s,
+                            DS.vmr_w])
+            
+            bf = np.hstack([DS.bc_basis_n,
+                            DS.bc_basis_e,
+                            DS.bc_basis_s,
+                            DS.bc_basis_w])
+            
+            H_bc = np.zeros((len(DS.coords['region']),len(DS["particle_locations_n"]["time"])))
+            
+            for i in range(len(DS.coords['region'])):
+                reg = bf[:,:,i,:]
+                H_bc[i,:] = np.sum((part_loc*loss*vmr_ed*reg), axis=(0,1))
+            
+            sensitivity = xr.Dataset({'H_bc': (['region_bc','time'], H_bc)},
+                                        coords = {'region_bc': (DS.coords['region'].values),
+                                                'time' : (DS.coords['time'])})
+
+            fp_and_data[site] = fp_and_data[site].merge(sensitivity)
+        
     return fp_and_data
 
 

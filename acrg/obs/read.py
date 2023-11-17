@@ -100,10 +100,11 @@ def scale_convert(ds, species, to_scale):
     else:
         direction = "1to2"
 
-    # scale_convert file has variable X in equations, so let's create it
-    X = 1.
-    scale_factor = ne.evaluate(converter[direction])
-    ds["mf"].values *= scale_factor
+    # Map 'X' to ds["mf"].values
+    variables = {'X': ds["mf"].values}
+
+    # Evaluate the expressions 
+    ds["mf"].values = eval(converter[direction], variables)
 
     ds.attrs["scale"] = to_scale
     
