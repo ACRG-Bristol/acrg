@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import numba
 import xarray as xr
@@ -46,7 +47,7 @@ def filtering(fp_data_H,sites,species,filter_types):
         Subset for times when local influence is below threshold.       
         Local influence expressed as a fraction of the sum of entire footprint domain.
         """
-        pc = 0.1      #localness 'ratio' limit
+        pc = 0.1      #localness 'ratio' limit, normally 0.1
         lr = dataset.local_ratio
         ti = [i for i, local_ratio in enumerate(lr) if local_ratio <= pc]
 
@@ -60,8 +61,39 @@ def filtering(fp_data_H,sites,species,filter_types):
             return dataset_out
         else:
             return dataset[dict(time = ti)] 
-            
 
+    def BRW_wind_dir_filter(dataset):
+        '''
+        Filters BRW data for BRW wind direction.
+        '''
+        # print('Applying wind filter.')
+
+        start_date = dataset.time[0].values
+        end_date = dataset.time[-1].values
+
+        met_file = os.path.join('/user/home/ky20893/work/obs/BRW/NOAA-None_BRW_19800101_met-20210421.nc')
+        met_data = xr.open_dataset(met_file)
+        met_data = met_data.loc[dict(time = slice(start_date, end_date))].rename({'wind_speed':'wind_sp'})
+
+        dataset = xr.merge([dataset, met_data], join = 'inner')
+        time_len = len(dataset.time)
+
+        # remove windspeeds below 3m/s
+        ti = np.where(dataset.wind_sp > 3)[0]
+        dataset = dataset[dict(time = ti)]
+
+        # remove wind dir
+        ti = np.where(dataset.wind_dir <= 210)[0]
+        dataset = dataset[dict(time = ti)]
+        dataset = dataset.drop(['wind_sp', 'wind_dir'])
+
+        # perc_filtered = len(ti)*100/time_len
+
+        # # percentage of removed points
+        # print(f"Percentage remaining data points :{len(ti)*100/time_len}%")
+
+        return dataset
+            
 
     n_obs = []
     n_obs_filtered = []
@@ -75,16 +107,17 @@ def filtering(fp_data_H,sites,species,filter_types):
             filter_site = filter_types
 
         if 'local_influence' in filter_site:
-            print('Applying localness filtering')
-            fp_data_H = define_localness(fp_data_H,site)
-            fp_data_H[site] = localness_filter(fp_data_H[site],site)
-
-        if 'BRW wind filt' in filter_site:
-            print('BRW wind filt not yet incorporated')
+            if site == 'BRW':
+                print(f'Site is BRW, applying wind filtering instead')
+                fp_data_H[site] = BRW_wind_dir_filter(fp_data_H[site])
+            else: 
+                print(f'Applying localness filtering to {site}')
+                fp_data_H = define_localness(fp_data_H,site)
+                fp_data_H[site] = localness_filter(fp_data_H[site],site)
 
         n_obs_filtered.append(fp_data_H[site].mf.values.shape[0])  
 
     perc_filtered = np.round((np.array(n_obs) - np.array(n_obs_filtered))/np.array(n_obs)*100,2)
     print(f'% of {species} filtered: {perc_filtered}')   
 
-    return fp_data_H,perc_filtered
+    return fp_data_H, perc_filtered
