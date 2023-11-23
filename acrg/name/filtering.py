@@ -99,6 +99,7 @@ def filtering(fp_data_H,sites,species,filter_types):
     n_obs_filtered = []
 
     for i,site in enumerate(sites):
+        print(site)
         n_obs.append(fp_data_H[site].mf.values.shape[0])
 
         if len(filter_types) == len(sites):

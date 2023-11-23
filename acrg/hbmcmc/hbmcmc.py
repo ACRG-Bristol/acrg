@@ -20,6 +20,7 @@ being annoying it will also slow down your run due to unnecessary forking.
 
 """
 import numpy as np
+import pickle
 import shutil
 
 import acrg.name.name as name
@@ -37,7 +38,7 @@ data_path = Paths.data
 
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname,
-                   met_model = None,
+                   met_model = None, premade_fp_data_files = False,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
@@ -175,91 +176,108 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         
     TO DO:
         Add a wishlist...
-    """    
-    data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
-                         average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
-    
-    #Check to see if all sites have data and removes sites without data from inversion
-    removed_sites = []
-    keep_sites = []
-    for si, site in enumerate(sites):
-        if len(data[site]) == 0:
-            print(f"No data available for {site}, removing site from inversion.")
-            removed_sites.append(site)
-        else:
-            if len(data[site][0].time) == 0:
+    """   
+
+    if premade_fp_data_files:
+
+        file_path = '/user/home/ky20893/work/Arctic/Siberia_inv_files/'
+        filename = 'all_sites_'+ emissions_name['all'] + '_ARCTIC_' + start_date 
+
+        print(f"Using premade footprints data merge file: {filename}")
+
+        # Open the pickle file in binary read mode and load the object
+        with open(file_path + filename, 'rb') as file:
+            fp_data = pickle.load(file)
+
+        all_sites = sites
+        sites = [key for key in fp_data if not key.startswith('.')]  # extract site names from dictionary
+        print(f"Using sites: {sites}")
+
+        removed_sites = [si for si in all_sites if si not in sites]
+        print(f"Removed sites: {removed_sites}")
+
+    else: 
+        data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
+                            average = meas_period, data_directory=obs_directory,
+                            keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+        
+        #Check to see if all sites have data and removes sites without data from inversion
+        removed_sites = []
+        keep_sites = []
+        for si, site in enumerate(sites):
+            if len(data[site]) == 0:
                 print(f"No data available for {site}, removing site from inversion.")
                 removed_sites.append(site)
             else:
-                keep_sites.append(site)
-                
-    for si,site in enumerate(removed_sites):
-        del data[site]
+                if len(data[site][0].time) == 0:
+                    print(f"No data available for {site}, removing site from inversion.")
+                    removed_sites.append(site)
+                else:
+                    keep_sites.append(site)
+                    
+        for si,site in enumerate(removed_sites):
+            del data[site]
 
-    sites = keep_sites
-    
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
-                                        height=fpheight, 
-                                        fp_directory = fp_directory,
-                                        bc_directory = bc_directory,
-                                        flux_directory = flux_directory,
-                                        emissions_name=emissions_name)
-    
-    if sites[0] not in fp_all.keys():
-        print("No footprints for %s to %s" % (start_date, end_date))
-        return
-    
-    print('Running for %s to %s' % (start_date, end_date))
-    
-    #If site contains measurement errors given as repeatability and variability, 
-    #use variability to replace missing repeatability values, then drop variability
-    for site in sites:
-        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
-            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
-                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
-            fp_all[site] = fp_all[site].drop_vars("mf_variability")
+        sites = keep_sites
+        
+        fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
+                                            height=fpheight, 
+                                            fp_directory = fp_directory,
+                                            bc_directory = bc_directory,
+                                            flux_directory = flux_directory,
+                                            emissions_name=emissions_name)
+        
+        if sites[0] not in fp_all.keys():
+            print("No footprints for %s to %s" % (start_date, end_date))
+            return
+        
+        print('Running for %s to %s' % (start_date, end_date))
+        
+        #If site contains measurement errors given as repeatability and variability, 
+        #use variability to replace missing repeatability values, then drop variability
+        for site in sites:
+            if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
+                fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
+                    fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
+                fp_all[site] = fp_all[site].drop_vars("mf_variability")
 
-    #Add measurement variability in averaging period to measurement error
-    if averagingerror:
-        fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
-                                   meas_period, inlet=inlet, instrument=instrument,
-                                   obs_directory=obs_directory)
-    
-    #Create basis function using quadtree algorithm if needed
-    if quadtree_basis:
-        if fp_basis_case != None:
-            print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
-            print("Assuming you want to use %s " % fp_basis_case)
+        #Add measurement variability in averaging period to measurement error
+        if averagingerror:
+            fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
+                                    meas_period, inlet=inlet, instrument=instrument,
+                                    obs_directory=obs_directory)
+        
+        #Create basis function using quadtree algorithm if needed
+        if quadtree_basis:
+            if fp_basis_case != None:
+                print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
+                print("Assuming you want to use %s " % fp_basis_case)
+            else:
+                tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
+                            start_date, domain, species, outputname,
+                            nbasis=nbasis)
+                fp_basis_case= "quadtree_"+species+"-"+outputname
+                basis_directory = tempdir
         else:
-            tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
-                          start_date, domain, species, outputname,
-                          nbasis=nbasis)
-            fp_basis_case= "quadtree_"+species+"-"+outputname
-            basis_directory = tempdir
-    else:
-        basis_directory = basis_directory
-            
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
-    
-    #apply named filters to the data. UPDATED WITH NEW FASTER FILTERING FROM ALICE
-    # fp_data, perc_filtered = filtering.filtering(fp_data, sites, species, filter_types = filters)
+            basis_directory = basis_directory
+                
+        fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
+        fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
 
-    print(f"Filters: {filters}")
-    if filters == ["local_influence"]:
-        fp_data, perc_filtered = filtering(fp_data,sites,species,filter_types = filters)
-                # network=None,secondary_heights=None,
-                # start_date=None,end_date=None,average=None)
-    elif filters == ["wind_filt"]:
-        fp_data = name.filtering(fp_data, filters = ['BRW_wind_dir_filter'])
-    elif filters == [None]:
-        fp_data = fp_data
-    else:
-        raise ValueError('Please input filter type as wind_filt, local_influence or None.')
-    
-    for si, site in enumerate(sites):  
-        fp_data[site].attrs['Domain']=domain
+        print(f"Filters: {filters}")
+        if filters == ["local_influence"]:
+            fp_data, perc_filtered = filtering(fp_data,sites,species,filter_types = filters)
+                    # network=None,secondary_heights=None,
+                    # start_date=None,end_date=None,average=None)
+        elif filters == ["wind_filt"]:
+            fp_data = name.filtering(fp_data, filters = ['BRW_wind_dir_filter'])
+        elif filters == [None]:
+            fp_data = fp_data
+        else:
+            raise ValueError('Please input filter type as wind_filt, local_influence or None.')
+        
+        for si, site in enumerate(sites):  
+            fp_data[site].attrs['Domain']=domain
     
     #Get inputs ready
     error = np.zeros(0)
@@ -293,7 +311,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         else:
             Hbc = np.hstack((Hbc, Hmbc))
             Hx = np.hstack((Hx, fp_data[site].H.values))
-    
+                
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion

@@ -1240,10 +1240,10 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
     for site in sites:
 
         if len(fp_and_data[site]) == 0:
-                print(f"No data for {site}. Not calculating fp_sensitivity.")
+            print(f"No data for {site}. Not calculating fp_sensitivity.")
 
         else:
-        
+            print(f"fp_sensitivity for {site}.")
             for si, source in enumerate(flux_sources):
             
                 if source in list(basis_case.keys()):
@@ -1308,7 +1308,7 @@ def fp_sensitivity(fp_and_data, domain, basis_case,
                     # basis_func.time.values[0] = site_bf.time.values[0]
 
                     site_bf = combine_datasets(site_bf,basis_func, method='ffill')
-        
+
                     H = np.zeros((int(np.max(site_bf.basis)),len(site_bf.time)))
 
                     basis_scale = xr.Dataset({'basis_scale': (['lat','lon','time'],
