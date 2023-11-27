@@ -180,7 +180,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
     if premade_fp_data_files:
 
-        file_path = '/user/home/ky20893/work/Arctic/Siberia_inv_files/'
+        file_path = '/user/home/ky20893/shared/Arctic/Siberia_inv_files/'
         filename = 'all_sites_'+ emissions_name['all'] + '_ARCTIC_' + start_date 
 
         print(f"Using premade footprints data merge file: {filename}")
