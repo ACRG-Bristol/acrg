@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+This script makes .ini files
+"""
 import argparse
 from collections import defaultdict
 import configparser
@@ -7,15 +10,8 @@ import json
 from typing import Any, Optional
 
 
-def get_paris_params(filename: str = "model_scenario.params.json") -> dict[str, Any]:
-    """Get params frozen from sample PARIS .ini file."""
-    with open(filename, "r") as f:
-        params = json.load(f)
-    return params
-
-
 def get_paris_site_info(
-    sites: Optional[list[str]] = None, filename: str = "site_params.csv"
+    sites: Optional[list[str]] = None, filename: Optional[str] = None
 ) -> dict[str, list[Optional[str]]]:
     """Get site code, averaging period, inlet, instrument, and fp height for selected sites."""
     if sites is None:
@@ -45,11 +41,15 @@ def get_paris_site_info(
             "SAC",
             "STE",
             "TAC",
+            "TOB",
             "TOH",
             "TRN",
             "UTO",
             "WAO",
         ]
+
+    if filename is None:
+        filename = "site_params.csv"
 
     result = defaultdict(list)
 
@@ -66,11 +66,19 @@ def get_paris_site_info(
 def make_ini_configparser(
     species: str,
     root: str,
-    site_info: Optional[dict[str, list[Optional[str]]]],
+    ini_template: Optional[str] = None,
+    site_info: Optional[dict[str, list[Optional[str]]]] = None,
     output_name: Optional[str] = None,
 ) -> configparser.ConfigParser:
-    config = configparser.ConfigParser()
-    config.read("test.ini")
+    """Load template ini file and update species and output paths, as well as sites,
+    averaging_period, inlet, instrument, and fp_height with options provided by site_info
+    """
+    config = configparser.ConfigParser(inline_comment_prefixes=(";", "#"))
+
+    if ini_template is None:
+        ini_template = "test.ini"
+
+    config.read(ini_template)
 
     config["INPUT.MEASUREMENTS"]["species"] = species
     config["INPUT.MEASUREMENTS"]["merged_data_dir"] = f"{root}/merged_data"
@@ -89,20 +97,33 @@ def make_ini_configparser(
 
 
 def main(
-    ini_file_name: str,
+    output_ini_file: str,
     species: str,
     root: str,
+    ini_template: Optional[str] = None,
+    site_params_file: Optional[str] = None,
     output_name: Optional[str] = None,
     sites: Optional[list[str]] = None,
 ) -> None:
-    if not ini_file_name.endswith(".ini"):
-        output_name = output_name + ".ini"
+    """Main script.
 
-    site_info = get_paris_site_info(sites)
+    Args:
 
-    config = make_ini_configparser(species, root, site_info, output_name)
+    """
+    if not output_ini_file.endswith(".ini"):
+        output_ini_file = output_ini_file + ".ini"
 
-    with open(ini_file_name, "w") as f:
+    site_info = get_paris_site_info(sites, filename=site_params_file)
+
+    kwargs = {}
+    if ini_template is not None:
+        kwargs["ini_template"] = ini_template
+    if output_name is not None:
+        kwargs["output_name"] = output_name
+
+    config = make_ini_configparser(species, root, site_info=site_info, **kwargs)
+
+    with open(output_ini_file, "w") as f:
         config.write(f)
 
 
@@ -111,9 +132,30 @@ if __name__ == "__main__":
     parser.add_argument("species", type=str)
     parser.add_argument("root", type=str)
     parser.add_argument("--sites", type=(lambda x: x.split(",")), default=None)
-    parser.add_argument("--output-name", type=str, default=None)
-    parser.add_argument("-o", "--ini-file-name", type=str, default="nameless.ini")
+    parser.add_argument("--hbmcmc-output-name", type=str, default=None, help="name for hbmcmc output files")
+    parser.add_argument(
+        "--output-ini-file",
+        type=str,
+        default="nameless.ini",
+        help="file name (with path) to save ini file output",
+    )
+    parser.add_argument("--ini-template", type=str, default=None, help="ini file to use as template")
+    parser.add_argument(
+        "--site-params",
+        type=str,
+        help="csv with site params; csv column names should be: sites, averaging_period, inlet, instrument, fp_height",
+    )
 
     args = parser.parse_args()
 
-    main(args.ini_file_name, args.species, args.root, sites=args.sites, output_name=args.output_name)
+    print("Command line args: ", vars(args))
+
+    main(
+        args.output_ini_file,
+        args.species,
+        args.root,
+        sites=args.sites,
+        output_name=args.hbmcmc_output_name,
+        site_params_file=args.site_params,
+        ini_template=args.ini_template,
+    )
