@@ -197,8 +197,9 @@ if __name__ == "__main__":
     search_results["total_missing"] = missing_df.sum(axis=1)
 
     if not args.silent:
-        print("\nSearch results:\n:", search_results[["inlet", "instrument", "uuid", "total_missing"]])
-        print(f"Missing data by {args.freq}:\n", missing_df)
+        with pd.option_context("display.max_rows", None, "display.max_columns", None):
+            print("\nSearch results:\n:", search_results[["inlet", "instrument", "uuid", "total_missing"]])
+            print(f"Missing data by {args.freq}:\n", missing_df)
 
     if args.save_output:
         search_results.to_csv((args.ini_file[:-4] + "_search_results.csv"))
