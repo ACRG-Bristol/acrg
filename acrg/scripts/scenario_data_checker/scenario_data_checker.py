@@ -175,7 +175,7 @@ def get_missing_data_times_df(data_times: pd.DataFrame, resample_to: str = "Y") 
     Args:
         data_times: result of `get_data_times_df`
     """
-    return (1 - data_times.T.groupby(["site", "data_type"]).sum().T).resample(resample_to).sum().T
+    return ((1 - data_times).T.groupby(["site", "data_type"]).sum() > 0).T.resample(resample_to).sum().T
 
 
 if __name__ == "__main__":
