@@ -169,13 +169,19 @@ def get_data_times_df(search_results: pd.DataFrame, start: str, end: str) -> pd.
     return result
 
 
-def get_missing_data_times_df(data_times: pd.DataFrame, resample_to: str = "Y") -> pd.DataFrame:
+def get_missing_data_times_df(
+    data_times: pd.DataFrame, resample_to: str = "Y", group_results=False
+) -> pd.DataFrame:
     """Report total days of missing data over time periods specified by `resample_to`.
 
     Args:
         data_times: result of `get_data_times_df`
     """
-    return ((1 - data_times).T.groupby(["site", "data_type"]).sum() > 0).T.resample(resample_to).sum().T
+    if group_results:
+        result = ((1 - data_times).T.groupby(["site", "data_type"]).sum() > 0).T.resample(resample_to).sum().T
+    else:
+        result = (1 - data_times).T.resample(resample_to).sum().T
+    return result
 
 
 if __name__ == "__main__":
@@ -199,8 +205,8 @@ if __name__ == "__main__":
 
     search_results = search_by_ini(args.ini_file)
     df = get_data_times_df(search_results, args.start, args.end)
-    missing_df = get_missing_data_times_df(df, resample_to=args.freq)
-    search_results["total_missing"] = missing_df.sum(axis=1)
+    missing_df = get_missing_data_times_df(df, resample_to=args.freq, group_results=True)
+    search_results["total_missing"] = get_missing_data_times_df(df, resample_to=args.freq).sum(axis=1)
 
     if not args.silent:
         with pd.option_context("display.max_rows", None, "display.max_columns", None):
