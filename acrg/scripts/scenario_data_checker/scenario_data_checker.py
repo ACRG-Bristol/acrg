@@ -180,7 +180,7 @@ def get_missing_data_times_df(
     if group_results:
         result = ((1 - data_times).T.groupby(["site", "data_type"]).sum() > 0).T.resample(resample_to).sum().T
     else:
-        result = (1 - data_times).T.resample(resample_to).sum().T
+        result = (1 - data_times).resample(resample_to).sum().T
     return result
 
 
