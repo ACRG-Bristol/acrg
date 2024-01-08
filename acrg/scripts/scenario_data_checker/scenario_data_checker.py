@@ -94,47 +94,53 @@ def search_by_ini(ini_path: str) -> pd.DataFrame:
     rbuckets = get_readable_buckets()
     search_results = []
 
-    # get surface results
-    try:
-        surface_bucket = rbuckets[param["obs_store"]]
-    except KeyError:
-        raise ValueError(f"Store {param['obs_store']} not found. Run `openghg --quickstart` to add store.")
+    tmp = param["obs_store"]
+    obs_stores = tmp if isinstance(tmp, list) else [tmp]
 
+    tmp = param["footprint_store"]
+    footprint_stores = tmp if isinstance(tmp, list) else [tmp]
+
+    # get surface results
     species = clean_string(param["species"])
 
-    with open_metastore(bucket=surface_bucket, data_type="surface", mode="r") as metastore:
-        for site, inlet, instrument in zip(param["sites"], param["inlet"], param["instrument"]):
-            sterms = dict(species=species, site=clean_string(site))
+    for store in obs_stores:
+        try:
+            surface_bucket = rbuckets[store]
+        except KeyError:
+            raise ValueError(f"Store {store} not found. Run `openghg --quickstart` to add store.")
 
-            if inlet is not None:
-                sterms["inlet"] = format_inlet(inlet)
-            if instrument is not None:
-                sterms["instrument"] = clean_string(instrument)
+        with open_metastore(bucket=surface_bucket, data_type="surface", mode="r") as metastore:
+            for site, inlet, instrument in zip(param["sites"], param["inlet"], param["instrument"]):
+                sterms = dict(species=species, site=clean_string(site))
 
-            if result := metastore.search(sterms):
-                for r in result:
-                    r["object_store"] = surface_bucket
-                search_results.extend(result)
+                if inlet is not None:
+                    sterms["inlet"] = format_inlet(inlet)
+                if instrument is not None:
+                    sterms["instrument"] = clean_string(instrument)
+
+                if result := metastore.search(sterms):
+                    for r in result:
+                        r["object_store"] = surface_bucket
+                    search_results.extend(result)
 
     # get footprint results
-    try:
-        footprint_bucket = rbuckets[param["footprint_store"]]
-    except KeyError:
-        raise ValueError(
-            f"Store {param['footprint_store']} not found. Run `openghg --quickstart` to add store."
-        )
+    for store in footprint_stores:
+        try:
+            footprint_bucket = rbuckets[store]
+        except KeyError:
+            raise ValueError(f"Store {store} not found. Run `openghg --quickstart` to add store.")
 
-    with open_metastore(bucket=footprint_bucket, data_type="footprints", mode="r") as metastore:
-        for site, inlet in zip(param["sites"], param["fp_height"]):
-            sterms = dict(site=clean_string(site), domain="europe")
+        with open_metastore(bucket=footprint_bucket, data_type="footprints", mode="r") as metastore:
+            for site, inlet in zip(param["sites"], param["fp_height"]):
+                sterms = dict(site=clean_string(site), domain="europe")
 
-            if inlet is not None:
-                sterms["inlet"] = format_inlet(inlet)
+                if inlet is not None:
+                    sterms["inlet"] = format_inlet(inlet)
 
-            if result := metastore.search(sterms):
-                for r in result:
-                    r["object_store"] = footprint_bucket
-                search_results.extend(result)
+                if result := metastore.search(sterms):
+                    for r in result:
+                        r["object_store"] = footprint_bucket
+                    search_results.extend(result)
 
     df = (
         pd.DataFrame.from_dict(search_results)
@@ -169,7 +175,7 @@ def get_missing_data_times_df(data_times: pd.DataFrame, resample_to: str = "Y") 
     Args:
         data_times: result of `get_data_times_df`
     """
-    return (1 - data_times).resample(resample_to).sum().T
+    return (1 - data_times.groupby(["site", "data_type"]).sum()).resample(resample_to).sum().T
 
 
 if __name__ == "__main__":
@@ -203,4 +209,5 @@ if __name__ == "__main__":
 
     if args.save_output:
         search_results.to_csv((args.ini_file[:-4] + "_search_results.csv"))
+        df.to_csv((args.ini_file[:-4] + "_data_times.csv"))
         missing_df.to_csv((args.ini_file[:-4] + "_missing_data.csv"))
