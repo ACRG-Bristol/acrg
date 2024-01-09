@@ -11,7 +11,7 @@ import pandas as pd
 import xarray as xr
 
 
-def create_dates(initial_year: int, n_years: int, freq: str = "MS") -> pd.DataFrame:
+def create_dates(initial_year: int, n_years: int, freq: str = "MS") -> list[tuple[str, str]]:
     """Create iterator over tuples (start_date, end_date), where end_date - start_date is
     one month, and the start dates begin at the initial year, and continue for n_years at
     the given frequency.
@@ -25,7 +25,7 @@ def create_dates(initial_year: int, n_years: int, freq: str = "MS") -> pd.DataFr
     dr_end = dr + pd.DateOffset(months=1)
     sdr_end = [str(d).split("T")[0] for d in dr_end.values]
 
-    return zip(sdr, sdr_end)
+    return list(zip(sdr, sdr_end))
 
 
 def get_baseline(species: str, start_date: str, end_date: str, inlet: Optional[str] = None) -> dict[str, Any]:

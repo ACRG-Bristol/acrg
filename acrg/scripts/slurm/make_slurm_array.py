@@ -7,6 +7,7 @@ script. This can't be modified through the command line with the current version
 `run_hbmcmc.py`
 """
 import argparse
+import csv
 import json
 from pathlib import Path
 import textwrap
@@ -238,7 +239,7 @@ if __name__ == "__main__":
         **kwargs,
     )
     config_path = out_path / "config.txt"
-    array_config_df.to_csv(config_path, sep="\t", doublequote=False, quotechar="'")
+    array_config_df.to_csv(config_path, sep="\t", doublequote=False, quotechar="'", quoting=csv.QUOTE_NONE)
 
     # make wrapper script
     wrapper_path = out_path / "inversion_wrapper.sh"
