@@ -37,22 +37,23 @@ def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **k
     if kwargs:
         for k, v in kwargs.items():
             result[k] = [v] * n_months
+            result[k + "_code"] = list(range(1, len(v) + 1)) * n_months
 
         kw_cols = list(kwargs.keys())
-        kw_encoding = {(k, i): str(i + 1) for k, x in kwargs.items() for i in range(len(x))}
+        kw_encoding = [k + "_code" for k in kw_cols]
 
         # expand parameter lists to get all keyword combinations
         for k in kw_cols:
-            result = result.explode(k, ignore_index=True).rename_axis(result.index.name)
+            result = result.explode([k, k + "_code"], ignore_index=True).rename_axis(result.index.name)
 
         # combine kw cols into strings that will be parsed by json.loads to a dictionary
         result["kwargs"] = result[kw_cols].apply(
             lambda x: json.dumps({k: x[i] for i, k in enumerate(kw_cols)}), axis=1
         )
         result["kwargs_dir_name"] = result[kw_cols].apply(
-            lambda x: "_".join([k + "_" + kw_encoding[(k, i)] for i, k in enumerate(kw_cols)]), axis=1
+            lambda x: "_".join([k + "_" + str(x[kw_encoding[i]]) for i, k in enumerate(kw_cols)]), axis=1
         )
-        result = result.drop(columns=kw_cols)
+        result = result.drop(columns=(kw_cols + kw_encoding))
 
     result.index = result.index + 1  # slurm array jobs start at 1
 
