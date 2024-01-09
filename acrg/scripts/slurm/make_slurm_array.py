@@ -39,6 +39,7 @@ def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **k
             result[k] = [v] * n_months
 
         kw_cols = list(kwargs.keys())
+        kw_encoding = {(k, x[i]): str(i + 1) for k, x in kwargs.items() for i in range(len(x))}
 
         # expand parameter lists to get all keyword combinations
         for k in kw_cols:
@@ -49,7 +50,7 @@ def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **k
             lambda x: json.dumps({k: x[i] for i, k in enumerate(kw_cols)}), axis=1
         )
         result["kwargs_dir_name"] = result[kw_cols].apply(
-            lambda x: "_".join([k + "_" + str(x[i]) for i, k in enumerate(kw_cols)]), axis=1
+            lambda x: "_".join([k + "_" + kw_encoding[(k, x[i])] for i, k in enumerate(kw_cols)]), axis=1
         )
         result = result.drop(columns=kw_cols)
 
