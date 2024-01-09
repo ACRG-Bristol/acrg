@@ -50,7 +50,7 @@ def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **k
         result["kwargs"] = result[kw_cols].apply(
             lambda x: json.dumps({k: x[i] for i, k in enumerate(kw_cols)}), axis=1
         )
-        result["kwargs_dir_name"] = result[kw_cols].apply(
+        result["kwargs_dir_name"] = result[kw_encoding].apply(
             lambda x: "_".join([k + "_" + str(x.loc[kw_encoding[i]]) for i, k in enumerate(kw_cols)]), axis=1
         )
         result = result.drop(columns=(kw_cols + kw_encoding))
