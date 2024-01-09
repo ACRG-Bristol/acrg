@@ -37,7 +37,7 @@ def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **k
     if kwargs:
         for k, v in kwargs.items():
             result[k] = [v] * n_months
-            result[k + "_code"] = list(range(1, len(v) + 1)) * n_months
+            result[k + "_code"] = [list(range(1, len(v) + 1))] * n_months
 
         kw_cols = list(kwargs.keys())
         kw_encoding = [k + "_code" for k in kw_cols]
