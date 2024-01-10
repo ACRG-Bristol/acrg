@@ -11,6 +11,24 @@ from sparse import COO
 import xarray as xr
 
 
+def make_quantiles(
+    da: xr.DataArray, probs: Sequence[float] = [0.025, 0.159, 0.841, 0.975], sample_dim="steps"
+) -> xr.DataArray:
+    """Return xr.DataArray of quantiles computed over dimension `sample_dim`."""
+    probs_da = xr.DataArray(probs, coords=[probs], dims=["probs"])
+
+    # make function to apply
+    # we will pass `q=probs_da` so that the coordinates of probs will be propegated
+    def func(a, q):
+        qs = np.quantile(a, q, axis=-1)  # apply along input_core_dim = sample_dim
+        qs = qs[..., 0]  # contracted dimension at axis=-1 is left with length 1, need to remove it
+        qs = np.moveaxis(qs, 0, -1)
+        return qs
+
+    result = xr.apply_ufunc(func, da, probs_da, input_core_dims=[[sample_dim], []])
+    return result.transpose("probs", ...)  # we want "probs" first
+
+
 def get_xr_dummies(
     da: xr.DataArray,
     categories: Optional[Union[Sequence[Any], pd.Index, xr.DataArray, np.ndarray]] = None,
@@ -129,7 +147,7 @@ def get_x_to_country_mat(
     area_grid: Optional[xr.DataArray] = None,
     basis_functions: Optional[xr.DataArray] = None,
     sparse: bool = False,
-):
+) -> xr.DataArray:
     """Construct a sparse matrix mapping from x sensitivities to country totals.
 
     Args:
@@ -158,7 +176,7 @@ def get_x_to_country_mat(
             if area_grid is None:
                 area_grid = get_area_grid_data_array(hbmcmc_outs.lat, hbmcmc_outs.lon)
             if basis_functions is None:
-                basis_functions = hbmcmc_outs.basis_functions
+                basis_functions = hbmcmc_outs.basisfunctions
 
     # at this point, flux, area_grid, and basis_functions are not None
     flux = cast(xr.DataArray, flux)
@@ -188,7 +206,8 @@ def get_country_trace(
     area_grid: Optional[xr.DataArray] = None,
     basis_functions: Optional[xr.DataArray] = None,
     x_trace: Optional[xr.DataArray] = None,
-):
+    x_to_country: Optional[xr.DataArray] = None,
+) -> xr.DataArray:
     """Return trace for total country emissions.
 
     Args:
@@ -202,6 +221,7 @@ def get_country_trace(
             grid cells to basis function boxes.
         x_trace: xr.DataArray with coordinate dimensions ("steps", <other>), where <other> will
             be converted to "basis_region"
+        x_to_country: xr.DataArray with result from `get_x_to_country_mat`
 
     Returns:
         xr.DataArray with coordinates ("country", "stepnum") and dimensions ("country", "steps")
@@ -211,7 +231,9 @@ def get_country_trace(
           1.0, based on how it is used in hbmcmc
     TODO: PyMC uses "draw" (or "draws"?) instead of "steps", so we might need to handle both or
           change "hbmcmc_postprocessouts". Ideally, this trace would be compatible with arviz.InferenceData
-    TODO: make a version where `x_to_country` can be passed as an argument...
+
+    DONE: make a version where `x_to_country` can be passed as an argument...
+    NOTE: if number of basis regions changes then this is no good...
     """
     if x_trace is None:
         if hbmcmc_outs is None:
@@ -224,9 +246,14 @@ def get_country_trace(
     # convert "other" coordinate of x_trace
     dim1, dim2 = x_trace.dims
     dim = dim2 if dim1 == "steps" or dim1 == "draw" else dim1
-    x_trace = x_trace.rename_vars({dim: "basis_region"})
+    x_trace = x_trace.rename({dim: "basis_region"})
 
-    x_to_country = get_x_to_country_mat(countries, hbmcmc_outs, flux, area_grid, basis_functions, sparse=True)
+    if x_to_country is None:
+        x_to_country = get_x_to_country_mat(
+            countries, hbmcmc_outs, flux, area_grid, basis_functions, sparse=True
+        )
+
+    x_to_country = cast(xr.DataArray, x_to_country)
 
     raw_trace = sparse_xr_dot(x_to_country, x_trace)
     molar_mass = oi.convert.molar_mass(species)
