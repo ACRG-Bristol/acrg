@@ -4,9 +4,35 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 import pymc as pm
+import arviz as az
 
 
 from attribute_parsers import make_global_attrs
+
+
+def get_prior_samples(
+    ds: xr.Dataset, min_model_error: float = 20.0, coord_dim: str = "nmeasure"
+) -> az.InferenceData:
+    with pm.Model(coords={coord_dim: ds[coord_dim]}) as model:
+        x = pm.TruncatedNormal("x", mu=1.0, sigma=1.0, lower=0.0, shape=ds.dims["nlatent"])
+        bc = pm.TruncatedNormal("bc", mu=1.0, sigma=0.1, lower=0.0, shape=ds.dims["nBC"])
+        sigma = pm.Uniform(
+            "sigma", lower=0.1, upper=1, shape=(ds.dims["nsigma_site"], ds.dims["nsigma_time"])
+        )
+
+        muBC = pm.Deterministic("muBC", pm.math.dot(ds.bcsensitivity.values, bc), dims=coord_dim)
+        mu = pm.Deterministic("mu", pm.math.dot(ds.xsensitivity.values, x) + muBC, dims=coord_dim)
+
+        mult_error = (
+            np.abs(pm.math.dot(ds.xsensitivity.values, x))
+            * sigma[ds.siteindicator.values.astype(int), ds.sigmafreqindex.values.astype(int)]
+        )
+        epsilon = pm.math.sqrt(ds.Yerror.values**2 + mult_error**2 + min_model_error**2)
+        ymodbc = pm.Normal("ymodbc", muBC, epsilon, dims=coord_dim)
+        ymod = pm.Normal("ymod", mu, epsilon, dims=coord_dim)
+        idata = pm.sample_prior_predictive(1000)
+
+    return idata
 
 
 def format_concentrations(ds0: xr.Dataset) -> xr.Dataset:
@@ -24,25 +50,7 @@ def format_concentrations(ds0: xr.Dataset) -> xr.Dataset:
 
     # sample prior predictive
     min_model_error = 20.0
-
-    with pm.Model(coords={"nmeasure": ds0.nmeasure}) as model:
-        x = pm.TruncatedNormal("x", mu=1.0, sigma=1.0, lower=0.0, shape=ds0.dims["nlatent"])
-        bc = pm.TruncatedNormal("bc", mu=1.0, sigma=0.1, lower=0.0, shape=ds0.dims["nBC"])
-        sigma = pm.Uniform(
-            "sigma", lower=0.1, upper=1, shape=(ds0.dims["nsigma_site"], ds0.dims["nsigma_time"])
-        )
-
-        muBC = pm.Deterministic("muBC", pm.math.dot(ds0.bcsensitivity.values, bc), dims="nmeasure")
-        mu = pm.Deterministic("mu", pm.math.dot(ds0.xsensitivity.values, x) + muBC, dims="nmeasure")
-
-        mult_error = (
-            np.abs(pm.math.dot(ds0.xsensitivity.values, x))
-            * sigma[ds0.siteindicator.values.astype(int), ds0.sigmafreqindex.values.astype(int)]
-        )
-        epsilon = pm.math.sqrt(ds0.Yerror.values**2 + mult_error**2 + min_model_error**2)
-        ymodbc = pm.Normal("ymodbc", muBC, epsilon, dims="nmeasure")
-        ymod = pm.Normal("ymod", mu, epsilon, dims="nmeasure")
-        idata = pm.sample_prior_predictive(1000)
+    idata = get_prior_samples(ds0)
 
     # make quantile vars
     probs = [0.025, 0.159, 0.841, 0.975]
