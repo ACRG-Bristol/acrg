@@ -2,7 +2,6 @@
 name: acrg_var
 channels:
   - conda-forge
-  - openghg
 dependencies:
   - python=3.10
   - pymc3
@@ -26,4 +25,5 @@ dependencies:
   - pytest
   - pyfakefs
   - cachetools
-  - openghg_defs
+  - pip:
+    - openghg_defs @ git+https://github.com/openghg/openghg_defs
