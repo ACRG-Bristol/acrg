@@ -1,6 +1,7 @@
 name: acrg
 channels:
   - conda-forge
+  - openghg
 dependencies:
   - python=3.10
   - pymc3=3.9
@@ -24,5 +25,4 @@ dependencies:
   - pytest=7.2
   - pyfakefs=5.1
   - cachetools=5.3
-  - pip:
-    - openghg_defs @ git+https://github.com/openghg/supplementary_data
+  - openghg_defs=0.0.2
