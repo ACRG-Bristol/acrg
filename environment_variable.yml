@@ -25,3 +25,5 @@ dependencies:
   - pytest
   - pyfakefs
   - cachetools
+  - pip:
+    - openghg_defs @ git+https://github.com/openghg/openghg_defs
