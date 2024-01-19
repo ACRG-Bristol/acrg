@@ -27,3 +27,4 @@ def calc_mode(da: xr.DataArray, sample_dim="steps") -> xr.DataArray:
         return np.apply_along_axis(func1d=mode_of_row, axis=-1, arr=arr)
 
     result = xr.apply_ufunc(func, da, input_core_dims=[[sample_dim]])
+    return result

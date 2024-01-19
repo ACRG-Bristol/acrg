@@ -1,27 +1,98 @@
 #!/usr/bin/env python
 import json
+from typing import Any, Optional
+
 import xarray as xr
 import pandas as pd
 import numpy as np
 import pymc as pm
 import arviz as az
 
-
 from attribute_parsers import make_global_attrs
 
 
-def get_prior_samples(
-    ds: xr.Dataset, min_model_error: float = 20.0, coord_dim: str = "nmeasure"
-) -> az.InferenceData:
-    with pm.Model(coords={coord_dim: ds[coord_dim]}) as model:
-        x = pm.TruncatedNormal("x", mu=1.0, sigma=1.0, lower=0.0, shape=ds.dims["nlatent"])
-        bc = pm.TruncatedNormal("bc", mu=1.0, sigma=0.1, lower=0.0, shape=ds.dims["nBC"])
-        sigma = pm.Uniform(
-            "sigma", lower=0.1, upper=1, shape=(ds.dims["nsigma_site"], ds.dims["nsigma_time"])
-        )
+def parseprior(name: str, prior_params: dict[str, Any], **kwargs):
+    """
+    Parses all continuous distributions for PyMC 3.8:
+    https://docs.pymc.io/api/distributions/continuous.html
+    This format requires updating when the PyMC distributions update,
+    but is safest for code execution
+    -----------------------------------
+    Args:
+      name (str):
+        name of variable in the pymc model
+      prior_params (dict):
+        dict of parameters for the distribution,
+        including 'pdf' for the distribution to use
+      shape (array):
+        shape of distribution to be created.
+        Default shape = () is the same as used by PyMC3
+    -----------------------------------
+    """
+    functiondict = {
+        "uniform": pm.Uniform,
+        "flat": pm.Flat,
+        "halfflat": pm.HalfFlat,
+        "normal": pm.Normal,
+        "truncatednormal": pm.TruncatedNormal,
+        "halfnormal": pm.HalfNormal,
+        "skewnormal": pm.SkewNormal,
+        "beta": pm.Beta,
+        "kumaraswamy": pm.Kumaraswamy,
+        "exponential": pm.Exponential,
+        "laplace": pm.Laplace,
+        "studentt": pm.StudentT,
+        "halfstudentt": pm.HalfStudentT,
+        "cauchy": pm.Cauchy,
+        "halfcauchy": pm.HalfCauchy,
+        "gamma": pm.Gamma,
+        "inversegamma": pm.InverseGamma,
+        "weibull": pm.Weibull,
+        "lognormal": pm.Lognormal,
+        "chisquared": pm.ChiSquared,
+        "wald": pm.Wald,
+        "pareto": pm.Pareto,
+        "exgaussian": pm.ExGaussian,
+        "vonmises": pm.VonMises,
+        "triangular": pm.Triangular,
+        "gumbel": pm.Gumbel,
+        "rice": pm.Rice,
+        "logistic": pm.Logistic,
+        "logitnormal": pm.LogitNormal,
+        "interpolated": pm.Interpolated,
+    }
 
-        muBC = pm.Deterministic("muBC", pm.math.dot(ds.bcsensitivity.values, bc), dims=coord_dim)
-        mu = pm.Deterministic("mu", pm.math.dot(ds.xsensitivity.values, x) + muBC, dims=coord_dim)
+    pdf = prior_params.pop("pdf")
+    return functiondict[pdf.lower()](name, **prior_params, **kwargs)
+
+
+def get_prior_samples(
+    ds: xr.Dataset,
+    xprior: Optional[dict[str, Any]] = None,
+    bcprior: Optional[dict[str, Any]] = None,
+    sigprior: Optional[dict[str, Any]] = None,
+    min_model_error: float = 20.0,
+    coord_dim: str = "nmeasure",
+) -> az.InferenceData:
+    """Sample prior and prior predictive distributions from RHIME model."""
+    if xprior is None:
+        xprior = {"pdf": "truncatednormal", "mu": 1.0, "sigma": 1.0, "lower": 0.0}
+    if bcprior is None:
+        bcprior = {"pdf": "truncatednormal", "mu": 1.0, "sigma": 0.1, "lower": 0.0}
+    if sigprior is None:
+        sigprior = {"pdf": "uniform", "lower": 0.0, "upper": 1.0}
+
+    coords_dict = {coord_dim: ds[coord_dim]}
+    for dim in ["nlatent", "nBC", "nsigma_site", "nsigma_time"]:
+        coords_dict[dim] = ds[dim]
+
+    with pm.Model(coords=coords_dict) as model:
+        x = parseprior("x", xprior, dims="nlatent")
+        bc = parseprior("bc", bcprior, dims="nBC")
+        sigma = parseprior("sigma", sigprior, dims=("nsigma_site", "nsigma_time"))
+
+        muBC = pm.math.dot(ds.bcsensitivity.values, bc)
+        mu = pm.math.dot(ds.xsensitivity.values, x) + muBC
 
         mult_error = (
             np.abs(pm.math.dot(ds.xsensitivity.values, x))
