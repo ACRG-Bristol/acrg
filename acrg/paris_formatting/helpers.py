@@ -16,6 +16,10 @@ from sparse import COO
 from xarray.core.common import DataWithCoords
 
 
+# type for xr.Dataset *or* xr.DataArray
+xrData = TypeVar("xrData", bound=DataWithCoords)
+
+
 def parseprior(name: str, prior_params: dict[str, Any], **kwargs):
     """
     Parses all continuous distributions for PyMC 3.8:
@@ -217,8 +221,8 @@ def get_xr_dummies(
 
 
 def sparse_xr_dot(
-    da1: xr.DataArray, da2: xr.DataArray, debug: bool = False, broadcast_dims: Optional[Sequence[str]] = None
-) -> xr.DataArray:
+    da1: xr.DataArray, da2: xrData, debug: bool = False, broadcast_dims: Optional[Sequence[str]] = None
+) -> xrData:
     """Compute the matrix "dot" of a tuple of DataArrays with sparse.COO values.
 
     This multiplies and sums over all common dimensions of the input DataArrays, and
@@ -295,7 +299,6 @@ def sparse_xr_dot(
             print("x.shape", x.shape, "y.shape", y.shape)
             print("idx", idx)
             print("result shape:", result.shape)
-            # print("result[idx] shape:", result[idx].shape)
 
         return result[idx]  # type: ignore
 
@@ -414,17 +417,14 @@ def get_country_trace(
     return raw_trace * 365 * 24 * 3600 * molar_mass
 
 
-T = TypeVar("T", bound=DataWithCoords)
-
-
-def convert_time_to_unix_epoch(x: T) -> T:
+def convert_time_to_unix_epoch(x: xrData) -> xrData:
     """Convert `time` coordinate of xarray Dataset or DataArray to number of seconds since
     1 Jan 1970 (the "UNIX epoch").
     """
     return x.assign_coords(time=(pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s"))
 
 
-def convert_unix_epoch_to_time(x: T) -> T:
+def convert_unix_epoch_to_time(x: xrData) -> xrData:
     """Convert `time` coordinate of xarray Dataset or DataArray to number of seconds since
     1 Jan 1970 (the "UNIX epoch").
     """
