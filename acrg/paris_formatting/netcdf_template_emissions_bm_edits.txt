@@ -16,65 +16,65 @@ dimensions:
 
 variables:
         double time(time) ;
-                time:longname = "time" ;
+                time:long_name = "time" ;
                 time:units = "seconds since 1970-01-01 00:00:00" ;
                 time:calendar = "proleptic_gregorian" ;
-	float percentile(probs) ; 
-		percentile:FillValue = NaN ;
-		percentile:units = "-" ;
-		percentile:longname = "percentile"
+	float quantile(probs) ;
+		quantile:FillValue = NaN ;
+		quantile:units = "-" ;
+		quantile:long_name = "quantile"
 #	typical values could be: 0.025, 0.169, 0.841, 0.975)
 	double lon(lon) ;
                 lon:FillValue = NaN ;
                 lon:units = "degree_east" ;
-                lon:longname = "longitude_of_grid_cell_centre" ;
+                lon:long_name = "longitude_of_grid_cell_centre" ;
 	double lat(lat) ;
                 lat:FillValue = NaN ;
                 lat:units = "degree_north" ;
-                lat:longname = "latitude_of_grid_cell_centre" ;
+                lat:long_name = "latitude_of_grid_cell_centre" ;
         string country(country) ;
-                country:longname = "country name" ;
+                country:long_name = "country name" ;
 #	I suggest to use the 2-digit ISO identifiers here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
 
-#       change everything to percentile
+#       change everything to quantile
         float fluxapriori(time, lat, lon) ;
                 fluxapriori:FillValue = NaN ;
                 fluxapriori:units = "mol/m2/s" ;
-                fluxapriori:longname = "apriori_flux" ;
-        float pfluxapriori(probs, time, lat, lon) ;
-                pfluxapriori:FillValue = NaN ;
-                pfluxapriori:units = "mol/m2/s" ;
-                pfluxapriori:longname = "percentiles_of_apriori_flux" ;
-                pfluxapriori:comment = "shape of pdf" ;
+                fluxapriori:long_name = "apriori_flux" ;
+        float qfluxapriori(probs, time, lat, lon) ;
+                qfluxapriori:FillValue = NaN ;
+                qfluxapriori:units = "mol/m2/s" ;
+                qfluxapriori:long_name = "quantiles_of_apriori_flux" ;
+                qfluxapriori:comment = "shape of pdf" ;
         float fluxapost(time, lat, lon) ;
                 fluxapost:FillValue = NaN ;
                 fluxapost:units = "mol/m2/s" ;
-                fluxapost:longname = "aposteriori_flux" ;
-        float pfluxapost(probs, time, lat, lon) ;
-                pfluxapost:FillValue = NaN ;
-                pfluxapost:units = "mol/m2/s" ;
-                pfluxapost:longname = "percentiles_of_aposteriori_flux" ;
+                fluxapost:long_name = "aposteriori_flux" ;
+        float qfluxapost(probs, time, lat, lon) ;
+                qfluxapost:FillValue = NaN ;
+                qfluxapost:units = "mol/m2/s" ;
+                qfluxapost:long_name = "quantiles_of_aposteriori_flux" ;
 
         float countryapriori(time, country) ;
                 countryapriori:FillValue = NaN ;
                 countryapriori:units = "kg" ;
-                countryapriori:longname = "apriori_flux_per_country" ;
-        float pcountryapriori(probs, time, country) ;
-                pcountryapriori:FillValue = NaN ;
-                pcountryapriori:units = "kg" ;
-                pcountryapriori:longname = "percentiles_of_apriori_flux_per_country" ;
+                countryapriori:long_name = "apriori_flux_per_country" ;
+        float qcountryapriori(probs, time, country) ;
+                qcountryapriori:FillValue = NaN ;
+                qcountryapriori:units = "kg" ;
+                qcountryapriori:long_name = "quantiles_of_apriori_flux_per_country" ;
         float countryapost(time, country) ;
                 countryapost:FillValue = NaN ;
                 countryapost:units = "kg" ;
-                countryapost:longname = "aposteriori_flux_per_country" ;
-        float pcountryapost(probs, time, country) ;
-                pcountryapost:FillValue = NaN ;
-                pcountryapost:units = "kg" ;
-                pcountryapost:longname = "percentiles_of_aposteriori_flux_per_country" ;
+                countryapost:long_name = "aposteriori_flux_per_country" ;
+        float qcountryapost(probs, time, country) ;
+                qcountryapost:FillValue = NaN ;
+                qcountryapost:units = "kg" ;
+                qcountryapost:long_name = "quantiles_of_aposteriori_flux_per_country" ;
         float covcountryapost(time, country, country) ;
                 covcountryapost:FillValue = NaN ;
                 covcountryapost:units = "kg2" ;
-                covcountryapost:longname = "spatial_covariance_of_aposteriori_flux_per_country" ;
+                covcountryapost:long_name = "spatial_covariance_of_aposteriori_flux_per_country" ;
 #	Optional
 
 

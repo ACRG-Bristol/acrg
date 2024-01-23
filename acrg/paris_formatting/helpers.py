@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import json
-from typing import Any, Optional, Sequence, Union, cast
+from typing import Any, cast, Optional, Sequence, Union, TypeVar
 
 import arviz as az
 import numpy as np
@@ -9,9 +9,11 @@ import pandas as pd
 import pymc as pm
 import sparse
 import xarray as xr
+from openghg_inversions import convert
 from openghg_inversions import utils
 from scipy import stats
 from sparse import COO
+from xarray.core.common import DataWithCoords
 
 
 def parseprior(name: str, prior_params: dict[str, Any], **kwargs):
@@ -124,7 +126,7 @@ def get_prior_samples(
     model = get_rhime_model(ds, xprior, bcprior, sigprior, min_model_error, coord_dim)
     idata = pm.sample_prior_predictive(1000, model=model)
 
-    return idata
+    return cast(az.InferenceData, idata)
 
 
 def make_quantiles(
@@ -158,7 +160,9 @@ def calc_mode(da: xr.DataArray, sample_dim="steps") -> xr.DataArray:
     """
 
     def mode_of_row(row):
-        if np.nanmax(row) > np.nanmin(row):
+        if np.all(np.isnan(row)):
+            return np.nan
+        elif np.nanmax(row) > np.nanmin(row):
             xvals = np.linspace(np.nanmin(row), np.nanmax(row), 200)
             kde = stats.gaussian_kde(row).evaluate(xvals)
             return xvals[kde.argmax()]
@@ -212,7 +216,9 @@ def get_xr_dummies(
     return result.unstack(stack_dim) if stack_dim else result
 
 
-def sparse_xr_dot(da1: xr.DataArray, da2: xr.DataArray, debug: bool = False) -> xr.DataArray:
+def sparse_xr_dot(
+    da1: xr.DataArray, da2: xr.DataArray, debug: bool = False, broadcast_dims: Optional[Sequence[str]] = None
+) -> xr.DataArray:
     """Compute the matrix "dot" of a tuple of DataArrays with sparse.COO values.
 
     This multiplies and sums over all common dimensions of the input DataArrays, and
@@ -225,9 +231,10 @@ def sparse_xr_dot(da1: xr.DataArray, da2: xr.DataArray, debug: bool = False) -> 
     values of `da1` and `da2` are `sparse.COO` arrays.
 
     Args:
-        *arrays: xr.DataArrays to multiply and sum along common dimensions.
+        da1, da2: xr.DataArrays to multiply and sum along common dimensions.
         debug: if true, will print the dimensions of the inputs to `sparse.tensordot`
             as well as the dimension of the result.
+        along_dim: name
 
     Returns:
         xr.DataArray containing the result of matrix/tensor multiplication
@@ -241,30 +248,67 @@ def sparse_xr_dot(da1: xr.DataArray, da2: xr.DataArray, debug: bool = False) -> 
     if nc == 0:
         raise ValueError(f"DataArrays \n{da1}\n{da2}\n have no common dimensions. Cannot compute `dot`.")
 
-    tensor_dot_axes = tuple([tuple(range(-nc, 0))] * 2)
-    input_core_dims = [list(common_dims)] * 2
+    if broadcast_dims is not None:
+        _broadcast_dims = set(broadcast_dims).intersection(common_dims)
+    else:
+        _broadcast_dims = set([])
+
+    contract_dims = common_dims.difference(_broadcast_dims)
+    ncontract = len(contract_dims)
+
+    tensor_dot_axes = tuple([tuple(range(-ncontract, 0))] * 2)
+    input_core_dims = [list(contract_dims)] * 2
 
     # compute tensor dot on last nc coordinates (because core dims are moved to end)
     # and then drop 1D coordinates resulting from summing
-    def _func(x, y):
+    def _func(x, y, debug=False):
         result = sparse.tensordot(x, y, axes=tensor_dot_axes)  # type: ignore
 
-        n1, n2, nr = len(da1.dims) - nc, len(da2.dims) - nc, len(result.shape)
-        # we should have n1 axes from da1, n2 axes from da2, and nr - n1 - n2
-        # axes left over (sometimes axes of length 1 are left by tensordot)
-        idx = tuple([slice(None)] * n1 + [0] * (nr - n1 - n2) + [slice(None)] * n2)
+        xs = list(x.shape[:-ncontract])
+        nxs = len(xs)
+        ys = list(y.shape[:-ncontract])
+        nys = len(ys)
+        pad_y = nxs - nys
+        if pad_y > 0:
+            ys = [1] * pad_y + ys
+
+        idx1, idx2 = [], []
+        for i, j in zip(xs, ys):
+            if i == j or j == 1:
+                idx1.append(slice(None))
+                idx2.append(0)
+            elif i == 1:
+                # x broadcasted to match y's dim
+                idx1.append(0)
+                idx2.append(slice(None))
+
+        if debug:
+            print("pad y", pad_y)
+            print(xs, ys)
+            print(idx1, idx2)
+
+        idx2 = idx2[pad_y:]
+        idx3 = [0] * (result.ndim - len(idx1) - len(idx2))
+        idx = tuple(idx1 + idx3 + idx2)
+
+        if debug:
+            print("x.shape", x.shape, "y.shape", y.shape)
+            print("idx", idx)
+            print("result shape:", result.shape)
+            # print("result[idx] shape:", result[idx].shape)
+
         return result[idx]  # type: ignore
 
     def wrapper(da1, da2):
         for arr in [da1, da2]:
             print(f"_func received array of type {type(arr)}, shape {arr.shape}")
-        result = _func(da1, da2)
-        print(f"_func result shape: {result.shape}")
+        result = _func(da1, da2, debug=True)
+        print(f"_func result shape: {result.shape}\n")
         return result
 
     func = wrapper if debug else _func
 
-    return xr.apply_ufunc(func, da1, da2, input_core_dims=input_core_dims)
+    return xr.apply_ufunc(func, da1, da2, input_core_dims=input_core_dims, join="outer")
 
 
 def get_area_grid_data_array(lat: xr.DataArray, lon: xr.DataArray) -> xr.DataArray:
@@ -289,6 +333,7 @@ def get_x_to_country_mat(
     area_grid: Optional[xr.DataArray] = None,
     basis_functions: Optional[xr.DataArray] = None,
     sparse: bool = False,
+    basis_cat_dim: str = "basis_region",
 ) -> xr.DataArray:
     """Construct a sparse matrix mapping from x sensitivities to country totals.
 
@@ -327,7 +372,7 @@ def get_x_to_country_mat(
 
     # create dummy matrices from country and basis DataArrays
     country_mat = get_xr_dummies(countries.country, cat_dim="country", categories=countries.name)
-    basis_mat = get_xr_dummies(basis_functions, cat_dim="basis_region")
+    basis_mat = get_xr_dummies(basis_functions, cat_dim=basis_cat_dim)
 
     # compute matrix/tensor product: country_mat.T @ (area_grid * flux * basis_mat)
     # transpose doesn't need to be taken explicitly because alignment is done by dimension name
@@ -338,3 +383,49 @@ def get_x_to_country_mat(
 
     # hack since `.to_numpy()` doesn't work right with sparse arrays
     return xr.apply_ufunc(lambda x: x.todense(), result)
+
+
+def get_country_trace(
+    species: str,
+    x_trace: Union[xr.Dataset, xr.DataArray],
+    x_to_country: xr.DataArray,
+) -> xr.DataArray:
+    """Return trace for total country emissions.
+
+    Args:
+        species: name of species, e.g. "co2", "ch4", "sf6", etc.
+        x_trace: xr.DataArray or xr.Dataset with coordinate dimensions ("draw", "nparam")
+        x_to_country: xr.DataArray with result from `get_x_to_country_mat`
+
+    Returns:
+        xr.DataArray with coordinates ("country", "stepnum") and dimensions ("country", "steps")
+
+    TODO: add attributes?
+    TODO: there is a "country unit" conversion in the old code, but it seems to always product
+          1.0, based on how it is used in hbmcmc
+    TODO: PyMC uses "draw" (or "draws"?) instead of "steps", so we might need to handle both or
+          change "hbmcmc_postprocessouts". Ideally, this trace would be compatible with arviz.InferenceData
+
+    DONE: make a version where `x_to_country` can be passed as an argument...
+    NOTE: if number of basis regions changes then this is no good...
+    """
+    raw_trace = sparse_xr_dot(x_to_country, x_trace)
+    molar_mass = convert.molar_mass(species)
+    return raw_trace * 365 * 24 * 3600 * molar_mass
+
+
+T = TypeVar("T", bound=DataWithCoords)
+
+
+def convert_time_to_unix_epoch(x: T) -> T:
+    """Convert `time` coordinate of xarray Dataset or DataArray to number of seconds since
+    1 Jan 1970 (the "UNIX epoch").
+    """
+    return x.assign_coords(time=(pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s"))
+
+
+def convert_unix_epoch_to_time(x: T) -> T:
+    """Convert `time` coordinate of xarray Dataset or DataArray to number of seconds since
+    1 Jan 1970 (the "UNIX epoch").
+    """
+    return x.assign_coords(time=(pd.Timedelta("1s") * x.time + pd.Timestamp("1970-01-01")))

@@ -4,16 +4,19 @@ from pathlib import Path
 import re
 from typing import Any, Literal, Optional, Union
 
+import xarray as xr
+
 concentrations_template = "netcdf_template_concentrations_bm_edits.txt"
 emissions_template = "netcdf_template_emissions_bm_edits.txt"
 
-attr_dict: dict[str, Any] = {}
 var_pat = re.compile(r"\s*[a-z]+ ([a-zA-Z]+)\(.*\)")
-attr_pat = re.compile(r"\s+([a-zA-Z]+):([a-zA-Z]+)\s*=\s*([^;]+)")
+attr_pat = re.compile(r"\s+([a-zA-Z]+):([a-zA-Z_]+)\s*=\s*([^;]+)")
 
 
 def get_data_var_attrs(template_file: str, drop_fill_value=True) -> dict[str, dict[str, Any]]:
     """Extract data variable attributes from template file."""
+    attr_dict: dict[str, Any] = {}
+
     with open(template_file, "r") as f:
         in_vars = False
         for line in f.readlines():
@@ -67,3 +70,22 @@ def make_global_attrs(
     global_attrs["comment"] = comment if comment is not None else ""
 
     return global_attrs
+
+
+def add_variable_attrs(
+    ds: xr.Dataset, attrs: dict[str, dict[str, Any]], units: Optional[float] = None
+) -> xr.Dataset:
+    """Update data variables and coordinates of Dataset based on attributes dicitonary.
+
+    If `units` provided, data variables with "units" attribute will be rescaled by `units`. This is to convert e.g.
+    from 1e-9 mol/mol to mol/mol.
+    """
+    for k, v in attrs.items():
+        if k in ds.data_vars:
+            if units is not None and "units" in v and "mol/mol" in v["units"]:
+                ds[k] = units * ds[k]
+            ds[k].attrs = v
+        elif k in ds.coords:
+            ds.coords[k].attrs = v
+
+    return ds

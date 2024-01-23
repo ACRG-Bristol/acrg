@@ -1,42 +1,23 @@
 #!/usr/bin/env python
 
-
-get_ipython().run_line_magic("load_ext", "autoreload")
-get_ipython().run_line_magic("autoreload", "2")
-
-
 import numpy as np
 import pandas as pd
-
-
 import xarray as xr
 
 
 from file_processing import get_netcdf_files, get_rhime_outs
-
-
 from country_totals import get_country_trace, get_x_to_country_mat
-
-
 from country_totals import get_xr_dummies, sparse_xr_dot, make_quantiles
-
-
-#!pip install sparse
-
 
 species = "sf6"
 
-
 files = get_netcdf_files("/home/brendan/Documents/inversions/plotting/sf6_best")
 
-
 outs = get_rhime_outs(files)
-
 
 countries = xr.open_dataset(
     "/home/brendan/Documents/inversions/openghg_inversions/countries/country_EUROPE.nc"
 )
-
 
 countries_ukmo = xr.open_dataset(
     "/home/brendan/Documents/inversions/openghg_inversions/countries/country-ukmo_EUROPE.nc"
@@ -130,7 +111,7 @@ country_ukmo_merged_ds = xr.merge(
 
 # # Process flux
 #
-# We can't use the same method (producing flux traces) because they would be massing... 1000 samples for the EUROPE domain would be several gigabytes.
+# We can't use the same method (producing flux traces) because they would be massive... 1000 samples for the EUROPE domain would be several gigabytes.
 #
 # Since the flux is constant on the basis regions, we can compute means and quantiles before mapping them to the original lat/lon domain.
 
