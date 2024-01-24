@@ -49,55 +49,27 @@ import xarray as xr
 
 
 #+BEGIN_SRC jupyter-python
-  outs[0]
+for k, v in  outs[0].attrs.items():
+    print(f"{k}: {v}")
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
-Dimensions:            (nmeasure: 877, draw: 10000, nparam: 97, nBC: 16,
-                        nsigma_site: 8, nsigma_time: 4, nsite: 6, lat: 293,
-                        lon: 391, countrynames: 20)
-Coordinates:
-  ,* draw               (draw) int64 0 1 2 3 4 5 ... 9995 9996 9997 9998 9999
-  ,* nBC                (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-  ,* nmeasure           (nmeasure) int64 0 1 2 3 4 5 ... 871 872 873 874 875 876
-    nsites             (nsite) int64 ...
-  ,* nsigma_time        (nsigma_time) int64 0 1 2 3
-  ,* nsigma_site        (nsigma_site) int64 0 1 2 3 4 5 6 7
-  ,* lat                (lat) float32 10.73 10.96 11.2 ... 78.59 78.82 79.06
-  ,* lon                (lon) float32 -97.9 -97.55 -97.2 ... 38.68 39.03 39.38
-  ,* countrynames       (countrynames) <U14 'None' 'RestEU' ... 'UNITED KINGDOM'
-  ,* nparam             (nparam) int64 0 1 2 3 4 5 6 7 ... 90 91 92 93 94 95 96
-Dimensions without coordinates: nsite
-Data variables: (12/35)
-    Yobs               (nmeasure) float64 ...
-    Yerror             (nmeasure) float64 ...
-    Ytime              (nmeasure) datetime64[ns] ...
-    Yapriori           (nmeasure) float64 ...
-    Ymodmean           (nmeasure) float64 ...
-    Ymodmedian         (nmeasure) float64 ...
-    ...                 ...
-    countrymode        (countrynames) float64 ...
-    countrysd          (countrynames) float64 ...
-    countryapriori     (countrynames) float64 ...
-    countrydefinition  (lat, lon) int32 ...
-    xsensitivity       (nmeasure, nparam) float64 ...
-    bcsensitivity      (nmeasure, nBC) float64 ...
-Attributes: (12/15)
-    Start date:           2020-06-01
-    End date:             2020-07-01
-    Latent sampler:       mc.nuts.NUTS
-    Hyper sampler:        licer.Slice o
-    Burn in:              10000
-    Tuning steps:         10000
-    ...                   ...
-    Model error Prior:    pdf,uniform,lower,0.1,upper,1.0
-    BCs Prior:            pdf,truncatednormal,mu,1.0,sigma,0.03,lower,0.0
-    Creator:              bm13805
-    Date created:         2024-01-09 10:33:53.036470
-    Convergence:          Passed
-    Repository version:
+Start date: 2020-06-01
+End date: 2020-07-01
+Latent sampler: mc.nuts.NUTS
+Hyper sampler: licer.Slice o
+Burn in: 10000
+Tuning steps: 10000
+Number of chains: 4
+Error for each site: True
+Emissions Prior: pdf,truncatednormal,mu,-1706.68549918,sigma,41.34586525,lower,0.0
+Model error Prior: pdf,uniform,lower,0.1,upper,1.0
+BCs Prior: pdf,truncatednormal,mu,1.0,sigma,0.03,lower,0.0
+Creator: bm13805
+Date created: 2024-01-09 10:33:53.036470
+Convergence: Passed
+Repository version:
 #+end_example
 
 * Sampling from model
@@ -526,9 +498,8 @@ paris_countries = [
 ]
 country_filt = countries.name.isin(paris_countries)
 
-country_ukmo_filt = countries_ukmo.name.isin(
-    ["BENELUX", "RestEU", "SpaPor", "IRELAND", "UNITED KINGDOM", "FRANCE", "GERMANY", "DENMARK", "NORWAY"]
-)
+paris_countries_ukmo = ["BENELUX", "RestEU", "SpaPor", "IRELAND", "UNITED KINGDOM", "FRANCE", "GERMANY", "DENMARK", "NORWAY"]
+country_ukmo_filt = countries_ukmo.name.isin(paris_countries_ukmo)
 #+end_src
 
 #+RESULTS:
@@ -1451,3 +1422,221 @@ Attributes: (12/13)
     history:
     comment:
 #+end_example
+
+** Replacing country names with codes
+
+#+begin_src jupyter-python
+import json
+
+with open("iso3166.json", "r") as f:
+    iso3166 = json.load(f)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+country_codes = {}
+for c in paris_countries + paris_countries_ukmo:
+    found = False
+    for k, v in iso3166.items():
+        names = [v["iso_long_name"].lower()] + [name.lower() for name in v["unofficial_names"]]
+        if any(c.lower() in name for name in names):
+            country_codes[c] = k
+            found = True
+            continue
+    if not found:
+        country_codes[c] = c
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+for k, v in country_codes.items():
+    print(k, v)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+BELGIUM BE
+SWITZERLAND CH
+AUSTRIA AT
+ITALY IT
+NETHERLANDS NL
+CZECHIA CZ
+POLAND PL
+HUNGARY HU
+SLOVAKIA SK
+SWEDEN SE
+FINLAND FI
+BENELUX BENELUX
+RestEU RestEU
+SpaPor SpaPor
+IRELAND IE
+UNITED KINGDOM GB
+FRANCE TF
+GERMANY DE
+DENMARK DK
+NORWAY NO
+#+end_example
+
+#+begin_src jupyter-python
+from typing import Any, Optional
+def get_country_code(x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None) -> str:
+    if iso3166 is None:
+        import json
+
+        with open("iso3166.json", "r") as f:
+            iso3166 = json.load(f)
+
+    for k, v in iso3166.items():
+        names = [v["iso_long_name"].lower()] + [name.lower() for name in v["unofficial_names"]]
+        if any(x.lower() in name for name in names):
+            return k
+
+    return x
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+emissions4.assign_coords(country=list(map(lambda x: get_country_code(x, iso3166), map(str, emissions4.country.values))))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:              (time: 11, lat: 293, lon: 391, quantile: 4, probs: 4,
+                          country: 20)
+Coordinates:
+  ,* lat                  (lat) float32 10.73 10.96 11.2 ... 78.59 78.82 79.06
+  ,* lon                  (lon) float32 -97.9 -97.55 -97.2 ... 38.68 39.03 39.38
+  ,* quantile             (probs) float64 0.025 0.159 0.841 0.975
+  ,* time                 (time) int64 1590969600 1593561600 ... 1617235200
+  ,* country              (country) <U7 'CH' 'SE' 'SK' ... 'SpaPor' 'NO' 'GB'
+Dimensions without coordinates: probs
+Data variables:
+    fluxapost            (time, lat, lon) float64 0.0 0.0 0.0 ... 0.0 0.0 0.0
+    fluxapost_mode       (time, lat, lon) float64 0.0 0.0 0.0 ... 0.0 0.0 0.0
+    qfluxapost           (time, lat, lon, quantile) float64 0.0 0.0 ... 0.0 0.0
+    fluxapriori          (time, lat, lon) float64 0.0 0.0 0.0 ... 0.0 0.0 0.0
+    fluxapriori_mode     (time, lat, lon) float64 0.0 0.0 0.0 ... 0.0 0.0 0.0
+    qfluxapriori         (time, lat, lon, quantile) float64 0.0 0.0 ... 0.0 0.0
+    countryapost         (time, country) float64 5.118e+06 ... 1.657e+07
+    countryapost_mode    (time, country) float64 4.211e+06 ... 1.576e+07
+    qcountryapost        (quantile, time, country) float64 1.478e+06 ... 2.28...
+    countryapriori       (time, country) float64 5.328e+06 ... 2.798e+07
+    countryapriori_mode  (time, country) float64 3.056e+06 ... 2.473e+07
+    qcountryapriori      (quantile, time, country) float64 9.837e+05 ... 4.27...
+Attributes: (12/13)
+    title:                         Flux estimates: spatially-resolved and by ...
+    author:                        OpenGHG
+    source:                        processed NAME(8.0) model output
+    transport_model:               NAME
+    transport_model_version:       NAME III (version 8.0)
+    met_model:                     UKV
+    ...                            ...
+    domain:                        EUROPE
+    inversion_method:              RHIME
+    apriori_description:           EDGAR 8.0
+    publication_acknowledgements:  Please acknowledge ACRG, University of Bri...
+    history:
+    comment:
+#+end_example
+
+* Refining sampling code
+
+#+begin_src jupyter-python
+from pymc.distributions import continuous
+continuous_dists = continuous.__all__
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+cd_dict = {cd.lower(): cd for cd in continuous_dists}
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+for k, v in cd_dict.items():
+    print(k, getattr(continuous, v))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+uniform <class 'pymc.distributions.continuous.Uniform'>
+flat <class 'pymc.distributions.continuous.Flat'>
+halfflat <class 'pymc.distributions.continuous.HalfFlat'>
+normal <class 'pymc.distributions.continuous.Normal'>
+truncatednormal <class 'pymc.distributions.continuous.TruncatedNormal'>
+beta <class 'pymc.distributions.continuous.Beta'>
+kumaraswamy <class 'pymc.distributions.continuous.Kumaraswamy'>
+exponential <class 'pymc.distributions.continuous.Exponential'>
+laplace <class 'pymc.distributions.continuous.Laplace'>
+studentt <class 'pymc.distributions.continuous.StudentT'>
+cauchy <class 'pymc.distributions.continuous.Cauchy'>
+halfcauchy <class 'pymc.distributions.continuous.HalfCauchy'>
+gamma <class 'pymc.distributions.continuous.Gamma'>
+weibull <class 'pymc.distributions.continuous.Weibull'>
+halfstudentt <class 'pymc.distributions.continuous.HalfStudentT'>
+lognormal <class 'pymc.distributions.continuous.LogNormal'>
+chisquared <class 'pymc.distributions.continuous.ChiSquared'>
+halfnormal <class 'pymc.distributions.continuous.HalfNormal'>
+wald <class 'pymc.distributions.continuous.Wald'>
+pareto <class 'pymc.distributions.continuous.Pareto'>
+inversegamma <class 'pymc.distributions.continuous.InverseGamma'>
+exgaussian <class 'pymc.distributions.continuous.ExGaussian'>
+vonmises <class 'pymc.distributions.continuous.VonMises'>
+skewnormal <class 'pymc.distributions.continuous.SkewNormal'>
+triangular <class 'pymc.distributions.continuous.Triangular'>
+gumbel <class 'pymc.distributions.continuous.Gumbel'>
+logistic <class 'pymc.distributions.continuous.Logistic'>
+logitnormal <class 'pymc.distributions.continuous.LogitNormal'>
+interpolated <class 'pymc.distributions.continuous.Interpolated'>
+rice <class 'pymc.distributions.continuous.Rice'>
+moyal <class 'pymc.distributions.continuous.Moyal'>
+asymmetriclaplace <class 'pymc.distributions.continuous.AsymmetricLaplace'>
+polyagamma <class 'pymc.distributions.continuous.PolyaGamma'>
+#+end_example
+
+#+begin_src jupyter-python
+function_dict = {
+        "uniform": pm.Uniform,
+        "flat": pm.Flat,
+        "halfflat": pm.HalfFlat,
+        "normal": pm.Normal,
+        "truncatednormal": pm.TruncatedNormal,
+        "halfnormal": pm.HalfNormal,
+        "skewnormal": pm.SkewNormal,
+        "beta": pm.Beta,
+        "kumaraswamy": pm.Kumaraswamy,
+        "exponential": pm.Exponential,
+        "laplace": pm.Laplace,
+        "studentt": pm.StudentT,
+        "halfstudentt": pm.HalfStudentT,
+        "cauchy": pm.Cauchy,
+        "halfcauchy": pm.HalfCauchy,
+        "gamma": pm.Gamma,
+        "inversegamma": pm.InverseGamma,
+        "weibull": pm.Weibull,
+        "lognormal": pm.Lognormal,
+        "chisquared": pm.ChiSquared,
+        "wald": pm.Wald,
+        "pareto": pm.Pareto,
+        "exgaussian": pm.ExGaussian,
+        "vonmises": pm.VonMises,
+        "triangular": pm.Triangular,
+        "gumbel": pm.Gumbel,
+        "rice": pm.Rice,
+        "logistic": pm.Logistic,
+        "logitnormal": pm.LogitNormal,
+        "interpolated": pm.Interpolated,
+    }
+
+print(len(function_dict), len(cd_dict))
+assert set(function_dict.keys()) <= set(cd_dict.keys())
+#+end_src
+
+#+RESULTS:
+: 30 33
