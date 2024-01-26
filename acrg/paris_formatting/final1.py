@@ -224,7 +224,7 @@ def main():
     emissions1 = xr.merge([flux_all_times, country_output])
 
     emissions2 = convert_time_to_unix_epoch(emissions1)
-    emissions3 = emissions2.rename_vars(probs="quantile").swap_dims(probs="quantile")
+    emissions3 = emissions2.rename(probs="quantile")
 
     emissions4 = add_variable_attrs(emissions3, flux_attrs)
 
