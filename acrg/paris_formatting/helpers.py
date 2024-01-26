@@ -20,119 +20,6 @@ from xarray.core.common import DataWithCoords
 xrData = TypeVar("xrData", bound=DataWithCoords)
 
 
-def parseprior(name: str, prior_params: dict[str, Any], **kwargs):
-    """
-    Parses all continuous distributions for PyMC 3.8:
-    https://docs.pymc.io/api/distributions/continuous.html
-    This format requires updating when the PyMC distributions update,
-    but is safest for code execution
-    -----------------------------------
-    Args:
-      name (str):
-        name of variable in the pymc model
-      prior_params (dict):
-        dict of parameters for the distribution,
-        including 'pdf' for the distribution to use
-      shape (array):
-        shape of distribution to be created.
-        Default shape = () is the same as used by PyMC3
-    -----------------------------------
-    """
-    functiondict = {
-        "uniform": pm.Uniform,
-        "flat": pm.Flat,
-        "halfflat": pm.HalfFlat,
-        "normal": pm.Normal,
-        "truncatednormal": pm.TruncatedNormal,
-        "halfnormal": pm.HalfNormal,
-        "skewnormal": pm.SkewNormal,
-        "beta": pm.Beta,
-        "kumaraswamy": pm.Kumaraswamy,
-        "exponential": pm.Exponential,
-        "laplace": pm.Laplace,
-        "studentt": pm.StudentT,
-        "halfstudentt": pm.HalfStudentT,
-        "cauchy": pm.Cauchy,
-        "halfcauchy": pm.HalfCauchy,
-        "gamma": pm.Gamma,
-        "inversegamma": pm.InverseGamma,
-        "weibull": pm.Weibull,
-        "lognormal": pm.Lognormal,
-        "chisquared": pm.ChiSquared,
-        "wald": pm.Wald,
-        "pareto": pm.Pareto,
-        "exgaussian": pm.ExGaussian,
-        "vonmises": pm.VonMises,
-        "triangular": pm.Triangular,
-        "gumbel": pm.Gumbel,
-        "rice": pm.Rice,
-        "logistic": pm.Logistic,
-        "logitnormal": pm.LogitNormal,
-        "interpolated": pm.Interpolated,
-    }
-    params = prior_params.copy()
-    pdf = params.pop("pdf")
-    return functiondict[pdf.lower()](name, **params, **kwargs)
-
-
-def get_rhime_model(
-    ds: xr.Dataset,
-    xprior: Optional[dict[str, Any]] = None,
-    bcprior: Optional[dict[str, Any]] = None,
-    sigprior: Optional[dict[str, Any]] = None,
-    min_model_error: float = 20.0,
-    coord_dim: str = "nmeasure",
-    rename_coords: bool = True,
-    x_name: str = "x",
-    bc_name: str = "bc",
-    sigma_name: str = "sigma",
-) -> pm.Model:
-    if xprior is None:
-        xprior = {"pdf": "truncatednormal", "mu": 1.0, "sigma": 1.0, "lower": 0.0}
-    if bcprior is None:
-        bcprior = {"pdf": "truncatednormal", "mu": 1.0, "sigma": 0.1, "lower": 0.0}
-    if sigprior is None:
-        sigprior = {"pdf": "uniform", "lower": 0.1, "upper": 1.0}
-
-    coords_dict = {coord_dim: ds[coord_dim]}
-    if rename_coords:
-        for dim in ["nparam", "nBC", "nsigma_site", "nsigma_time"]:
-            coords_dict[dim] = ds[dim]
-
-    with pm.Model(coords=coords_dict) as model:
-        x = parseprior(x_name, xprior, dims="nparam")
-        bc = parseprior(bc_name, bcprior, dims="nBC")
-        sigma = parseprior(sigma_name, sigprior, dims=("nsigma_site", "nsigma_time"))
-
-        muBC = pm.math.dot(ds.bcsensitivity.values, bc)
-        mu = pm.math.dot(ds.xsensitivity.values, x) + muBC
-
-        mult_error = (
-            np.abs(pm.math.dot(ds.xsensitivity.values, x))
-            * sigma[ds.siteindicator.values.astype(int), ds.sigmafreqindex.values.astype(int)]
-        )
-        epsilon = pm.math.sqrt(ds.Yerror.values**2 + mult_error**2 + min_model_error**2)
-        ymodbc = pm.Normal("ymodbc", muBC, epsilon, dims=coord_dim)
-        ymod = pm.Normal("ymod", mu, epsilon, dims=coord_dim)
-
-    return model
-
-
-def get_prior_samples(
-    ds: xr.Dataset,
-    xprior: Optional[dict[str, Any]] = None,
-    bcprior: Optional[dict[str, Any]] = None,
-    sigprior: Optional[dict[str, Any]] = None,
-    min_model_error: float = 20.0,
-    coord_dim: str = "nmeasure",
-) -> az.InferenceData:
-    """Sample prior and prior predictive distributions from RHIME model."""
-    model = get_rhime_model(ds, xprior, bcprior, sigprior, min_model_error, coord_dim)
-    idata = pm.sample_prior_predictive(1000, model=model)
-
-    return cast(az.InferenceData, idata)
-
-
 def make_quantiles(
     da: xr.DataArray, probs: Sequence[float] = [0.025, 0.159, 0.841, 0.975], sample_dim="steps"
 ) -> xr.DataArray:
@@ -314,7 +201,7 @@ def sparse_xr_dot(
     return xr.apply_ufunc(func, da1, da2, input_core_dims=input_core_dims, join="outer")
 
 
-def get_area_grid_data_array(lat: xr.DataArray, lon: xr.DataArray) -> xr.DataArray:
+def get_area_grid(lat: xr.DataArray, lon: xr.DataArray) -> xr.DataArray:
     """Return xr.DataArray with coordinate dimensions ("lat", "lon") containing
     the area of each grid cell centered on the coordinates.
 
@@ -337,6 +224,7 @@ def get_x_to_country_mat(
     basis_functions: Optional[xr.DataArray] = None,
     sparse: bool = False,
     basis_cat_dim: str = "basis_region",
+    country_selection: Optional[list[str]] = None,
 ) -> xr.DataArray:
     """Construct a sparse matrix mapping from x sensitivities to country totals.
 
@@ -364,7 +252,7 @@ def get_x_to_country_mat(
             if flux is None:
                 flux = hbmcmc_outs.fluxapriori
             if area_grid is None:
-                area_grid = get_area_grid_data_array(hbmcmc_outs.lat, hbmcmc_outs.lon)
+                area_grid = get_area_grid(hbmcmc_outs.lat, hbmcmc_outs.lon)
             if basis_functions is None:
                 basis_functions = hbmcmc_outs.basisfunctions
 
@@ -373,8 +261,15 @@ def get_x_to_country_mat(
     area_grid = cast(xr.DataArray, area_grid)
     basis_functions = cast(xr.DataArray, basis_functions)
 
-    # create dummy matrices from country and basis DataArrays
+    # create dummy matrices from country  DataArrays
     country_mat = get_xr_dummies(countries.country, cat_dim="country", categories=countries.name)
+
+    # filter based on countries (better performance by doing this early)
+    if country_selection:
+        filt = countries.name.isin(country_selection)
+        country_mat = country_mat.where(filt, drop=True)
+
+    # create dummy matrices from basis DataArrays
     basis_mat = get_xr_dummies(basis_functions, cat_dim=basis_cat_dim)
 
     # compute matrix/tensor product: country_mat.T @ (area_grid * flux * basis_mat)
@@ -390,9 +285,9 @@ def get_x_to_country_mat(
 
 def get_country_trace(
     species: str,
-    x_trace: Union[xr.Dataset, xr.DataArray],
+    x_trace: xrData,
     x_to_country: xr.DataArray,
-) -> xr.DataArray:
+) -> xrData:
     """Return trace for total country emissions.
 
     Args:

@@ -72,6 +72,50 @@ Convergence: Passed
 Repository version:
 #+end_example
 
+#+begin_src jupyter-python
+outs[0].data_vars
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Data variables:
+    Yobs               (nmeasure) float64 10.39 10.4 10.37 ... 10.52 10.45 10.47
+    Yerror             (nmeasure) float64 0.01388 0.01388 ... 0.01196 0.01196
+    Ytime              (nmeasure) datetime64[ns] ...
+    Yapriori           (nmeasure) float64 ...
+    Ymodmean           (nmeasure) float64 ...
+    Ymodmedian         (nmeasure) float64 ...
+    Ymodmode           (nmeasure) float64 ...
+    Yoffmean           (nmeasure) float64 ...
+    Yoffmedian         (nmeasure) float64 ...
+    Yoffmode           (nmeasure) float64 ...
+    YaprioriBC         (nmeasure) float64 ...
+    YmodmeanBC         (nmeasure) float64 ...
+    YmodmedianBC       (nmeasure) float64 ...
+    YmodmodeBC         (nmeasure) float64 ...
+    xtrace             (draw, nparam) float64 0.3304 2.478 ... 0.002075 0.8178
+    bctrace            (draw, nBC) float64 0.9928 0.9858 0.9933 ... 0.9948 1.01
+    sigtrace           (draw, nsigma_site, nsigma_time) float64 0.7495 ... 0....
+    siteindicator      (nmeasure) float64 0.0 0.0 0.0 0.0 ... 7.0 7.0 7.0 7.0
+    sigmafreqindex     (nmeasure) int64 0 0 0 0 0 0 0 0 0 ... 2 2 2 2 2 2 2 3 3
+    sitenames          (nsite) <U3 ...
+    sitelons           (nsite) float64 ...
+    sitelats           (nsite) float64 ...
+    fluxapriori        (lat, lon) float32 ...
+    fluxmode           (lat, lon) float64 ...
+    scalingmean        (lat, lon) float64 ...
+    scalingmode        (lat, lon) float64 ...
+    basisfunctions     (lat, lon) float64 ...
+    countrymean        (countrynames) float64 ...
+    countrymedian      (countrynames) float64 ...
+    countrymode        (countrynames) float64 ...
+    countrysd          (countrynames) float64 ...
+    countryapriori     (countrynames) float64 ...
+    countrydefinition  (lat, lon) int32 ...
+    xsensitivity       (nmeasure, nparam) float64 0.0001285 ... 9.856e-06
+    bcsensitivity      (nmeasure, nBC) float64 1.391 0.0 0.0 ... 0.0 0.0 7.803
+#+end_example
+
 * Sampling from model
 
 #+BEGIN_SRC jupyter-python :tangle final1.py
@@ -94,7 +138,8 @@ Repository version:
 #+RESULTS:
 
 #+BEGIN_SRC jupyter-python :async yes :tangle final1.py
-  prior_samples = [get_prior_samples(ds, **sampling_kwargs).prior.squeeze(drop=True) for ds in outs]
+  prior_samples_raw = [get_prior_samples(ds, **sampling_kwargs) for ds in outs]
+  prior_samples = [ps.prior.squeeze(drop=True) for ps in prior_samples_raw]
 #+END_SRC
 
 #+RESULTS:
@@ -434,9 +479,9 @@ countries_ukmo
 
 ** Get x-to-country matrices
 #+begin_src jupyter-python :async yes :tangle final1.py
-from helpers import get_x_to_country_mat, get_area_grid_data_array
+from helpers import get_x_to_country_mat, get_area_grid
 
-area_grid = get_area_grid_data_array(outs[0].lat, outs[0].lon)
+area_grid = get_area_grid(outs[0].lat, outs[0].lon)
 
 country_mats = [get_x_to_country_mat(countries, hbmcmc_outs=outs_ds, area_grid=area_grid, basis_cat_dim="nparam") for outs_ds in outs]
 country_ukmo_mats = [get_x_to_country_mat(countries_ukmo, hbmcmc_outs=outs_ds, area_grid=area_grid, basis_cat_dim="nparam") for outs_ds in outs]
@@ -465,7 +510,7 @@ array([[1.26864295e-03, 1.66419634e-03, 0.00000000e+00, ...,
        [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
         0.00000000e+00, 0.00000000e+00, 0.00000000e+00]])
 Coordinates:
-    country  (ncountries) <U52 ...
+    country  (ncountries) <U52 'OCEAN' 'VENEZUELA' ... 'ALGERIA' 'ALBANIA'
   ,* nparam   (nparam) int64 0 1 2 3 4 5 6 7 8 9 ... 88 89 90 91 92 93 94 95 96
 Dimensions without coordinates: ncountries
 #+end_example
@@ -479,6 +524,17 @@ country_ukmo_traces = [get_country_trace("sf6", x_trace=traces[["xtrace", "x_pri
 #+end_src
 
 #+RESULTS:
+:RESULTS:
+# [goto error]
+: ---------------------------------------------------------------------------
+: NameError                                 Traceback (most recent call last)
+: Cell In[62], line 3
+:       1 from helpers import get_country_trace
+: ----> 3 country_traces = [get_country_trace("sf6", x_trace=traces[["xtrace", "x_prior"]], x_to_country=mat) for traces, mat in zip(all_traces, country_mats)]
+:       4 country_ukmo_traces = [get_country_trace("sf6", x_trace=traces[["xtrace", "x_prior"]], x_to_country=mat) for traces, mat in zip(all_traces, country_ukmo_mats)]
+:
+: NameError: name 'all_traces' is not defined
+:END:
 
 ** Select countries and concatenate
 Filters for which countries to choose from the two country files.
@@ -503,6 +559,56 @@ country_ukmo_filt = countries_ukmo.name.isin(paris_countries_ukmo)
 #+end_src
 
 #+RESULTS:
+
+What happens if we filter and concatenate?
+
+#+begin_src jupyter-python
+country_mats[0].where(country_filt, drop=True)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.DataArray (ncountries: 11, nparam: 97)>
+array([[0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
+        0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
+        0.00000000e+00, 0.00000000e+00, 3.02281239e-05],
+       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
+        0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+       ...,
+       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
+        0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
+        0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, ...,
+        0.00000000e+00, 0.00000000e+00, 0.00000000e+00]])
+Coordinates:
+    country  (ncountries) <U52 'SWITZERLAND' 'SWEDEN' ... 'BELGIUM' 'AUSTRIA'
+  ,* nparam   (nparam) int64 0 1 2 3 4 5 6 7 8 9 ... 88 89 90 91 92 93 94 95 96
+Dimensions without coordinates: ncountries
+#+end_example
+
+#+begin_src jupyter-python
+xr.concat([countries.where(country_filt, drop=True), countries_ukmo.where(country_ukmo_filt, drop=True)], dim="ncountries")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:  (lat: 293, lon: 391, ncountries: 20)
+Coordinates:
+  ,* lat      (lat) float32 10.73 10.96 11.2 11.43 ... 78.36 78.59 78.82 79.06
+  ,* lon      (lon) float32 -97.9 -97.55 -97.2 -96.84 ... 38.32 38.68 39.03 39.38
+Dimensions without coordinates: ncountries
+Data variables:
+    country  (lat, lon, ncountries) float64 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+    name     (ncountries) object 'SWITZERLAND' 'SWEDEN' ... 'UNITED KINGDOM'
+Attributes:
+    title:     Grid of country extent across EUROPE domain
+    author:    File created by ag12733
+    database:  Natural_Earth database with scale 1:50m used to create this fi...
+    extent:    Domain beween latitude 10.7290000916 - 79.0569992065, longitud...
+#+end_example
 
 Times to use for concatenating:
 #+begin_src jupyter-python :tangle final1.py
@@ -1640,3 +1746,318 @@ assert set(function_dict.keys()) <= set(cd_dict.keys())
 
 #+RESULTS:
 : 30 33
+
+** Getting posterior samples
+
+#+begin_src jupyter-python
+trace_dvs = [dv for dv in outs[0].data_vars if "trace" in str(dv)]
+outs[0][trace_dvs]
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:      (draw: 10000, nparam: 97, nBC: 16, nsigma_site: 8,
+                  nsigma_time: 4)
+Coordinates:
+  ,* draw         (draw) int64 0 1 2 3 4 5 6 ... 9994 9995 9996 9997 9998 9999
+  ,* nBC          (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  ,* nsigma_time  (nsigma_time) int64 0 1 2 3
+  ,* nsigma_site  (nsigma_site) int64 0 1 2 3 4 5 6 7
+  ,* nparam       (nparam) int64 0 1 2 3 4 5 6 7 8 ... 88 89 90 91 92 93 94 95 96
+Data variables:
+    xtrace       (draw, nparam) float64 ...
+    bctrace      (draw, nBC) float64 ...
+    sigtrace     (draw, nsigma_site, nsigma_time) float64 ...
+Attributes: (12/15)
+    Start date:           2020-06-01
+    End date:             2020-07-01
+    Latent sampler:       mc.nuts.NUTS
+    Hyper sampler:        licer.Slice o
+    Burn in:              10000
+    Tuning steps:         10000
+    ...                   ...
+    Model error Prior:    pdf,uniform,lower,0.1,upper,1.0
+    BCs Prior:            pdf,truncatednormal,mu,1.0,sigma,0.03,lower,0.0
+    Creator:              bm13805
+    Date created:         2024-01-09 10:33:53.036470
+    Convergence:          Passed
+    Repository version:
+#+end_example
+
+#+begin_src jupyter-python
+idata0 = az.InferenceData(posterior=outs[0][trace_dvs])
+idata0
+#+end_src
+
+#+RESULTS:
+: Inference data with groups:
+: 	> posterior
+
+#+begin_src jupyter-python
+idata0.extend(prior_samples_raw[0])
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+idata0.prior
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:      (chain: 1, draw: 1000, nparam: 97, nmeasure: 877, nBC: 16,
+                  nsigma_site: 8, nsigma_time: 4)
+Coordinates:
+  ,* chain        (chain) int64 0
+  ,* draw         (draw) int64 0 1 2 3 4 5 6 7 ... 993 994 995 996 997 998 999
+  ,* nparam       (nparam) int64 0 1 2 3 4 5 6 7 8 ... 88 89 90 91 92 93 94 95 96
+  ,* nmeasure     (nmeasure) int64 0 1 2 3 4 5 6 ... 870 871 872 873 874 875 876
+  ,* nBC          (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  ,* nsigma_site  (nsigma_site) int64 0 1 2 3 4 5 6 7
+  ,* nsigma_time  (nsigma_time) int64 0 1 2 3
+Data variables:
+    x            (chain, draw, nparam) float64 0.4957 1.402 ... 0.2943 0.1726
+    ymod         (chain, draw, nmeasure) float64 10.88 10.77 ... 10.71 10.5
+    ymodbc       (chain, draw, nmeasure) float64 11.07 10.65 ... 10.8 10.79
+    bc           (chain, draw, nBC) float64 1.006 1.041 0.9843 ... 1.006 1.019
+    sigma        (chain, draw, nsigma_site, nsigma_time) float64 0.5717 ... 0...
+Attributes:
+    created_at:                 2024-01-24T10:23:09.289892
+    arviz_version:              0.16.1
+    inference_library:          pymc
+    inference_library_version:  5.10.0
+#+end_example
+
+#+begin_src jupyter-python
+idata0.posterior
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:      (draw: 10000, nparam: 97, nBC: 16, nsigma_site: 8,
+                  nsigma_time: 4)
+Coordinates:
+  ,* draw         (draw) int64 0 1 2 3 4 5 6 ... 9994 9995 9996 9997 9998 9999
+  ,* nBC          (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  ,* nsigma_time  (nsigma_time) int64 0 1 2 3
+  ,* nsigma_site  (nsigma_site) int64 0 1 2 3 4 5 6 7
+  ,* nparam       (nparam) int64 0 1 2 3 4 5 6 7 8 ... 88 89 90 91 92 93 94 95 96
+Data variables:
+    xtrace       (draw, nparam) float64 ...
+    bctrace      (draw, nBC) float64 ...
+    sigtrace     (draw, nsigma_site, nsigma_time) float64 ...
+Attributes: (12/15)
+    Start date:           2020-06-01
+    End date:             2020-07-01
+    Latent sampler:       mc.nuts.NUTS
+    Hyper sampler:        licer.Slice o
+    Burn in:              10000
+    Tuning steps:         10000
+    ...                   ...
+    Model error Prior:    pdf,uniform,lower,0.1,upper,1.0
+    BCs Prior:            pdf,truncatednormal,mu,1.0,sigma,0.03,lower,0.0
+    Creator:              bm13805
+    Date created:         2024-01-09 10:33:53.036470
+    Convergence:          Passed
+    Repository version:
+#+end_example
+
+** Testing sampling code
+
+#+begin_src jupyter-python
+from sampling import get_sampling_kwargs_from_rhime_outs, get_rhime_model, get_posterior_predictive_samples, make_idata_from_rhime_outs
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+model_kwargs0 = get_sampling_kwargs_from_rhime_outs(outs[0], min_model_error=0.1)
+model0 = get_rhime_model(outs[0], **model_kwargs0)
+idata0 = make_idata_from_rhime_outs(outs[0])
+#+end_src
+
+#+RESULTS:
+
+#+begin_src jupyter-python
+print(idata0)
+print(idata0.posterior)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference data with groups:
+	> posterior
+<xarray.Dataset>
+Dimensions:      (chain: 1, draw: 10000, nparam: 97, nBC: 16, nsigma_site: 8,
+                  nsigma_time: 4)
+Coordinates:
+  ,* chain        (chain) int64 0
+  ,* draw         (draw) int64 0 1 2 3 4 5 6 ... 9994 9995 9996 9997 9998 9999
+  ,* nBC          (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  ,* nsigma_time  (nsigma_time) int64 0 1 2 3
+  ,* nsigma_site  (nsigma_site) int64 0 1 2 3 4 5 6 7
+  ,* nparam       (nparam) int64 0 1 2 3 4 5 6 7 8 ... 88 89 90 91 92 93 94 95 96
+Data variables:
+    xtrace       (chain, draw, nparam) float64 0.3304 2.478 ... 0.002075 0.8178
+    bctrace      (chain, draw, nBC) float64 0.9928 0.9858 0.9933 ... 0.9948 1.01
+    sigtrace     (chain, draw, nsigma_site, nsigma_time) float64 0.7495 ... 0...
+Attributes: (12/15)
+    Start date:           2020-06-01
+    End date:             2020-07-01
+    Latent sampler:       mc.nuts.NUTS
+    Hyper sampler:        licer.Slice o
+    Burn in:              10000
+    Tuning steps:         10000
+    ...                   ...
+    Model error Prior:    pdf,uniform,lower,0.1,upper,1.0
+    BCs Prior:            pdf,truncatednormal,mu,1.0,sigma,0.03,lower,0.0
+    Creator:              bm13805
+    Date created:         2024-01-09 10:33:53.036470
+    Convergence:          Passed
+    Repository version:
+#+end_example
+
+#+begin_src jupyter-python :async yes
+idata0.extend(get_posterior_predictive_samples(idata=idata0, model=model0))
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+: Sampling: [sig, x, xbc, y]
+: <IPython.core.display.HTML object>
+: <IPython.core.display.HTML object>
+:END:
+
+#+begin_src jupyter-python
+print(idata0)
+print(idata0.posterior_predictive)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference data with groups:
+	> posterior
+	> posterior_predictive
+	> observed_data
+<xarray.Dataset>
+Dimensions:   (chain: 1, draw: 10000, nmeasure: 877)
+Coordinates:
+  ,* chain     (chain) int64 0
+  ,* draw      (draw) int64 0 1 2 3 4 5 6 ... 9993 9994 9995 9996 9997 9998 9999
+  ,* nmeasure  (nmeasure) int64 0 1 2 3 4 5 6 7 ... 870 871 872 873 874 875 876
+Data variables:
+    y         (chain, draw, nmeasure) float64 10.79 10.72 10.62 ... 10.28 10.37
+    muBC      (chain, draw, nmeasure) float64 10.66 10.65 10.65 ... 10.31 10.29
+Attributes:
+    created_at:                 2024-01-24T11:08:49.477954
+    arviz_version:              0.16.1
+    inference_library:          pymc
+    inference_library_version:  5.10.0
+#+end_example
+
+#+begin_src jupyter-python
+from sampling import get_prior_samples
+idata0.extend(get_prior_samples(model=model0))
+#+end_src
+
+#+RESULTS:
+: Sampling: [sig, x, xbc, y]
+
+#+begin_src jupyter-python
+print(idata0)
+print(idata0.prior)
+print(idata0.prior_predictive)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Inference data with groups:
+	> posterior
+	> posterior_predictive
+	> prior
+	> prior_predictive
+	> observed_data
+<xarray.Dataset>
+Dimensions:      (chain: 1, draw: 1000, nparam: 97, nmeasure: 877, nBC: 16,
+                  nsigma_site: 8, nsigma_time: 4)
+Coordinates:
+  ,* chain        (chain) int64 0
+  ,* draw         (draw) int64 0 1 2 3 4 5 6 7 ... 993 994 995 996 997 998 999
+  ,* nparam       (nparam) int64 0 1 2 3 4 5 6 7 8 ... 88 89 90 91 92 93 94 95 96
+  ,* nmeasure     (nmeasure) int64 0 1 2 3 4 5 6 ... 870 871 872 873 874 875 876
+  ,* nBC          (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  ,* nsigma_site  (nsigma_site) int64 0 1 2 3 4 5 6 7
+  ,* nsigma_time  (nsigma_time) int64 0 1 2 3
+Data variables:
+    x            (chain, draw, nparam) float64 1.674 4.179 ... 0.5536 0.1198
+    muBC         (chain, draw, nmeasure) float64 10.32 10.32 ... 10.48 10.45
+    xbc          (chain, draw, nBC) float64 0.9963 1.036 1.061 ... 1.017 0.9857
+    sig          (chain, draw, nsigma_site, nsigma_time) float64 0.2891 ... 0...
+Attributes:
+    created_at:                 2024-01-24T11:09:17.351061
+    arviz_version:              0.16.1
+    inference_library:          pymc
+    inference_library_version:  5.10.0
+<xarray.Dataset>
+Dimensions:   (chain: 1, draw: 1000, nmeasure: 877)
+Coordinates:
+  ,* chain     (chain) int64 0
+  ,* draw      (draw) int64 0 1 2 3 4 5 6 7 8 ... 992 993 994 995 996 997 998 999
+  ,* nmeasure  (nmeasure) int64 0 1 2 3 4 5 6 7 ... 870 871 872 873 874 875 876
+Data variables:
+    y         (chain, draw, nmeasure) float64 10.36 10.45 10.28 ... 10.67 10.55
+Attributes:
+    created_at:                 2024-01-24T11:09:17.354316
+    arviz_version:              0.16.1
+    inference_library:          pymc
+    inference_library_version:  5.10.0
+#+end_example
+
+
+#+begin_src jupyter-python
+from sampling import convert_idata_to_dataset
+
+convert_idata_to_dataset(idata0)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:                    (draw: 10000, nBC: 16, nsigma_time: 4,
+                                nsigma_site: 8, nparam: 97, nmeasure: 877)
+Coordinates:
+  ,* draw                       (draw) int64 0 1 2 3 4 ... 9996 9997 9998 9999
+  ,* nBC                        (nBC) int64 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  ,* nsigma_time                (nsigma_time) int64 0 1 2 3
+  ,* nsigma_site                (nsigma_site) int64 0 1 2 3 4 5 6 7
+  ,* nparam                     (nparam) int64 0 1 2 3 4 5 ... 91 92 93 94 95 96
+  ,* nmeasure                   (nmeasure) int64 0 1 2 3 4 ... 873 874 875 876
+Data variables:
+    xtrace_posterior           (draw, nparam) float64 0.3304 2.478 ... 0.8178
+    bctrace_posterior          (draw, nBC) float64 0.9928 0.9858 ... 0.9948 1.01
+    sigtrace_posterior         (draw, nsigma_site, nsigma_time) float64 0.749...
+    y_posterior_predictive     (draw, nmeasure) float64 10.79 10.72 ... 10.37
+    muBC_posterior_predictive  (draw, nmeasure) float64 10.66 10.65 ... 10.29
+    x_prior                    (draw, nparam) float64 1.674 4.179 ... nan nan
+    muBC_prior                 (draw, nmeasure) float64 10.32 10.32 ... nan nan
+    xbc_prior                  (draw, nBC) float64 0.9963 1.036 ... nan nan
+    sig_prior                  (draw, nsigma_site, nsigma_time) float64 0.289...
+    y_prior_predictive         (draw, nmeasure) float64 10.36 10.45 ... nan nan
+Attributes: (12/15)
+    Start date:           2020-06-01
+    End date:             2020-07-01
+    Latent sampler:       mc.nuts.NUTS
+    Hyper sampler:        licer.Slice o
+    Burn in:              10000
+    Tuning steps:         10000
+    ...                   ...
+    Model error Prior:    pdf,uniform,lower,0.1,upper,1.0
+    BCs Prior:            pdf,truncatednormal,mu,1.0,sigma,0.03,lower,0.0
+    Creator:              bm13805
+    Date created:         2024-01-09 10:33:53.036470
+    Convergence:          Passed
+    Repository version:
+#+end_example
