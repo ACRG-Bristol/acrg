@@ -542,7 +542,7 @@ def mask_fill_gaps(mask_array,lat,lon):
                     
     return mask_array
 
-def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=True,
+def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territories=True,
                             include_ocean_territories=True,reset_index=True,fill_gaps=True,
                             fp_directory=fp_directory,lat_lon_mask=False,sub_lats=None,sub_lons=None,
                             include_countries=None,include_uk_dn=False,
