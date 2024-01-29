@@ -508,12 +508,12 @@ def create_country_mask(domain,lat=None,lon=None,reset_index=True,ocean_label=Tr
 def mask_fill_gaps(mask_array,lat,lon):
     
     #TODO: create a test for fill_gaps
-    print('\nFilling in gaps between masksby checking for grid cells where surrounding cells are indentical.')
+    print('\nFilling in gaps between masks by checking for grid cells where surrounding cells are indentical.')
     print('WARNING: This is experimental, when using this mask to estimate country emissions from countries '+
           'with complex coastlines you should manually check the mask before use.')
     print('WARNING: This does not work for any gaps that are on the edge of the domain.')
         
-     loop through grid to check for missing cells
+    # loop through grid to check for missing cells
 
     for i in np.arange(1,mask_array.shape[0]-1):
         for j in np.arange(1,mask_array.shape[1]-1):
@@ -525,19 +525,19 @@ def mask_fill_gaps(mask_array,lat,lon):
 
                 # if all surrounding cells are identical, fill in the gap
                 if np.all(surrounding == surrounding[0]) and surrounding[0] != 0.:
-                    print(f'Filling gap at {lat[i]}, {lon[j]}')
+                    print('Filling gap at '+ str(lat[i]) + ' ' + str(lon[j]))
 
                     mask_array[i,j] = surrounding[0]
 
                 # if all but one of the surrounding cells are identical, fill in the gap
                 # (fills in gaps of two adjacent grid cells)
                 elif np.count_nonzero(surrounding == stats.mode(surrounding)[0]) == 7. and stats.mode(surrounding)[0] != 0.:
-                    print(f'Filling gap at {lat[i]}, {lon[j]}')
+                    print('Filling gap at '+ str(lat[i]) + ' ' + str(lon[j]))
                     mask_array[i,j] = stats.mode(surrounding)[0]
                 
                 # fills gaps where 6 of the surrounding celss are identical
                 elif np.count_nonzero(surrounding == stats.mode(surrounding)[0]) == 6. and stats.mode(surrounding)[0] != 0.:
-                    print(f'Filling gap at {lat[i]}, {lon[j]}')
+                    print('Filling gap at '+ str(lat[i]) + ' ' + str(lon[j]))
                     mask_array[i,j] = stats.mode(surrounding)[0]
                     
     return mask_array
@@ -642,6 +642,8 @@ def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=Tr
         #land_codes_all = np.unique(df_land.loc[land_regions]['ADM0_A3'])
         land_codes_all = pd.unique(df_land.loc[land_regions]['ADM0_A3'])
         
+        land_codes_all = np.sort(land_codes_all)
+        
     else:
     
         land_codes_all = []
@@ -717,6 +719,8 @@ def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=Tr
     # fill UK crown dependencies with the UK value
     if 'GBR' in country_codes and 'IMN' in country_codes:
         
+        print('\nAdding the Isle of Man (IMN), Guernsey (GGY) and Jersey (JEY) to the UK mask\n')
+        
         imn_index = np.where(all_grid == np.where(np.array(country_codes) == 'IMN')[0][0]+1)
         gbr_value = np.where(np.array(country_codes) == 'GBR')[0][0]+1
         
@@ -736,10 +740,12 @@ def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=Tr
         gbr_value = np.where(np.array(country_codes) == 'GBR')[0][0]+1
 
         all_grid[ggy_index] = gbr_value
-
+    
     if fill_gaps:
         
         all_grid = mask_fill_gaps(all_grid,lats,lons)
+        all_grid = mask_fill_gaps(all_grid,lats,lons)
+        
     
     if lat_lon_mask == True:
         print(f'Masking all values beyond lats: {sub_lats[0]}:{sub_lats[-1]} and lons: {sub_lons[0]}:{sub_lons[-1]}')
@@ -814,6 +820,7 @@ def create_country_mask_eez(domain,lat=None,lon=None,include_land_territories=Tr
         print(f'Output saved to {output_path}.')
         
     return ds
+
 
 def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territories=True,
                             include_ocean_territories=True,reset_index=True,fill_gaps=True,
