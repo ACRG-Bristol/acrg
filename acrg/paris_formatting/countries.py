@@ -133,8 +133,10 @@ class Countries:
         Returns:
             None (updates in-place)
         """
-        if isinstance(other, Countries):
+        if not isinstance(other, list):
             other = [other]
+
+        other = cast(list[Countries], other)
 
         all_country_selections = self.country_selections.copy()
         for countries in other:

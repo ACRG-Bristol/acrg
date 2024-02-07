@@ -6,7 +6,7 @@ import numpy as np
 import pymc as pm
 import xarray as xr
 
-from helpers import get_xr_dummies
+from helpers import get_xr_dummies, sparse_xr_dot
 from sampling import (
     convert_idata_to_dataset,
     get_rhime_model2,
@@ -101,7 +101,7 @@ class InversionOutput:
     times: xr.DataArray
 
     @classmethod
-    def from_rhime(cls: type[InvOut], ds: xr.Dataset) -> InvOut:
+    def from_rhime(cls: type[InvOut], ds: xr.Dataset, min_model_error: float) -> InvOut:
         flux = ds.fluxapriori
         site_coordinates = ds[["sitelons", "sitelats"]]
 
@@ -116,6 +116,7 @@ class InversionOutput:
             xprior_dims="nx",
             bcprior_dims="nbc",
             sigprior_dims=("nsigma_site", "nsigma_time"),
+            min_model_error=min_model_error,
             **model_kwargs  # type: ignore
         )
 
@@ -146,6 +147,7 @@ class InversionOutput:
 
         Args:
             convert_nmeasure: if True, convert `nmeasure` coordinate to multi-index comprising `time` and `site`.
+            var_names: (list of) variables to select. For instance, "x" will return "x_prior" and "x_posterior".
 
         Returns:
             xarray Dataset containing a prior/posterior parameter/predictive samples.
@@ -168,3 +170,6 @@ class InversionOutput:
             trace_ds = trace_ds[data_vars]
 
         return trace_ds
+
+    def start_time(self) -> np.datetime64:
+        return self.times.min().values  # type: ignore
