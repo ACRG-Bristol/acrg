@@ -98,6 +98,67 @@ def get_sampling_kwargs_from_rhime_outs(
     return result
 
 
+def get_rhime_model2(
+    rhime_outs_ds: xr.Dataset,
+    xprior: PriorArgs,
+    bcprior: PriorArgs,
+    sigprior: PriorArgs,
+    xprior_dims: Union[str, tuple[str, ...]],
+    bcprior_dims: Union[str, tuple[str, ...]],
+    sigprior_dims: Union[str, tuple[str, ...]],
+    min_model_error: float = 20.0,
+    coord_dim: str = "nmeasure",
+) -> pm.Model:
+    """Make RHIME model wih model error given by multiplicative scaling of pollution events
+    plus constant minimum value.
+
+    Args:
+        rhime_outs_ds: output of RHIME inversion
+        xprior: dictionary containing description of x prior pdf (flux uncertainty)
+        bcprior: dictionary containing description of bc prior pdf (boundary conditions uncertainty)
+        sigprior: dictionary containing description of sig prior pdf (observation uncertainty)
+        xprior_dims: coordinate dims from rhime_outs_ds to use
+        bcprior_dims: coordinate dims from rhime_outs_ds to use
+        sigprior_dims: coordinate dims from rhime_outs_ds to use
+        min_model_error: constant minimum model error
+        coord_dim: name of dimension used for coordinates of observations
+
+    Returns:
+        PyMC model for RHIME model with given priors and minimum model error.
+    """
+    coords_dict = {coord_dim: rhime_outs_ds[coord_dim]}
+    for dim in [xprior_dims, bcprior_dims, sigprior_dims]:
+        if isinstance(dim, str):
+            coords_dict[dim] = rhime_outs_ds[dim]
+        else:
+            for d in dim:
+                coords_dict[d] = rhime_outs_ds[d]
+
+    with pm.Model(coords=coords_dict) as model:
+        x = parse_prior("x", xprior, dims=xprior_dims)
+        bc = parse_prior("bc", bcprior, dims=bcprior_dims)
+        sigma = parse_prior("sigma", sigprior, dims=sigprior_dims)
+
+        mu_bc = pm.Deterministic("mu_bc", pt.dot(rhime_outs_ds.bcsensitivity.values, bc), dims=coord_dim)
+        mu = pt.dot(rhime_outs_ds.xsensitivity.values, x) + mu_bc
+
+        mult_error = (
+            np.abs(pt.dot(rhime_outs_ds.xsensitivity.values, x))
+            * sigma[
+                rhime_outs_ds.siteindicator.values.astype(int),
+                rhime_outs_ds.sigmafreqindex.values.astype(int),
+            ]
+        )
+        epsilon = pm.Deterministic(
+            "epsilon",
+            pt.sqrt(rhime_outs_ds.Yerror.values**2 + mult_error**2 + min_model_error**2),
+            dims=coord_dim,
+        )
+        pm.Normal("y", mu, epsilon, dims=coord_dim, observed=rhime_outs_ds.Yobs)
+
+    return model
+
+
 def get_rhime_model(
     rhime_outs_ds: xr.Dataset,
     xprior: Optional[PriorArgs] = None,
@@ -179,10 +240,16 @@ def get_prior_samples(model: pm.Model) -> az.InferenceData:
     return cast(az.InferenceData, idata)
 
 
-def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset) -> az.InferenceData:
+def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset, ndraw: int = 1000) -> az.InferenceData:
     """Create arviz InferenceData with posterior group created from RHIME output."""
-    trace_dvs = [dv for dv in rhime_out_ds.data_vars if "trace" in str(dv)]
+    trace_dvs = [dv for dv in rhime_out_ds.data_vars if "draw" in list(rhime_out_ds[dv].coords)]
     traces = rhime_out_ds[trace_dvs].expand_dims({"chain": [0]})
+
+    if traces.sizes["draw"] > ndraw:
+        thin_by = traces.sizes["draw"] // ndraw
+        traces = traces.isel(draw=slice(None, None, thin_by))
+        traces = traces.assign_coords(draw=(traces.draw / thin_by).astype(int))
+
     return az.InferenceData(posterior=traces)
 
 
@@ -233,3 +300,29 @@ def convert_idata_to_dataset(idata: az.InferenceData) -> xr.Dataset:
             rename_dict = {dv: f"{dv}_{group}" for dv in trace.data_vars}
             traces.append(trace.rename_vars(rename_dict).squeeze("chain", drop=True))
     return xr.merge(traces)
+
+
+def get_all_traces(
+    outs: list[xr.Dataset], min_model_error: float, thin_by: Optional[int] = None
+) -> list[xr.Dataset]:
+    """Given a list of RHIME output datasets, construct corresponding datasets containing traces for prior,
+    posterior, prior predictive, and posterior predictive distributions.
+    """
+    # reconstruct RHIME model for each RHIME output dataset
+    model_kwargs = [get_sampling_kwargs_from_rhime_outs(ds, min_model_error=min_model_error) for ds in outs]
+    models = [get_rhime_model(ds, **kwargs) for ds, kwargs in zip(outs, model_kwargs)]  # type: ignore
+
+    # reconstruct posterior InferenceData from RHIME output datasets
+    idatas = [make_idata_from_rhime_outs(ds) for ds in outs]
+
+    # get prior and prior predictive samples
+    for idata, model in zip(idatas, models):
+        idata.extend(get_prior_samples(model))
+
+    # get posterior predictive samples
+    for idata, model in zip(idatas, models):
+        idata.extend(get_posterior_predictive_samples(idata=idata, model=model, thin_by=thin_by))
+
+    result = [convert_idata_to_dataset(idata) for idata in idatas]
+
+    return result
