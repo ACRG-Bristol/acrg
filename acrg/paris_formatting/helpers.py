@@ -9,8 +9,7 @@ import pandas as pd
 import pymc as pm
 import sparse
 import xarray as xr
-from openghg_inversions import convert
-from openghg_inversions import utils
+from openghg_inversions import convert, utils
 from scipy import stats
 from sparse import COO
 from xarray.core.common import DataWithCoords
@@ -212,7 +211,7 @@ def get_area_grid(lat: xr.DataArray, lon: xr.DataArray) -> xr.DataArray:
     Returns:
         xr.DataArray with grid cell areas.
     """
-    ag_vals = oi.utils.areagrid(lat.values, lon.values)
+    ag_vals = utils.areagrid(lat.values, lon.values)
     return xr.DataArray(ag_vals, coords=[lat, lon], dims=["lat", "lon"], name="area_grid")
 
 

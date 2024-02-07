@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Optional, TypeVar, Union
 
 import arviz as az
 import numpy as np
@@ -142,7 +141,7 @@ class InversionOutput:
         self.trace.extend(pm.sample_prior_predictive(1000, self.model))
         self.trace.extend(pm.sample_posterior_predictive(self.trace, model=self.model, var_names=["y"]))
 
-    def get_trace_dataset(self, convert_nmeasure: bool = True) -> xr.Dataset:
+    def get_trace_dataset(self, convert_nmeasure: bool = True, var_names: Optional[Union[str, list[str]]] = None) -> xr.Dataset:
         """Return an xarray Dataset containing a prior/posterior parameter/predictive samples.
 
         Args:
@@ -154,6 +153,18 @@ class InversionOutput:
         trace_ds = convert_idata_to_dataset(self.trace)
 
         if convert_nmeasure:
-            return nmeasure_to_site_time(trace_ds, self.site_indicators, self.site_names, self.times)
-        else:
-            return trace_ds
+            trace_ds = nmeasure_to_site_time(trace_ds, self.site_indicators, self.site_names, self.times)
+
+        if var_names is not None:
+            if isinstance(var_names, str):
+                var_names = [var_names]
+
+            data_vars = []
+            for dv in trace_ds.data_vars:
+                for name in var_names:
+                    if str(dv).startswith(name):
+                        data_vars.append(dv)
+
+            trace_ds = trace_ds[data_vars]
+
+        return trace_ds
