@@ -56,6 +56,30 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
+def nmeasure_to_site_time_data_array(
+    da: xr.DataArray, site_indicators: xr.DataArray, site_names: xr.DataArray, times: xr.DataArray
+):
+    # split by variables with nmeasure and without
+    site_dict = dict(site_names.to_series())
+    da = (
+        xr.concat(
+            [
+                da.where(site_indicators == site_num, drop=True)
+                .expand_dims({"site": [site_code]})
+                .assign_coords(nmeasure=times.where(site_indicators == site_num, drop=True))
+                for site_num, site_code in site_dict.items()
+            ],
+            dim="site",
+        )
+        .swap_dims(nmeasure="time")
+        .stack(nmeasure=["site", "time"])
+        .dropna("nmeasure")
+        .transpose("nmeasure", ...)
+    )
+
+    return da
+
+
 def nmeasure_to_site_time(
     ds: xr.Dataset, site_indicators: xr.DataArray, site_names: xr.DataArray, times: xr.DataArray
 ):
@@ -142,7 +166,9 @@ class InversionOutput:
         self.trace.extend(pm.sample_prior_predictive(1000, self.model))
         self.trace.extend(pm.sample_posterior_predictive(self.trace, model=self.model, var_names=["y"]))
 
-    def get_trace_dataset(self, convert_nmeasure: bool = True, var_names: Optional[Union[str, list[str]]] = None) -> xr.Dataset:
+    def get_trace_dataset(
+        self, convert_nmeasure: bool = True, var_names: Optional[Union[str, list[str]]] = None
+    ) -> xr.Dataset:
         """Return an xarray Dataset containing a prior/posterior parameter/predictive samples.
 
         Args:
@@ -173,3 +199,10 @@ class InversionOutput:
 
     def start_time(self) -> np.datetime64:
         return self.times.min().values  # type: ignore
+
+    def period_midpoint(self) -> np.datetime64:
+        half_of_period = (self.times.max().values - self.times.min().values) / 2
+        return self.times.min().values + half_of_period  # type: ignore
+
+    def get_obs(self) -> xr.DataArray:
+        return nmeasure_to_site_time_data_array(self.obs, self.site_indicators, self.site_names, self.times)
