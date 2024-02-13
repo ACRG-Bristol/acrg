@@ -26,6 +26,9 @@ from sampling import (
 )
 
 
+PARIS_FORMATTING_PATH = Path(__file__).parent
+
+
 def get_all_traces(
     outs: list[xr.Dataset], min_model_error: float, thin_by: Optional[int] = None
 ) -> list[xr.Dataset]:
@@ -135,7 +138,7 @@ def calculate_stats(
 
 @functools.lru_cache
 def get_iso3166_codes() -> dict[str, Any]:
-    with open("/home/brendan/Documents/acrg/acrg/paris_formatting/iso3166.json", "r") as f:
+    with open(PARIS_FORMATTING_PATH / "iso3166.json", "r") as f:
         iso3166 = json.load(f)
     return iso3166
 
@@ -152,16 +155,16 @@ def get_country_code(x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None
     return x
 
 
-def main():
-    species = "sf6"
-    files = get_netcdf_files("/home/brendan/Documents/inversions/plotting/sf6_best", filename_search="SF6")
+def main(species: str, output_file_path: str, country_files_root: str, min_model_error: float = 0.1):
+
+    files = get_netcdf_files(output_file_path, filename_search=species.upper())
     outs = get_rhime_outs(files)[:2]  # limit to 2 files for testing
 
-    all_traces = get_all_traces(outs, min_model_error=0.1, thin_by=10)
+    all_traces = get_all_traces(outs, min_model_error=min_model_error, thin_by=10)
 
-    inversions_path = Path("/home/brendan/Documents/inversions/openghg_inversions/")
-    countries_path = inversions_path / "countries" / "country_EUROPE.nc"
-    countries_ukmo_path = inversions_path / "countries" / "country-ukmo_EUROPE.nc"
+    inversions_path = Path(country_files_root)
+    countries_path = inversions_path / "country_EUROPE.nc"
+    countries_ukmo_path = inversions_path / "country-ukmo_EUROPE.nc"
 
     paris_countries = [
         "BELGIUM",
@@ -214,20 +217,19 @@ def main():
     flux_all_times = xr.concat(flux_stats_plus_time, dim="time")
 
     flux_attrs = get_data_var_attrs(
-        "/home/brendan/Documents/acrg/acrg/paris_formatting/netcdf_template_emissions_bm_edits.txt"
+        str(PARIS_FORMATTING_PATH / "netcdf_template_emissions_bm_edits.txt")
     )
 
     # apply `get_country_code` to each element of `country` coordinate
     country_codes = list(map(get_country_code, map(str, country_output.country.values)))
     country_output = country_output.swap_dims(ncountries="country").assign_coords(country=country_codes)
 
-    emissions1 = xr.merge([flux_all_times, country_output])
+    emissions = (xr.merge([flux_all_times, country_output])
+                 .pipe(convert_time_to_unix_epoch)
+                 .rename(probs="quantile")
+                 .pipe(add_variable_attrs, flux_attrs)
+)
 
-    emissions2 = convert_time_to_unix_epoch(emissions1)
-    emissions3 = emissions2.rename(probs="quantile")
+    emissions.attrs = make_global_attrs("flux")
 
-    emissions4 = add_variable_attrs(emissions3, flux_attrs)
-
-    emissions4.attrs = make_global_attrs("flux")
-
-    return emissions4
+    return emissions
