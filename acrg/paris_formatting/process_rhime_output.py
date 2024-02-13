@@ -65,13 +65,13 @@ def nmeasure_to_site_time_data_array(
         xr.concat(
             [
                 da.where(site_indicators == site_num, drop=True)
-                .expand_dims({"site": [site_code]})
                 .assign_coords(nmeasure=times.where(site_indicators == site_num, drop=True))
+                .rename(nmeasure="time")
+                .expand_dims({"site": [site_code]})
                 for site_num, site_code in site_dict.items()
             ],
             dim="site",
         )
-        .swap_dims(nmeasure="time")
         .stack(nmeasure=["site", "time"])
         .dropna("nmeasure")
         .transpose("nmeasure", ...)
