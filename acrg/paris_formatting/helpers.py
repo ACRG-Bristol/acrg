@@ -1,12 +1,8 @@
 #!/usr/bin/env python
-import json
 from typing import Any, cast, Optional, Sequence, Union, TypeVar
 
-import arviz as az
 import numpy as np
-import openghg_inversions as oi
 import pandas as pd
-import pymc as pm
 import sparse
 import xarray as xr
 from openghg_inversions import convert, utils

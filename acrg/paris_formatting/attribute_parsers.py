@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import json
-from pathlib import Path
 import re
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 import xarray as xr
 

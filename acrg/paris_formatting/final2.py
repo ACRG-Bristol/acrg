@@ -1,6 +1,5 @@
 import functools
 import json
-from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional
 
@@ -45,7 +44,9 @@ def calculate_stats(
                 .compute()
                 .rename(f"{name}{suffix}_mode"),
             ]
-        stats.append(make_quantiles(ds[var_name].dropna(dim="draw"), sample_dim="draw").rename(f"q{name}{suffix}"))
+        stats.append(
+            make_quantiles(ds[var_name].dropna(dim="draw"), sample_dim="draw").rename(f"q{name}{suffix}")
+        )
 
         output.extend(stats)
     return output
@@ -162,17 +163,30 @@ def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
         stats = calculate_stats(preds, name="Y", chunk_dim="nmeasure", var_names=var_names, report_mode=True)
 
         var_names = ["y_posterior_predictive", "y_prior_predictive"]
-        stats.extend(calculate_stats(preds, name="Y", chunk_dim="nmeasure", var_names=var_names, report_mode=True, add_bc_suffix=True))
+        stats.extend(
+            calculate_stats(
+                preds,
+                name="Y",
+                chunk_dim="nmeasure",
+                var_names=var_names,
+                report_mode=True,
+                add_bc_suffix=True,
+            )
+        )
 
         conc_stats.append(xr.merge(stats).unstack("nmeasure"))
-
 
     conc_output = xr.concat(conc_stats, dim="time")
 
     return conc_output
 
+
 def main(
-        species: str, output_file_path: str, country_files_root: str, min_model_error: float = 0.1, n_files: Optional[int] = None,
+    species: str,
+    output_file_path: str,
+    country_files_root: str,
+    min_model_error: float = 0.1,
+    n_files: Optional[int] = None,
 ) -> tuple[xr.Dataset, xr.Dataset]:
     inv_outs = get_inversion_outputs_with_samples(
         species=species, output_file_path=output_file_path, min_model_error=min_model_error
@@ -205,19 +219,18 @@ def main(
     y_obs = xr.concat([inv_out.get_obs().unstack("nmeasure") for inv_out in inv_outs], dim="time")
 
     conc_attrs = get_data_var_attrs(
-            str(PARIS_FORMATTING_PATH / "netcdf_template_concentrations_bm_edits.txt")
-        )
-    conc_attrs = {
-        k: {j: w for j, w in v.items() if "FillValue" not in j} for k, v in conc_attrs.items()
-    }
+        str(PARIS_FORMATTING_PATH / "netcdf_template_concentrations_bm_edits.txt")
+    )
+    conc_attrs = {k: {j: w for j, w in v.items() if "FillValue" not in j} for k, v in conc_attrs.items()}
 
     units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
 
-    concentrations = (xr.merge([y_obs, conc_output])
-                      .pipe(convert_time_to_unix_epoch)
-                      .rename(probs="quantile")
-                      .pipe(add_variable_attrs, conc_attrs, units)
-                      )
+    concentrations = (
+        xr.merge([y_obs, conc_output])
+        .pipe(convert_time_to_unix_epoch)
+        .rename(probs="quantile")
+        .pipe(add_variable_attrs, conc_attrs, units)
+    )
 
     concentrations.attrs = make_global_attrs("conc")
 

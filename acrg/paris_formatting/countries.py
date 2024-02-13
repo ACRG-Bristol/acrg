@@ -46,7 +46,6 @@ class Countries:
         else:
             self.country_selections = list(self.matrix.country.values)
 
-
     def get_x_to_country_mat(
         self,
         inv_out: InversionOutput,
@@ -143,9 +142,7 @@ class Countries:
             all_country_selections.extend(countries.country_selections)
 
         if len(set(all_country_selections)) < len(all_country_selections):
-            raise ValueError(
-                "Duplicate countries selected. Make sure `country_selections` are disjoint."
-            )
+            raise ValueError("Duplicate countries selected. Make sure `country_selections` are disjoint.")
 
         self.country_selections = all_country_selections
         self.matrix = xr.concat([self.matrix] + [countries.matrix for countries in other], dim="country")
