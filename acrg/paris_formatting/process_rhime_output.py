@@ -6,7 +6,7 @@ import numpy as np
 import pymc as pm
 import xarray as xr
 
-from helpers import get_xr_dummies
+from array_ops import get_xr_dummies
 from sampling import (
     convert_idata_to_dataset,
     get_rhime_model,

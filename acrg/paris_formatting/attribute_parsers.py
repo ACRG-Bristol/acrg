@@ -1,8 +1,16 @@
 #!/usr/bin/env python
+import functools
+import json
 import re
-from typing import Any, Literal, Optional
+from pathlib import Path
+from typing import Any, Literal, Optional, TypeVar
 
 import xarray as xr
+from xarray.core.common import DataWithCoords
+
+
+# type for xr.Dataset *or* xr.DataArray
+DataSetOrArray = TypeVar("DataSetOrArray", bound=DataWithCoords)
 
 
 var_pat = re.compile(r"\s*[a-z]+ ([a-zA-Z_]+)\(.*\)")
@@ -82,3 +90,34 @@ def add_variable_attrs(
             ds.coords[k].attrs = v
 
     return ds
+
+
+@functools.lru_cache
+def get_iso3166_codes() -> dict[str, Any]:
+    """Load dictionary mapping alpha-2 country codes to other country information."""
+    PARIS_FORMATTING_PATH = Path(__file__).parent
+    with open(PARIS_FORMATTING_PATH / "iso3166.json", "r", encoding="utf8") as f:
+        iso3166 = json.load(f)
+    return iso3166
+
+
+def get_country_code(
+    x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None, code: Literal["alpha2", "alpha3"] = "alpha3"
+) -> str:
+    """Get alpha-2 or alpha-3 (default) country code given the name of a country."""
+    if iso3166 is None:
+        iso3166 = get_iso3166_codes()
+
+    for v in iso3166.values():  # type: ignore
+        names = [v["iso_long_name"].lower()] + [name.lower() for name in v["unofficial_names"]]
+        if any(x.lower() in name for name in names):
+            return v[code]
+
+    return x
+
+
+def convert_time_to_unix_epoch(x: DataSetOrArray) -> DataSetOrArray:
+    """Convert `time` coordinate of xarray Dataset or DataArray to number of seconds since
+    1 Jan 1970 (the "UNIX epoch").
+    """
+    return x.assign_coords(time=(pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s"))

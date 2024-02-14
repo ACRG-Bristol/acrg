@@ -9,7 +9,7 @@ import xarray as xr
 from openghg_inversions import convert, utils
 from xarray.core.common import DataWithCoords
 
-from helpers import get_xr_dummies, sparse_xr_dot
+from array_ops import get_xr_dummies, sparse_xr_dot
 from process_rhime_output import InversionOutput
 
 # type for xr.Dataset *or* xr.DataArray
@@ -37,6 +37,7 @@ class Countries:
 
     Multiple Country objects can be merged together to use multiple country files.
     """
+
     def __init__(self, countries: xr.Dataset, country_selections: Optional[list[str]] = None) -> None:
         """Create Countries object given country map Dataset and optional list of countries to select.
 

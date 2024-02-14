@@ -55,7 +55,10 @@ def get_xr_dummies(
 
 
 def sparse_xr_dot(
-    da1: xr.DataArray, da2: DataSetOrArray, debug: bool = False, broadcast_dims: Optional[Sequence[str]] = None
+    da1: xr.DataArray,
+    da2: DataSetOrArray,
+    debug: bool = False,
+    broadcast_dims: Optional[Sequence[str]] = None,
 ) -> DataSetOrArray:
     """Compute the matrix "dot" of a tuple of DataArrays with sparse.COO values.
 

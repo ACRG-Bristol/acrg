@@ -1,17 +1,15 @@
 """
 Script for creating PARIS outputs from RHIME inversion outputs.
 """
-import functools
-import json
 from functools import partial
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import xarray as xr
 
-from attribute_parsers import add_variable_attrs, get_data_var_attrs, make_global_attrs
+from attribute_parsers import add_variable_attrs, get_data_var_attrs, make_global_attrs, get_country_code, convert_time_to_unix_epoch
 from countries import Countries
-from helpers import convert_time_to_unix_epoch, sparse_xr_dot
+from array_ops import sparse_xr_dot
 from process_rhime_output import InversionOutput
 from stats import calculate_stats
 
@@ -30,29 +28,6 @@ def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str]
         file_list = sorted(directory.glob(f"*{filename_search}*.nc"))
 
     return file_list
-
-
-@functools.lru_cache
-def get_iso3166_codes() -> dict[str, Any]:
-    """Load dictionary mapping alpha-2 country codes to other country information."""
-    with open(PARIS_FORMATTING_PATH / "iso3166.json", "r", encoding="utf8") as f:
-        iso3166 = json.load(f)
-    return iso3166
-
-
-def get_country_code(
-    x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None, code: Literal["alpha2", "alpha3"] = "alpha3"
-) -> str:
-    """Get alpha-2 or alpha-3 (default) country code given the name of a country."""
-    if iso3166 is None:
-        iso3166 = get_iso3166_codes()
-
-    for v in iso3166.values():  # type: ignore
-        names = [v["iso_long_name"].lower()] + [name.lower() for name in v["unofficial_names"]]
-        if any(x.lower() in name for name in names):
-            return v[code]
-
-    return x
 
 
 def get_inversion_outputs_with_samples(
