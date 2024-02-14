@@ -6,6 +6,7 @@ from functools import partial
 from pathlib import Path
 from typing import Literal, Optional, Union
 
+import numpy as np
 import xarray as xr
 from openghg.util import timestamp_now
 
@@ -51,8 +52,19 @@ def get_inversion_outputs_with_samples(
     return inv_outs
 
 
+def get_time_point(inv_out: InversionOutput, time_point: Literal["start", "midpoint"]) -> np.datetime64:
+    """Get time point to represent inversion period."""
+    if time_point == "start":
+        return inv_out.start_time()
+
+    if time_point == "midpoint":
+        return inv_out.period_midpoint()
+
+    raise ValueError(f"time_point must be 'start' or 'midpoint'; given {time_point}.")
+
+
 def make_country_output(
-    inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3"
+        inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3", time_point: Literal["start", "midpoint"] = "midpoint"
 ) -> xr.Dataset:
     """Calculate country stats."""
     country_files_path = Path(country_files_root)
@@ -88,8 +100,10 @@ def make_country_output(
     countries = Countries(xr.open_dataset(countries_path), paris_countries)
     countries.merge(Countries(xr.open_dataset(countries_ukmo_path), paris_countries_ukmo))
 
+    time_func = partial(get_time_point, time_point=time_point)
+
     country_traces = [
-        countries.get_country_trace("sf6", inv_out).expand_dims({"time": [inv_out.start_time()]})
+        countries.get_country_trace("sf6", inv_out).expand_dims({"time": [time_func(inv_out)]})
         for inv_out in inv_outs
     ]
 
@@ -109,16 +123,18 @@ def make_country_output(
     return country_output
 
 
-def make_flux_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
+def make_flux_outputs(inv_outs: list[InversionOutput], time_point: Literal["start", "midpoint"] = "midpoint") -> xr.Dataset:
     """Make flux output dataset"""
 
     # calculate stats on flux traces
     traces = [inv_out.get_trace_dataset(convert_nmeasure=False, var_names="x") for inv_out in inv_outs]
     stats = [xr.merge(calculate_stats(trace, "flux", chunk_dim="nx")) for trace in traces]
 
+    time_func = partial(get_time_point, time_point=time_point)
+
     # multiply stats by matrix mapping basis regions to lat/lon
     flux_stats = [
-        sparse_xr_dot((inv_out.flux * inv_out.basis), stats_ds).expand_dims({"time": [inv_out.start_time()]})
+        sparse_xr_dot((inv_out.flux * inv_out.basis), stats_ds).expand_dims({"time": [time_func(inv_out)]})
         for inv_out, stats_ds in zip(inv_outs, stats)
     ]
 
