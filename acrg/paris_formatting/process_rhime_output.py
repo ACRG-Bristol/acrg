@@ -1,3 +1,7 @@
+"""
+Code to process RHIME outputs into format that is easier to
+manipulate.
+"""
 from dataclasses import dataclass
 from typing import Optional, TypeVar, Union
 
@@ -6,8 +10,8 @@ import numpy as np
 import pymc as pm
 import xarray as xr
 
-from array_ops import get_xr_dummies
-from sampling import (
+from paris_formatting.array_ops import get_xr_dummies
+from paris_formatting.sampling import (
     convert_idata_to_dataset,
     get_rhime_model,
     get_sampling_kwargs_from_rhime_outs,
@@ -16,6 +20,7 @@ from sampling import (
 
 
 def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
+    """Take raw RHIME output and rename/drop/create variables to get dataset ready for further processing."""
     ds = (
         ds.rename_vars(stepnum="draw", paramnum="nlatent", numBC="nBC", measurenum="nmeasure")
         .drop_dims(["nUI", "nlatent"])
@@ -58,8 +63,8 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
 
 def nmeasure_to_site_time_data_array(
     da: xr.DataArray, site_indicators: xr.DataArray, site_names: xr.DataArray, times: xr.DataArray
-):
-    # split by variables with nmeasure and without
+) -> xr.DataArray:
+    """Convert `nmeasure` dimension to multi-index over `site` and `time.`"""
     site_dict = dict(site_names.to_series())
     da = (
         xr.concat(
@@ -82,8 +87,8 @@ def nmeasure_to_site_time_data_array(
 
 def nmeasure_to_site_time(
     ds: xr.Dataset, site_indicators: xr.DataArray, site_names: xr.DataArray, times: xr.DataArray
-):
-    # split by variables with nmeasure and without
+) -> xr.Dataset:
+    """Convert `nmeasure` dimension to multi-index over `site` and `time.`"""
     time_vars = [dv for dv in ds.data_vars if "nmeasure" in list(ds[dv].coords)]
     ds_tv = ds[time_vars]
     ds_no_tv = ds.drop_dims("nmeasure")
@@ -109,11 +114,12 @@ def nmeasure_to_site_time(
     return xr.merge([ds_no_tv, ds_tv])
 
 
-InvOut = TypeVar("InvOut", bound="InversionOutput")
+InvOut = TypeVar("InvOut", bound="InversionOutput")  # for classmethod
 
 
 @dataclass
 class InversionOutput:
+    """dataclass to hold the quantities we need to calculate outputs."""
     obs: xr.DataArray
     site_coordinates: xr.Dataset
     flux: xr.DataArray
@@ -126,6 +132,7 @@ class InversionOutput:
 
     @classmethod
     def from_rhime(cls: type[InvOut], ds: xr.Dataset, min_model_error: float) -> InvOut:
+        """Make InversionOutput object from RHIME output dataset."""
         flux = ds.fluxapriori
         site_coordinates = ds[["sitelons", "sitelats"]]
 
@@ -198,11 +205,22 @@ class InversionOutput:
         return trace_ds
 
     def start_time(self) -> np.datetime64:
+        """Return start date of inversion."""
         return self.times.min().values  # type: ignore
 
     def period_midpoint(self) -> np.datetime64:
+        """Return midpoint of inversion period."""
         half_of_period = (self.times.max().values - self.times.min().values) / 2
         return self.times.min().values + half_of_period  # type: ignore
 
-    def get_obs(self) -> xr.DataArray:
-        return nmeasure_to_site_time_data_array(self.obs, self.site_indicators, self.site_names, self.times)
+    def get_obs(self, unstack_nmeasure: bool = True) -> xr.DataArray:
+        """Return y observations.
+
+        By default, `nmeasure` is converted to `site` and `time`.
+        """
+        result = nmeasure_to_site_time_data_array(self.obs, self.site_indicators, self.site_names, self.times)
+
+        if unstack_nmeasure:
+            return result.unstack("nmeasure")
+
+        return result

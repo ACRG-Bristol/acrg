@@ -118,6 +118,7 @@ def make_flux_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
 
 
 def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
+    """Extract y and mu_bc traces, calculate stats, and combine along time axis."""
     predictive_vars = ["y", "mu_bc"]
     preds_list = [inv_out.get_trace_dataset(var_names=predictive_vars) for inv_out in inv_outs]
 
@@ -149,9 +150,21 @@ def main(
     species: str,
     output_file_path: str,
     country_files_root: str,
-    min_model_error: float = 0.1,
+    min_model_error: float,
     n_files: Optional[int] = None,
 ) -> tuple[xr.Dataset, xr.Dataset]:
+    """Create formatted PARIS emissions and concentrations datasets.
+
+    Args:
+        species: species used in inversion
+        output_file_path: path to directory containing RHIME outputs
+        country_files_root: path to directory containing country files
+        min_model_error: the minimum model error used with the inversion
+        n_files: number of output files to process. This is mainly to keep runs small for testing.
+
+    Returns:
+        emissions dataset and concentrations dataset
+    """
     inv_outs = get_inversion_outputs_with_samples(
         species=species, output_file_path=output_file_path, min_model_error=min_model_error
     )
@@ -212,7 +225,7 @@ def main(
 
     # make concentration outputs
     conc_output = make_concentration_outputs(inv_outs)
-    y_obs = xr.concat([inv_out.get_obs().unstack("nmeasure") for inv_out in inv_outs], dim="time")
+    y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
 
     conc_attrs = get_data_var_attrs(
         str(PARIS_FORMATTING_PATH / "netcdf_template_concentrations_bm_edits.txt")

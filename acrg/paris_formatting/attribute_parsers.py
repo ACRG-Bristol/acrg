@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Literal, Optional, TypeVar
 
+import pandas as pd
 import xarray as xr
 from xarray.core.common import DataWithCoords
 
@@ -95,8 +96,8 @@ def add_variable_attrs(
 @functools.lru_cache
 def get_iso3166_codes() -> dict[str, Any]:
     """Load dictionary mapping alpha-2 country codes to other country information."""
-    PARIS_FORMATTING_PATH = Path(__file__).parent
-    with open(PARIS_FORMATTING_PATH / "iso3166.json", "r", encoding="utf8") as f:
+    paris_formatting_path = Path(__file__).parent
+    with open(paris_formatting_path / "iso3166.json", "r", encoding="utf8") as f:
         iso3166 = json.load(f)
     return iso3166
 

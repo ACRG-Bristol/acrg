@@ -1,4 +1,12 @@
-#!/usr/bin/env python
+"""
+General methods for xarray Datasets and DataArrays.
+
+`get_xr_dummies` applies pandas `get_dummies` to xarray DataArrays.
+
+`sparse_xr_dot` multiplies a Dataset or DataArray by a DataArray
+ with sparse underlying array. The built-in xarray functionality doesn't
+work correctly.
+"""
 from typing import Any, Optional, Sequence, Union, TypeVar
 
 import numpy as np
