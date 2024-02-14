@@ -226,7 +226,7 @@ def main(
     # merge and process names, attrs
     emissions = (
         xr.merge([flux_output, country_output])
-        .pipe(convert_time_to_unix_epoch)
+        .pipe(convert_time_to_unix_epoch, "1D")
         .drop_vars(vars_to_drop)
         .rename(rename_dict)
         .pipe(add_variable_attrs, emissions_attrs)
@@ -246,7 +246,7 @@ def main(
 
     concentrations = (
         xr.merge([y_obs, conc_output])
-        .pipe(convert_time_to_unix_epoch)
+        .pipe(convert_time_to_unix_epoch, "1D")
         .rename(probs="quantile")
         .pipe(add_variable_attrs, conc_attrs, units)
     )
