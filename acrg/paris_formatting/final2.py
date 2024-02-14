@@ -199,20 +199,55 @@ def main(
     country_output = make_country_output(inv_outs, country_files_root)
     flux_output = make_flux_outputs(inv_outs)
 
-    emissions_attrs = get_data_var_attrs(
-        str(PARIS_FORMATTING_PATH / "netcdf_template_emissions_bm_edits.txt")
-    )
+    template_file = str(PARIS_FORMATTING_PATH / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
+    emissions_attrs = get_data_var_attrs(template_file, species)
 
+    # renaming as in latest .cdl file from Stephan
+    rename_dict = {"lat": "latitude",
+                   "lon": "longitude",
+                   "probs": "percentile"}
+
+    vars_to_drop = []
+
+    for dv in country_output.data_vars:
+        if str(dv).startswith("q"):
+            if str(dv).endswith("apost"):
+                rename_dict[str(dv)] = "percentile_country_flux_total_posterior"
+            else:
+                rename_dict[str(dv)] = "percentile_country_flux_total_prior"
+        elif str(dv).endswith("_mode"):
+            if str(dv)[:-5].endswith("apost"):
+                rename_dict[str(dv)] = "country_flux_total_posterior"
+            else:
+                rename_dict[str(dv)] = "country_flux_total_prior"
+        else:
+            vars_to_drop.append(dv)  # drop means
+
+    for dv in flux_output.data_vars:
+        if str(dv).startswith("q"):
+            if str(dv).endswith("apost"):
+                rename_dict[str(dv)] = "percentile_flux_total_posterior"
+            else:
+                rename_dict[str(dv)] = "percentile_flux_total_prior"
+        elif str(dv).endswith("_mode"):
+            if str(dv)[:-5].endswith("apost"):
+                rename_dict[str(dv)] = "flux_total_posterior"
+            else:
+                rename_dict[str(dv)] = "flux_total_prior"
+        else:
+            vars_to_drop.append(dv)  # drop means
+
+    # merge and process names, attrs
     emissions = (
         xr.merge([flux_output, country_output])
         .pipe(convert_time_to_unix_epoch)
-        .rename(probs="quantile")
+        .drop_vars(vars_to_drop)
+        .rename(rename_dict)
         .pipe(add_variable_attrs, emissions_attrs)
     )
 
     emissions.attrs = make_global_attrs("flux")
 
-    # TODO: rename as in latest .cdl file from Stephan
 
     # make concentration outputs
     conc_output = make_concentration_outputs(inv_outs)
@@ -221,7 +256,6 @@ def main(
     conc_attrs = get_data_var_attrs(
         str(PARIS_FORMATTING_PATH / "netcdf_template_concentrations_bm_edits.txt")
     )
-    conc_attrs = {k: {j: w for j, w in v.items() if "FillValue" not in j} for k, v in conc_attrs.items()}
 
     units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
 

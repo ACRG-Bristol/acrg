@@ -12,7 +12,7 @@ var_pat = re.compile(r"\s*[a-z]+ ([a-zA-Z_]+)\(.*\)")
 attr_pat = re.compile(r"\s+([a-zA-Z_]+):([a-zA-Z_]+)\s*=\s*([^;]+)")
 
 
-def get_data_var_attrs(template_file: str, drop_fill_value=True) -> dict[str, dict[str, Any]]:
+def get_data_var_attrs(template_file: str, species: Optional[str] = None) -> dict[str, dict[str, Any]]:
     """Extract data variable attributes from template file."""
     attr_dict: dict[str, Any] = {}
 
@@ -25,7 +25,12 @@ def get_data_var_attrs(template_file: str, drop_fill_value=True) -> dict[str, di
                 if m := var_pat.match(line):
                     attr_dict[m.group(1)] = {}
                 if (m := attr_pat.match(line)) is not None and "FillValue" not in m.group(2):
-                    attr_dict[m.group(1)][m.group(2)] = m.group(3).strip().strip('"')
+                    val = m.group(3).strip().strip('"')
+
+                    if species is not None:
+                        val = val.replace("<species>", species)
+
+                    attr_dict[m.group(1)][m.group(2)] = val
 
     return attr_dict
 
