@@ -6,10 +6,10 @@ import numpy as np
 import pymc as pm
 import xarray as xr
 
-from helpers import get_xr_dummies, sparse_xr_dot
+from helpers import get_xr_dummies
 from sampling import (
     convert_idata_to_dataset,
-    get_rhime_model2,
+    get_rhime_model,
     get_sampling_kwargs_from_rhime_outs,
     make_idata_from_rhime_outs,
 )
@@ -135,7 +135,7 @@ class InversionOutput:
         basis = get_xr_dummies(ds_clean.basisfunctions, cat_dim="nx")
 
         model_kwargs = get_sampling_kwargs_from_rhime_outs(ds)
-        model = get_rhime_model2(
+        model = get_rhime_model(
             ds_clean,
             xprior_dims="nx",
             bcprior_dims="nbc",

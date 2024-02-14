@@ -2,19 +2,30 @@ import functools
 import json
 from functools import partial
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 
 import xarray as xr
 
-from attribute_parsers import (add_variable_attrs, get_data_var_attrs,
-                               make_global_attrs)
+from attribute_parsers import add_variable_attrs, get_data_var_attrs, make_global_attrs
 from countries import Countries
-from file_processing import get_netcdf_files
-from helpers import (calc_mode, convert_time_to_unix_epoch, make_quantiles,
-                     sparse_xr_dot)
+from helpers import calc_mode, convert_time_to_unix_epoch, make_quantiles, sparse_xr_dot
 from process_rhime_output import InversionOutput
 
+
 PARIS_FORMATTING_PATH = Path(__file__).parent
+
+
+def get_netcdf_files(dir: Union[str, Path], filename_search: Optional[str] = None) -> list[Path]:
+    """Get list of paths to netCDF files, optionally filtered by `filename_search` string."""
+    if isinstance(dir, str):
+        dir = Path(dir)
+
+    if filename_search is None:
+        file_list = sorted(dir.glob("*.nc"))
+    else:
+        file_list = sorted(dir.glob(f"*{filename_search}*.nc"))
+
+    return file_list
 
 
 def calculate_stats(
@@ -62,7 +73,9 @@ def get_iso3166_codes() -> dict[str, Any]:
     return iso3166
 
 
-def get_country_code(x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None, code: Literal["alpha2", "alpha3"] = "alpha3") -> str:
+def get_country_code(
+    x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None, code: Literal["alpha2", "alpha3"] = "alpha3"
+) -> str:
     if iso3166 is None:
         iso3166 = get_iso3166_codes()
 
@@ -87,7 +100,9 @@ def get_inversion_outputs_with_samples(
     return inv_outs
 
 
-def make_country_output(inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3") -> xr.Dataset:
+def make_country_output(
+    inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3"
+) -> xr.Dataset:
     # calculate country stats
     country_files_path = Path(country_files_root)
     countries_path = country_files_path / "country_EUROPE.nc"
@@ -209,9 +224,7 @@ def main(
     emissions_attrs = get_data_var_attrs(template_file, species)
 
     # renaming as in latest .cdl file from Stephan
-    rename_dict = {"lat": "latitude",
-                   "lon": "longitude",
-                   "probs": "percentile"}
+    rename_dict = {"lat": "latitude", "lon": "longitude", "probs": "percentile"}
 
     vars_to_drop = []
 
@@ -253,7 +266,6 @@ def main(
     )
 
     emissions.attrs = make_global_attrs("flux")
-
 
     # make concentration outputs
     conc_output = make_concentration_outputs(inv_outs)

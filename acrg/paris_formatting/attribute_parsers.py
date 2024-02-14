@@ -1,12 +1,9 @@
 #!/usr/bin/env python
-import json
 import re
 from typing import Any, Literal, Optional
 
 import xarray as xr
 
-concentrations_template = "netcdf_template_concentrations_bm_edits.txt"
-emissions_template = "netcdf_template_emissions_bm_edits.txt"
 
 var_pat = re.compile(r"\s*[a-z]+ ([a-zA-Z_]+)\(.*\)")
 attr_pat = re.compile(r"\s+([a-zA-Z_]+):([a-zA-Z_]+)\s*=\s*([^;]+)")
@@ -33,14 +30,6 @@ def get_data_var_attrs(template_file: str, species: Optional[str] = None) -> dic
                     attr_dict[m.group(1)][m.group(2)] = val
 
     return attr_dict
-
-
-def write_data_var_attrs(attr_dict: dict[str, Any], output_file: str) -> None:
-    if not output_file.endswith(".json"):
-        output_file = output_file + ".json"
-
-    with open(output_file, "w") as f:
-        json.dump(attr_dict, f)
 
 
 def make_global_attrs(
