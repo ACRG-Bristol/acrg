@@ -10,8 +10,8 @@ import numpy as np
 import pymc as pm
 import xarray as xr
 
-from paris_formatting.array_ops import get_xr_dummies
-from paris_formatting.sampling import (
+from array_ops import get_xr_dummies
+from sampling import (
     convert_idata_to_dataset,
     get_rhime_model,
     get_sampling_kwargs_from_rhime_outs,

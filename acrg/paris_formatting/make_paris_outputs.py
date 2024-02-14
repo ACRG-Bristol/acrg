@@ -1,20 +1,28 @@
 """
 Script for creating PARIS outputs from RHIME inversion outputs.
 """
+from argparse import ArgumentParser
 from functools import partial
 from pathlib import Path
 from typing import Literal, Optional, Union
 
 import xarray as xr
+from openghg.util import timestamp_now
 
-from attribute_parsers import add_variable_attrs, get_data_var_attrs, make_global_attrs, get_country_code, convert_time_to_unix_epoch
+from attribute_parsers import (
+    add_variable_attrs,
+    get_data_var_attrs,
+    make_global_attrs,
+    get_country_code,
+    convert_time_to_unix_epoch,
+)
 from countries import Countries
 from array_ops import sparse_xr_dot
 from process_rhime_output import InversionOutput
 from stats import calculate_stats
 
 
-PARIS_FORMATTING_PATH = Path(__file__).parent
+paris_formatting_path = Path(__file__).parent
 
 
 def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str] = None) -> list[Path]:
@@ -146,6 +154,28 @@ def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
     return conc_output
 
 
+def rename_drop_dvs_for_template(ds: xr.Dataset, var_name: str) -> tuple[dict[str, str], list[str]]:
+    """Returns dict to rename data vars and list of data vars to drop."""
+    rename_dict = {}
+    vars_to_drop = []
+
+    for dv in ds.data_vars:
+        if str(dv).startswith("q"):
+            if str(dv).endswith("apost"):
+                rename_dict[str(dv)] = f"percentile_{var_name}_total_posterior"
+            else:
+                rename_dict[str(dv)] = f"percentile_{var_name}_total_prior"
+        elif str(dv).endswith("_mode"):
+            if str(dv)[:-5].endswith("apost"):
+                rename_dict[str(dv)] = f"{var_name}_total_posterior"
+            else:
+                rename_dict[str(dv)] = f"{var_name}_total_prior"
+        else:
+            vars_to_drop.append(dv)  # drop means
+
+    return rename_dict, vars_to_drop
+
+
 def main(
     species: str,
     output_file_path: str,
@@ -176,7 +206,7 @@ def main(
     country_output = make_country_output(inv_outs, country_files_root)
     flux_output = make_flux_outputs(inv_outs)
 
-    template_file = str(PARIS_FORMATTING_PATH / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
+    template_file = str(paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
     emissions_attrs = get_data_var_attrs(template_file, species)
 
     # renaming as in latest .cdl file from Stephan
@@ -184,33 +214,14 @@ def main(
 
     vars_to_drop = []
 
-    for dv in country_output.data_vars:
-        if str(dv).startswith("q"):
-            if str(dv).endswith("apost"):
-                rename_dict[str(dv)] = "percentile_country_flux_total_posterior"
-            else:
-                rename_dict[str(dv)] = "percentile_country_flux_total_prior"
-        elif str(dv).endswith("_mode"):
-            if str(dv)[:-5].endswith("apost"):
-                rename_dict[str(dv)] = "country_flux_total_posterior"
-            else:
-                rename_dict[str(dv)] = "country_flux_total_prior"
-        else:
-            vars_to_drop.append(dv)  # drop means
+    rename_dict_country, vars_to_drop_country = rename_drop_dvs_for_template(country_output, "country_flux")
+    rename_dict_flux, vars_to_drop_flux = rename_drop_dvs_for_template(flux_output, "flux")
 
-    for dv in flux_output.data_vars:
-        if str(dv).startswith("q"):
-            if str(dv).endswith("apost"):
-                rename_dict[str(dv)] = "percentile_flux_total_posterior"
-            else:
-                rename_dict[str(dv)] = "percentile_flux_total_prior"
-        elif str(dv).endswith("_mode"):
-            if str(dv)[:-5].endswith("apost"):
-                rename_dict[str(dv)] = "flux_total_posterior"
-            else:
-                rename_dict[str(dv)] = "flux_total_prior"
-        else:
-            vars_to_drop.append(dv)  # drop means
+    rename_dict.update(rename_dict_country)
+    rename_dict.update(rename_dict_flux)
+
+    vars_to_drop.append(vars_to_drop_country)
+    vars_to_drop.append(vars_to_drop_flux)
 
     # merge and process names, attrs
     emissions = (
@@ -228,7 +239,7 @@ def main(
     y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
 
     conc_attrs = get_data_var_attrs(
-        str(PARIS_FORMATTING_PATH / "netcdf_template_concentrations_bm_edits.txt")
+        str(paris_formatting_path / "netcdf_template_concentrations_bm_edits.txt")
     )
 
     units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
@@ -243,3 +254,39 @@ def main(
     concentrations.attrs = make_global_attrs("conc")
 
     return emissions, concentrations
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument(
+        "-s", "--species", type=str, help="species used in inversion; will be used to filter files"
+    )
+    parser.add_argument("-r", "--rhime-outputs-path", type=str, help="path to RHIME outputs")
+    parser.add_argument(
+        "-c",
+        "--country-files-path",
+        type=str,
+        help="path to country files; must contain 'country_EUROPE.nc' and 'country-ukmo_EUROPE.nc'",
+    )
+    parser.add_argument("-m", "--min-model-error", type=float, help="min. model error used in inversion")
+    parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
+    parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
+
+    args = parser.parse_args()
+
+    emissions, concentrations = main(
+        species=args.species,
+        output_file_path=args.rhime_outputs_path,
+        country_files_root=args.country_files_path,
+        min_model_error=args.min_model_error,
+    )
+
+    if args.tag:
+        tag = args.tag
+    else:
+        date, time = str(timestamp_now()).split(" ")
+        tag = date + "_" + time.split(".")[0]
+
+    output_path = Path(args.output_path)
+    conc_output_path = output_path / f"PARIS_concentrations_{args.species}_{tag}.nc"
+    emissions_output_path = output_path / f"PARIS_emissions_{args.species}_{tag}.nc"

@@ -9,8 +9,8 @@ import xarray as xr
 from openghg_inversions import convert, utils
 from xarray.core.common import DataWithCoords
 
-from paris_formatting.array_ops import get_xr_dummies, sparse_xr_dot
-from paris_formatting.process_rhime_output import InversionOutput
+from array_ops import get_xr_dummies, sparse_xr_dot
+from process_rhime_output import InversionOutput
 
 # type for xr.Dataset *or* xr.DataArray
 DataSetOrArray = TypeVar("DataSetOrArray", bound=DataWithCoords)
