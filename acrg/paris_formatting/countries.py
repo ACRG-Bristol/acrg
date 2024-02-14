@@ -2,21 +2,41 @@
 Module with code related to country maps.
 """
 from __future__ import annotations
-from typing import cast, Optional, TypeVar, Union
 
-from openghg_inversions import convert
+from typing import Optional, TypeVar, Union, cast
+
 import xarray as xr
+from openghg_inversions import convert, utils
 from xarray.core.common import DataWithCoords
 
-from helpers import get_area_grid, get_xr_dummies, sparse_xr_dot
+from helpers import get_xr_dummies, sparse_xr_dot
 from process_rhime_output import InversionOutput
 
-
 # type for xr.Dataset *or* xr.DataArray
-xrData = TypeVar("xrData", bound=DataWithCoords)
+DataSetOrArray = TypeVar("DataSetOrArray", bound=DataWithCoords)
+
+
+def get_area_grid(lat: xr.DataArray, lon: xr.DataArray) -> xr.DataArray:
+    """Return xr.DataArray with coordinate dimensions ("lat", "lon") containing
+    the area of each grid cell centered on the coordinates.
+
+    Args:
+        lat: latitude values
+        lon: longitude values
+
+    Returns:
+        xr.DataArray with grid cell areas.
+    """
+    ag_vals = utils.areagrid(lat.values, lon.values)
+    return xr.DataArray(ag_vals, coords=[lat, lon], dims=["lat", "lon"], name="area_grid")
 
 
 class Countries:
+    """Class to load country files (and list of countries to use from that file), and provide methods
+    to create country traces bases on these country files.
+
+    Multiple Country objects can be merged together to use multiple country files.
+    """
     def __init__(self, countries: xr.Dataset, country_selections: Optional[list[str]] = None) -> None:
         """Create Countries object given country map Dataset and optional list of countries to select.
 
@@ -36,7 +56,8 @@ class Countries:
                     selections_check.append(selection)
             if selections_check:
                 raise ValueError(
-                    f"Selected country/countries are not in `name` variable of `countries` Dataset: {selections_check}"
+                    "Selected country/countries are not in `name` variable of "
+                    f"`countries` Dataset: {selections_check}"
                 )
 
             # only keep selected countries in country matrix
@@ -80,9 +101,9 @@ class Countries:
     @staticmethod
     def _get_country_trace(
         species: str,
-        x_trace: xrData,
+        x_trace: DataSetOrArray,
         x_to_country: xr.DataArray,
-    ) -> xrData:
+    ) -> DataSetOrArray:
         """Calculate trace(s) for total country emissions.
 
         Args:

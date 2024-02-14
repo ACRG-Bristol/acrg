@@ -1,4 +1,10 @@
-#!/usr/bin/env python
+"""
+Code for creating and sampling from RHIME model, given
+RHIME outputs.
+
+This module is needed because some quantities aren't
+sampled by `fixedbasisMCMC` in `openghg_inversions` currently.
+"""
 from typing import Optional, Union, TypeVar
 
 import arviz as az
@@ -12,7 +18,7 @@ from xarray.core.common import DataWithCoords
 
 
 # type for xr.Dataset *or* xr.DataArray
-xrData = TypeVar("xrData", bound=DataWithCoords)
+DataSetOrArray = TypeVar("DataSetOrArray", bound=DataWithCoords)
 
 # type alias for prior args
 PriorArgs = dict[str, Union[str, float]]
@@ -63,10 +69,10 @@ def parse_prior(name: str, prior_params: PriorArgs, **kwargs) -> TensorVariable:
     pdf = str(params.pop("pdf")).lower()  # str is just for typing...
     try:
         dist = getattr(continuous, pdf_dict[pdf])
-    except AttributeError:
+    except AttributeError as exc:
         raise ValueError(
             f"The distribution '{pdf}' doesn't appear to be a continuous distribution defined by PyMC."
-        )
+        ) from exc
     return dist(name, **params, **kwargs)
 
 
@@ -88,11 +94,11 @@ def get_sampling_kwargs_from_rhime_outs(
         return prior
 
     result: dict[str, Union[float, PriorArgs]]
-    result = dict(
-        xprior=get_prior_from_attrs(rhime_outs.attrs["Emissions Prior"]),
-        bcprior=get_prior_from_attrs(rhime_outs.attrs["BCs Prior"]),
-        sigprior=get_prior_from_attrs(rhime_outs.attrs["Model error Prior"]),
-    )
+    result = {
+        "xprior": get_prior_from_attrs(rhime_outs.attrs["Emissions Prior"]),
+        "bcprior": get_prior_from_attrs(rhime_outs.attrs["BCs Prior"]),
+        "sigprior": get_prior_from_attrs(rhime_outs.attrs["Model error Prior"]),
+    }
     if min_model_error:
         result["min_model_error"] = min_model_error
     return result

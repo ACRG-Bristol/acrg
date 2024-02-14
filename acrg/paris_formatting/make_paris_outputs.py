@@ -1,3 +1,6 @@
+"""
+Script for creating PARIS outputs from RHIME inversion outputs.
+"""
 import functools
 import json
 from functools import partial
@@ -8,67 +11,31 @@ import xarray as xr
 
 from attribute_parsers import add_variable_attrs, get_data_var_attrs, make_global_attrs
 from countries import Countries
-from helpers import calc_mode, convert_time_to_unix_epoch, make_quantiles, sparse_xr_dot
+from helpers import convert_time_to_unix_epoch, sparse_xr_dot
 from process_rhime_output import InversionOutput
+from stats import calculate_stats
 
 
 PARIS_FORMATTING_PATH = Path(__file__).parent
 
 
-def get_netcdf_files(dir: Union[str, Path], filename_search: Optional[str] = None) -> list[Path]:
+def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str] = None) -> list[Path]:
     """Get list of paths to netCDF files, optionally filtered by `filename_search` string."""
-    if isinstance(dir, str):
-        dir = Path(dir)
+    if isinstance(directory, str):
+        directory = Path(directory)
 
     if filename_search is None:
-        file_list = sorted(dir.glob("*.nc"))
+        file_list = sorted(directory.glob("*.nc"))
     else:
-        file_list = sorted(dir.glob(f"*{filename_search}*.nc"))
+        file_list = sorted(directory.glob(f"*{filename_search}*.nc"))
 
     return file_list
 
 
-def calculate_stats(
-    ds: xr.Dataset,
-    name: str,
-    chunk_dim: str,
-    chunk_size: int = 10,
-    var_names: Optional[list[str]] = None,
-    report_mode: bool = False,
-    add_bc_suffix: bool = False,
-) -> list[xr.Dataset]:
-    output = []
-    if var_names is None:
-        var_names = list(ds.data_vars)
-    for var_name in var_names:
-        suffix = "apost" if "posterior" in var_name else "apriori"
-        if add_bc_suffix:
-            suffix += "BC"
-
-        if report_mode:
-            stats = [
-                calc_mode(ds[var_name].dropna(dim="draw").chunk({chunk_dim: chunk_size}), sample_dim="draw")
-                .compute()
-                .rename(f"{name}{suffix}"),
-            ]
-        else:
-            stats = [
-                ds[var_name].mean("draw").rename(f"{name}{suffix}"),
-                calc_mode(ds[var_name].dropna(dim="draw").chunk({chunk_dim: chunk_size}), sample_dim="draw")
-                .compute()
-                .rename(f"{name}{suffix}_mode"),
-            ]
-        stats.append(
-            make_quantiles(ds[var_name].dropna(dim="draw"), sample_dim="draw").rename(f"q{name}{suffix}")
-        )
-
-        output.extend(stats)
-    return output
-
-
 @functools.lru_cache
 def get_iso3166_codes() -> dict[str, Any]:
-    with open(PARIS_FORMATTING_PATH / "iso3166.json", "r") as f:
+    """Load dictionary mapping alpha-2 country codes to other country information."""
+    with open(PARIS_FORMATTING_PATH / "iso3166.json", "r", encoding="utf8") as f:
         iso3166 = json.load(f)
     return iso3166
 
@@ -76,6 +43,7 @@ def get_iso3166_codes() -> dict[str, Any]:
 def get_country_code(
     x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None, code: Literal["alpha2", "alpha3"] = "alpha3"
 ) -> str:
+    """Get alpha-2 or alpha-3 (default) country code given the name of a country."""
     if iso3166 is None:
         iso3166 = get_iso3166_codes()
 
@@ -103,7 +71,7 @@ def get_inversion_outputs_with_samples(
 def make_country_output(
     inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3"
 ) -> xr.Dataset:
-    # calculate country stats
+    """Calculate country stats."""
     country_files_path = Path(country_files_root)
     countries_path = country_files_path / "country_EUROPE.nc"
     countries_ukmo_path = country_files_path / "country-ukmo_EUROPE.nc"
