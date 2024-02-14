@@ -157,10 +157,3 @@ def sparse_xr_dot(
     func = wrapper if debug else _func
 
     return xr.apply_ufunc(func, da1, da2, input_core_dims=input_core_dims, join="outer")
-
-
-def convert_time_to_unix_epoch(x: DataSetOrArray) -> DataSetOrArray:
-    """Convert `time` coordinate of xarray Dataset or DataArray to number of seconds since
-    1 Jan 1970 (the "UNIX epoch").
-    """
-    return x.assign_coords(time=(pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta("1s"))
