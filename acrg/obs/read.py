@@ -621,7 +621,8 @@ def get_satellite(site, species, satellite, max_level,
 
     files = [f.name for f in sat_directory.glob("*.nc")]
 
-    files_date = [pd.to_datetime(f.split("_")[2][0:8]) for f in files]
+    # gets dates from looking before species-height part of the filename
+    files_date = [pd.to_datetime(f.split("_")[-2][0:8]) for f in files]
 
     data = []
     for (f, d) in zip(files, files_date):
@@ -643,10 +644,14 @@ def get_satellite(site, species, satellite, max_level,
     upper_levels = list(range(max_level, len(data.lev.values)))            
     prior_upper_level_factor = (data.pressure_weights[dict(lev=list(upper_levels))]* \
                     data.ch4_profile_apriori[dict(lev=list(upper_levels))]).sum(dim = "lev")
-                
+                    
     data["mf_prior_factor"] = prior_factor
     data["mf_prior_upper_level_factor"] = prior_upper_level_factor
-    data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
+    if site == "TROPOMI-ALASKA":
+        print("Site is TROPOMI-ALASKA, using xch4_bias_corrected rather than xch4.")
+        data["mf"] = data.xch4_bias_corrected - data.mf_prior_factor - data.mf_prior_upper_level_factor
+    else:
+        data["mf"] = data.xch4 - data.mf_prior_factor - data.mf_prior_upper_level_factor
     data["mf_repeatability"] = data.xch4_uncertainty
 
     # rt17603: 06/04/2018 Added drop variables to ensure lev and id dimensions are also dropped, Causing problems in footprints_data_merge() function
