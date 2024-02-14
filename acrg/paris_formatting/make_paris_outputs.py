@@ -149,7 +149,7 @@ def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
     conc_stats = []
     for preds in preds_list:
         var_names = ["mu_bc_posterior", "mu_bc_prior"]
-        stats = calculate_stats(preds, name="Y", chunk_dim="nmeasure", var_names=var_names, report_mode=True)
+        stats = calculate_stats(preds, name="Y", chunk_dim="nmeasure", chunk_size=1, var_names=var_names, report_mode=True)
 
         var_names = ["y_posterior_predictive", "y_prior_predictive"]
         stats.extend(
@@ -236,8 +236,8 @@ def main(
     rename_dict.update(rename_dict_country)
     rename_dict.update(rename_dict_flux)
 
-    vars_to_drop.append(vars_to_drop_country)
-    vars_to_drop.append(vars_to_drop_flux)
+    vars_to_drop.extend(vars_to_drop_country)
+    vars_to_drop.extend(vars_to_drop_flux)
 
     # merge and process names, attrs
     emissions = (
@@ -297,12 +297,19 @@ if __name__ == "__main__":
         min_model_error=args.min_model_error,
     )
 
-    if args.tag:
-        tag = args.tag
+    if args.output_tag:
+        tag = args.output_tag
     else:
         date, time = str(timestamp_now()).split(" ")
         tag = date + "_" + time.split(".")[0]
 
     output_path = Path(args.output_path)
-    conc_output_path = output_path / f"PARIS_concentrations_{args.species}_{tag}.nc"
+
+    if not output_path.exists():
+        output_path.mkdir(parents=True)
+
     emissions_output_path = output_path / f"PARIS_emissions_{args.species}_{tag}.nc"
+    conc_output_path = output_path / f"PARIS_concentrations_{args.species}_{tag}.nc"
+
+    emissions.to_netcdf(emissions_output_path)
+    concentrations.to_netcdf(conc_output_path)
