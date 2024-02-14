@@ -1,14 +1,17 @@
 import functools
 import json
+from functools import partial
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import xarray as xr
 
-from attribute_parsers import add_variable_attrs, get_data_var_attrs, make_global_attrs
+from attribute_parsers import (add_variable_attrs, get_data_var_attrs,
+                               make_global_attrs)
 from countries import Countries
 from file_processing import get_netcdf_files
-from helpers import calc_mode, convert_time_to_unix_epoch, make_quantiles, sparse_xr_dot
+from helpers import (calc_mode, convert_time_to_unix_epoch, make_quantiles,
+                     sparse_xr_dot)
 from process_rhime_output import InversionOutput
 
 PARIS_FORMATTING_PATH = Path(__file__).parent
@@ -59,14 +62,14 @@ def get_iso3166_codes() -> dict[str, Any]:
     return iso3166
 
 
-def get_country_code(x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None) -> str:
+def get_country_code(x: str, iso3166: Optional[dict[str, dict[str, Any]]] = None, code: Literal["alpha2", "alpha3"] = "alpha3") -> str:
     if iso3166 is None:
         iso3166 = get_iso3166_codes()
 
-    for k, v in iso3166.items():  # type: ignore
+    for v in iso3166.values():  # type: ignore
         names = [v["iso_long_name"].lower()] + [name.lower() for name in v["unofficial_names"]]
         if any(x.lower() in name for name in names):
-            return k
+            return v[code]
 
     return x
 
@@ -84,7 +87,7 @@ def get_inversion_outputs_with_samples(
     return inv_outs
 
 
-def make_country_output(inv_outs: list[InversionOutput], country_files_root: str) -> xr.Dataset:
+def make_country_output(inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3") -> xr.Dataset:
     # calculate country stats
     country_files_path = Path(country_files_root)
     countries_path = country_files_path / "country_EUROPE.nc"
@@ -130,8 +133,11 @@ def make_country_output(inv_outs: list[InversionOutput], country_files_root: str
         calculate_stats(country_traces_merged, "country", chunk_dim="country", chunk_size=1)
     )
 
+    # TODO: calculate stats for composite regions e.g. BE-NE-LX
+    # to do this, we need country codes applied to country_traces_merged
+
     # apply `get_country_code` to each element of `country` coordinate
-    country_codes = list(map(get_country_code, map(str, country_output.country.values)))
+    country_codes = list(map(partial(get_country_code, code=code), map(str, country_output.country.values)))
     country_output = country_output.assign_coords(country=country_codes)
 
     return country_output
