@@ -262,7 +262,7 @@ def main(
 
     concentrations = (
         xr.merge([y_obs, conc_output])
-        .pipe(convert_time_to_unix_epoch, "1D")
+        .pipe(convert_time_to_unix_epoch, "1s")
         .rename(probs="quantile")
         .pipe(add_variable_attrs, conc_attrs, units)
     )
