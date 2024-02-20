@@ -287,6 +287,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--min-model-error", type=float, help="min. model error used in inversion")
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
+    parser.add_argument("-n", "--n-files", type=int, help="number of files to process")
 
     args = parser.parse_args()
 
@@ -295,6 +296,7 @@ if __name__ == "__main__":
         output_file_path=args.rhime_outputs_path,
         country_files_root=args.country_files_path,
         min_model_error=args.min_model_error,
+        n_files=args.n_files,
     )
 
     if args.output_tag:
