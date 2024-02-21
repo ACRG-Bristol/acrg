@@ -145,7 +145,7 @@ def scale_convert(ds, species, to_scale):
 #    X = 1.
 #    scale_factor = ne.evaluate(converter[direction])
 
-    ds["mf"].values = scale_convert(df["mf"].values)
+    ds["mf"].values = scale_convert(ds["mf"].values)
 
     ds.attrs["scale"] = to_scale
     

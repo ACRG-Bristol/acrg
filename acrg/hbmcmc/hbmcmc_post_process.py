@@ -33,8 +33,8 @@ from collections import OrderedDict
 import pymc3 as pm
 import pandas as pd
 
-import acrg.name as name
-from acrg.grid import areagrid
+import acrg.name.name as name
+from acrg.grid.areagrid import areagrid
 from acrg import convert
 from acrg.config.paths import Paths
 
@@ -779,8 +779,8 @@ def country_emissions(ds, species, domain, country_file=None, country_unit_prefi
             cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux.values[bothinds].ravel()* \
                    3600*24*365*molarmass)/unit_factor
         cntrymean[i] = np.mean(cntrytottrace)
-        cntry68[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.68)
-        cntry95[i, :] = pm.stats.hpd(np.expand_dims(cntrytottrace,axis=1), 0.95)
+        cntry68[i, :] = pm.stats.hdi(np.expand_dims(cntrytottrace,axis=1), 0.68)
+        cntry95[i, :] = pm.stats.hdi(np.expand_dims(cntrytottrace,axis=1), 0.95)
         cntryprior[i] = cntrytotprior 
         
     return cntrymean, cntry68, cntry95, cntryprior

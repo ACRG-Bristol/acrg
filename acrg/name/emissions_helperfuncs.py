@@ -1126,7 +1126,8 @@ def get_UKGHG_EDGAR(species, year, edgarfp, ukghgfp, month=None, monthly=False,
                        "TNR_Aviation_CDS","TNR_Aviation_CRS",
                        "TNR_Aviation_SPS","TNR_Aviation_LTO",
                        "TNR_Other","TNR_Ship","PRU_SOL","IDE",
-                       "PRU","TRO","TRO_noREF","TRO_noRES","WWT"]
+                       "PRU","TRO","TRO_noREF","TRO_noRES","WWT",
+                       "TOTALS"]
     
     #extract output lat/lons from fp file
     domain_vol = domain_volume("EUROPE",os.path.join(data_path,"LPDM/fp_NAME"))
@@ -1150,6 +1151,7 @@ def get_UKGHG_EDGAR(species, year, edgarfp, ukghgfp, month=None, monthly=False,
                 #edgarfn = f"v7.0_FT2021_{species}_{year}_{sector}.0.1x0.1.nc"
             elif monthly==True:
                 edgarfn = f"v6.0_{species}_{year}_{month}_{sector}.0.1x0.1.nc"
+                #edgarfn = f"v6.0_{species}_2018_{month}_{sector}.0.1x0.1.nc"
 
             print(edgarfn)
             with xr.open_dataset(os.path.join(edgarfp,edgarfn)) as edgar_file:

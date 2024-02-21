@@ -595,11 +595,11 @@ def basis(domain, basis_case, basis_directory = None):
     """
     if basis_directory is None:
         basis_directory = join(data_path, 'LPDM/basis_functions/')
-        
-    file_path = os.path.join(basis_directory,domain,f"{basis_case}_{domain}*.nc")
-        
+     
+    file_path = os.path.join(basis_directory,domain,f"*{basis_case}*.nc")   
+    #file_path = os.path.join(basis_directory,domain,f"*{basis_case}_{domain}*.nc")
+    #file_path = os.path.join(basis_directory,domain,f"*_{domain}*.nc")    
     files = sorted(glob.glob(file_path))
-    
     if len(files) == 0:
         raise IOError(f"\nError: Can't find basis function files for domain '{domain}' \
                           and basis_case '{basis_case}' ")

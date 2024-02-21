@@ -16,6 +16,8 @@ import scipy.optimize
 import getpass
 import uuid
 
+import xarray as xr
+
 from acrg.name import name
 from acrg.config.paths import Paths
 
@@ -888,3 +890,250 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
         if not os.path.exists(basisoutpath):
             os.makedirs(basisoutpath)
         newds.to_netcdf(os.path.join(basisoutpath,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+
+
+
+# bucket basis functions
+def load_landsea_indices():
+    """
+    Load UKMO array with indices that separate
+    land and sea regions in EUROPE domain
+    --------------
+    land = 1 
+    sea = 0
+    """
+    landsea_indices = xr.open_dataset("/user/work/wz22079/country_masks/country-EUROPE-UKMO-landsea-2023.nc")
+    return landsea_indices['country'].values
+
+def bucket_value_split(grid, bucket, offset_x=0, offset_y=0):
+    """
+    Algorithm that will split the input grid (e.g. fp * flux)
+    such that the sum of each basis function region will 
+    equal the bucket value or by a single array element.
+    
+    The number of regions will be determined by the bucket value
+    i.e. smaller bucket value ==> more regions
+         larger bucket value ==> fewer regions
+    ------------------------------------
+    Args:
+        grid: np.array
+            2D grid of footprints * flux, or whatever
+            grid you want to split. Could be: population
+            data, spatial distribution of bakeries, you chose!
+        
+        bucket: float
+            Maximum value for each basis function region
+            
+    Returns:
+        array of tuples that define the indices for each basis function region 
+        [(ymin0, ymax0, xmin0, xmax0), ..., (yminN, ymaxN, xminN, xmaxN)]
+    """
+    
+    if np.sum(grid)<=bucket or grid.shape == (1,1):
+        return [(offset_y, offset_y + grid.shape[0], offset_x, offset_x + grid.shape[1])]
+
+    else:
+        if grid.shape[0]>=grid.shape[1]:
+            half_y = grid.shape[0] // 2
+            return bucket_value_split(grid[0:half_y, :], bucket, offset_x, offset_y) + bucket_value_split(grid[half_y:, :], bucket, offset_x, offset_y+half_y)
+        
+        elif grid.shape[0]<grid.shape[1]:
+            half_x = grid.shape[1] //2
+            return bucket_value_split(grid[:, 0:half_x], bucket, offset_x, offset_y) + bucket_value_split(grid[:, half_x:], bucket, offset_x+half_x, offset_y)
+
+# Optimize bucket value to number of desired regions 
+def get_nregions(bucket, grid):
+    """ Returns no. of basis functions for bucket value
+    """
+    return np.max(bucket_split_landsea_basis(grid, bucket))
+   
+def optimize_nregions(bucket, grid, nregion, tol):
+    """
+    Optimize bucket value to obtain nregion basis functions
+    within +/- tol.
+    """
+    # print(bucket, get_nregions(bucket, grid))
+    if get_nregions(bucket, grid) <= nregion+tol and get_nregions(bucket, grid) >= nregion-tol:
+        return bucket
+    
+    if get_nregions(bucket, grid) < nregion+tol:
+        bucket = bucket * 0.995
+        return optimize_nregions(bucket, grid, nregion, tol)
+        
+    elif get_nregions(mybucket, fps) > nregion-tol:
+        bucket = bucket * 1.005
+        return optimize_nregions(bucket, grid, nregion, tol)     
+
+def bucket_split_landsea_basis(grid, bucket):
+    """
+    Same as bucket_split_basis but includes 
+    land-sea split. i.e. basis functions cannot overlap sea and land
+     ------------------------------------
+    Args:
+        grid: np.array
+            2D grid of footprints * flux, or whatever
+            grid you want to split. Could be: population
+            data, spatial distribution of bakeries, you chose!
+        
+        bucket: float
+            Maximum value for each basis function region
+
+    Returns:
+        2D array with basis function values
+    
+    """
+    landsea_indices = load_landsea_indices()
+    myregions = bucket_value_split(grid, bucket)
+    
+    mybasis_function = np.zeros(shape=grid.shape)
+
+    for i in range(len(myregions)):
+        ymin, ymax = myregions[i][0], myregions[i][1]
+        xmin, xmax = myregions[i][2], myregions[i][3]
+        
+        inds_y0, inds_x0 = np.where(landsea_indices[ymin:ymax, xmin:xmax]==0)
+        inds_y1, inds_x1 = np.where(landsea_indices[ymin:ymax, xmin:xmax]==1)
+    
+        count = np.max(mybasis_function)
+
+    
+        if len(inds_y0)!=0:
+            count += 1
+            for i in range(len(inds_y0)):
+                mybasis_function[inds_y0[i]+ymin, inds_x0[i]+xmin] = count
+
+        if len(inds_y1)!=0:
+            count += 1
+            for i in range(len(inds_y1)):
+                mybasis_function[inds_y1[i]+ymin, inds_x1[i]+xmin] = count
+                
+    return mybasis_function
+
+def nregion_landsea_basis(grid, bucket=1, nregion=100, tol=1):
+    """
+    Obtain basis function with nregions (for land-sea split)
+    ------------------------------------
+    Args:
+        grid: np.array
+            2D grid of footprints * flux, or whatever
+            grid you want to split. Could be: population
+            data, spatial distribution of bakeries, you chose!
+        
+        bucket: float
+            Initial bucket value for each basis function region.
+            Defaults to 1
+        
+        nregion: int
+            Number of desired basis function regions 
+            Defaults to 100
+        
+        tol: int
+            Tolerance to find number of basis function regions.
+            i.e. optimizes nregions to +/- tol
+            Defaults to 1
+     
+    Returns:
+        basis_function np.array
+        2D basis function array
+    
+    """
+    bucket_opt = optimize_nregions(bucket, grid, nregion, tol)
+    basis_function = bucket_split_landsea_basis(grid, bucket_opt)
+    return basis_function
+
+
+def bucketbasisfunction(emissions_name, fp_all, sites,
+                          start_date, domain, species, outputname, outputdir=None,
+                          nbasis=100, abs_flux=False):
+
+    """
+    Basis functions calculated using a weighted region approach
+    where each basis function / scaling region contains approximately
+    the same value
+    -----------------------------------
+    Args:
+      emissions_name (str/list):
+        List of keyword "source" args used for retrieving emissions files
+        from the Object store.
+      fp_all (dict):
+        fp_all dictionary object as produced from get_data functions
+      sites (str/list):
+        List of measurements sites being used.
+      start_date (str):
+        Start date of period of inference
+      domain (str):
+        Name of model domain 
+      species (str):
+        Name of atmospheric species of interest 
+      outputname (str):
+        Name of inversion run
+      outputdir (str):
+        Directory where inversion run outputs are saved
+      nbasis (int):
+        Desired number of basis function regions 
+      abs_flux (bool):
+        When set to True uses absolute values of a flux array 
+
+    """
+    
+    if abs_flux:
+        print('Using absolute values of flux array')
+    if emissions_name == None:
+        flux = np.absolute(fp_all['.flux']['all'].flux.values) if abs_flux else fp_all['.flux']['all'].flux.values
+        meanflux = np.squeeze(flux)
+    else:
+        if isinstance(fp_all[".flux"][list(emissions_name.keys())[0]], dict):
+            keys = list(fp_all[".flux"][list(emissions_name.keys())[0]].keys())
+            arr = fp_all[".flux"][list(emissions_name.keys())[0]][keys[0]]
+            flux = np.absolute(arr.flux.values) if abs_flux else arr.flux.values
+            meanflux = np.squeeze(flux)
+        else:
+            flux = np.absolute(fp_all[".flux"][list(emissions_name.keys())[0]].flux.values) if abs_flux else \
+                   fp_all[".flux"][list(emissions_name.keys())[0]].flux.values
+            meanflux = np.squeeze(flux)
+    meanfp = np.zeros((fp_all[sites[0]].fp.shape[0],fp_all[sites[0]].fp.shape[1]))
+    div=0
+    for site in sites:
+        meanfp += np.sum(fp_all[site].fp.values,axis=2)
+        div += fp_all[site].fp.shape[2]
+    meanfp /= div
+
+    if meanflux.shape != meanfp.shape:
+        meanflux = np.mean(meanflux, axis=2)
+    fps = meanfp*meanflux
+
+    bucket_basis = nregion_landsea_basis(fps, 1, nbasis)
+     
+    lon = fp_all[sites[0]].lon.values
+    lat = fp_all[sites[0]].lat.values
+
+    base = np.expand_dims(bucket_basis,axis=2)
+
+    time = [pd.to_datetime(start_date)]
+    newds = xray.Dataset({'basis' : ([ 'lat','lon', 'time'], base)},
+                        coords={'time':(['time'], time),
+                    'lat' : (['lat'],  lat), 'lon' : (['lon'],  lon)})
+    newds.lat.attrs['long_name'] = 'latitude'
+    newds.lon.attrs['long_name'] = 'longitude'
+    newds.lat.attrs['units'] = 'degrees_north'
+    newds.lon.attrs['units'] = 'degrees_east'
+    newds.attrs['creator'] = getpass.getuser()
+    newds.attrs['date created'] = str(pd.Timestamp.today())
+
+    if outputdir is None:
+        cwd = os.getcwd()
+        tempdir = os.path.join(cwd,f"Temp_{str(uuid.uuid4())}")
+        os.mkdir(tempdir)
+        os.mkdir(os.path.join(tempdir,f"{domain}/"))
+        newds.to_netcdf(os.path.join(tempdir,domain,f"bucket_{species}-{outputname}_{domain}_{start_date.split('-')[0]}{start_date.split('-')[1]}.nc"), mode='w')
+        return tempdir
+    else:
+        basisoutpath = os.path.join(outputdir,domain)
+        print(basisoutpath)
+        if not os.path.exists(basisoutpath):
+            os.makedirs(basisoutpath)
+        newds.to_netcdf(os.path.join(basisoutpath,f"bucket_{species}-{outputname}_{domain}_{start_date.split('-')[0]}{start_date.split('-')[1]}.nc"), mode='w')
+
+
+
+

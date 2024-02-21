@@ -21,6 +21,9 @@ import acrg.convert as convert
 from acrg.config.version import code_version
 from acrg.config.paths import Paths
 
+from scipy import stats
+
+import sys
 
 data_path = Paths.data
 
@@ -80,7 +83,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, 
                sigma_per_site = True, 
-               offsetprior={"pdf":"normal", "mu":0, "sd":1},
+               offsetprior={"pdf":"normal", "mu":0, "sd":0.6},
                add_offset = False, verbose=False):       
     """
     Uses pym3 module for Bayesian inference for emissions field, boundary 
@@ -186,11 +189,15 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
         else:
-            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)       
-        epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
-        y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) 
+
+        model_error = pm.math.maximum(np.abs(pm.math.dot(hx,x)) * sig[sites, sigma_freq_index], 2.0)       
+
+        epsilon = pm.math.sqrt(error**2 + model_error**2)
+        y = pm.Normal('y', mu=mu, sd=epsilon, observed=Y, shape=ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
+#        step1 = pm.Metropolis(vars=[x,xbc])
         step2 = pm.Slice(vars=[sig])
         
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
@@ -211,15 +218,21 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         if add_offset:
             offset_outs = trace.get_values(offset, burn=burn)[0:int((nit)-burn)]
             offset_trace = np.hstack([np.zeros((int(nit-burn),1)), offset_outs])
-            YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T)   
+            YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T) 
+            OFFtrace = np.dot(B, offset_trace.T)             
         else:
             YBCtrace = np.dot(Hbc.T,bcouts.T)
+            offset_outs = outs * 0
+            OFFtrace = YBCtrace * 0
         Ytrace = np.dot(Hx.T,outs.T) + YBCtrace
-        
-        return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
 
-def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+        # Added option to return offset_outs          
+
+ 
+        return outs, bcouts, sigouts, offset_outs, Ytrace, YBCtrace, OFFtrace, convergence, step1, step2
+
+def inferpymc3_postprocessouts(xouts, bcouts, sigouts, offset_outs, convergence, 
+                               Hx, Hbc, Y, error, Ytrace, YBCtrace, offset_trace, 
                                step1, step2, 
                                xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
@@ -356,28 +369,80 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         """
         print("Post-processing output")
         
-        
         #Get parameters for output file 
         nit = xouts.shape[0]
         nx = Hx.shape[0]
         ny = len(Y)
         nbc = Hbc.shape[0]
+        noff = offset_outs.shape[0]
+
         nui = np.arange(2)
         steps = np.arange(nit)
         nmeasure = np.arange(ny)
         nparam = np.arange(nx)
         nBC = np.arange(nbc)
+        nOFF = np.arange(noff)
         #YBCtrace = np.dot(Hbc.T,bcouts.T)
-        YmodBC = np.mean(YBCtrace, axis=1)
+
+        # OFFSET HYPERPARAMETER
+        YmodmuOFF = np.mean(offset_trace,axis=1)    # mean
+        YmodmedOFF = np.median(offset_trace,axis=1) # median
+        YmodmodeOFF = np.zeros(shape=offset_trace.shape[0]) # mode
+
+        for i in range(0, offset_trace.shape[0]):
+            # If sufficient no. of iterations in MCMC chains use a KDE to calculate
+            # the mode. Else, mean value is used.
+            if np.nanmax(offset_trace[i,:]) > np.nanmin(offset_trace[i,:]):
+                xes_off = np.linspace(np.nanmin(offset_trace[i,:]), np.nanmax(offset_trace[i,:]), 200)
+                kde = stats.gaussian_kde(offset_trace[i,:]).evaluate(xes_off)
+                YmodmodeOFF[i] = xes_off[kde.argmax()]
+            else:
+                YmodmodeOFF[i] = np.mean(offset_trace[i,:])  
+
+        Ymod68OFF = pm.stats.hdi(offset_trace.T, 0.68)
+        Ymod95OFF = pm.stats.hdi(offset_trace.T, 0.95)
+
+
+        # BC
+        YmodmuBC = np.mean(YBCtrace, axis=1)
+        YmodmedBC = np.median(YBCtrace, axis=1)
+        YmodmodeBC = np.zeros(shape=YBCtrace.shape[0])
+
+        for i in range(0, YBCtrace.shape[0]):
+            # If sufficient no. of iterations in MCMC chains use a KDE to calculate
+            # the mode. Else, mean value is used.
+            if np.nanmax(YBCtrace[i,:]) > np.nanmin(YBCtrace[i,:]):
+                xes_bc = np.linspace(np.nanmin(YBCtrace[i,:]), np.nanmax(YBCtrace[i,:]), 200)
+                kde = stats.gaussian_kde(YBCtrace[i,:]).evaluate(xes_bc)
+                YmodmodeBC[i] = xes_bc[kde.argmax()]
+            else:
+                YmodmodeBC[i] = np.mean(YBCtrace[i,:])
+
         Ymod95BC = pm.stats.hdi(YBCtrace.T, 0.95)
         Ymod68BC = pm.stats.hdi(YBCtrace.T, 0.68)
         YaprioriBC = np.sum(Hbc, axis=0)
-        Ymod = np.mean(Ytrace, axis=1)
+
+
+        # Y-VALUES HYPERPARAMETER (XOUTS * H) 
+        Ymodmu = np.mean(Ytrace, axis=1)
+        Ymodmed = np.median(Ytrace, axis=1)
+        Ymodmode = np.zeros(shape=Ytrace.shape[0])
+
+        for i in range(0, Ytrace.shape[0]):
+            # If sufficient no. of iterations in MCMC chains use a KDE to calculate
+            # the mode. Else, mean value is used.
+            if np.nanmax(Ytrace[i,:]) > np.nanmin(Ytrace[i,:]):
+                xes = np.arange(np.nanmin(Ytrace[i,:]), np.nanmax(Ytrace[i,:]), 0.01)
+                kde = stats.gaussian_kde(Ytrace[i,:]).evaluate(xes)
+                Ymodmode[i] = xes[kde.argmax()]
+            else:
+                Ymodmode[i] = np.mean(Ytrace[i,:])
+
         Ymod95 = pm.stats.hdi(Ytrace.T, 0.95)
         Ymod68 = pm.stats.hdi(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
         sitenum = np.arange(len(sites))
-        
+ 
         if fp_data is None and rerun_file is not None:
             lon = rerun_file.lon.values
             lat = rerun_file.lat.values
@@ -395,12 +460,20 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             bfds = fp_data[".basis"]
 
 
-        #Calculate mean posterior scale map and flux field
-        scalemap = np.zeros_like(bfds.values)
-        
+        #Calculate mean and mode posterior scale map and flux field
+        scalemap_mu = np.zeros_like(bfds.values)
+        scalemap_mode = np.zeros_like(bfds.values)        
+
         for npm in nparam:
-            scalemap[bfds.values == (npm+1)] = np.mean(xouts[:,npm]) 
-        
+            scalemap_mu[bfds.values == (npm+1)] = np.mean(xouts[:,npm])
+            if np.nanmax(xouts[:,npm]) > np.nanmin(xouts[:,npm]):
+                xes = np.arange(np.nanmin(xouts[:,npm]), np.nanmax(xouts[:,npm]), 0.01)
+                kde = stats.gaussian_kde(xouts[:,npm]).evaluate(xes)           
+                scalemap_mode[bfds.values == (npm+1)] = xes[kde.argmax()]
+            else:
+                scalemap_mode[bfds.values == (npm+1)] = np.nanmean(xouts[:,npm])
+    
+
         if rerun_file is not None:
             # Note, at the moment fluxapriori in the output is the mean apriori flux over the 
             # inversion period and so will not be identical to the original a priori flux, if 
@@ -412,7 +485,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             else:
                 emds = name.flux(domain, list(emissions_name.values())[0], start = start_date, end = end_date, flux_directory=flux_directory)
             emissions_flux = emds.flux.values
-        flux = scalemap*emissions_flux[:,:,0]
+
+        # NB. using mode scalemap for posterior fluxes
+        flux = scalemap_mode*emissions_flux[:,:,0]
         
         #Basis functions to save
         bfarray = bfds.values-1
@@ -430,7 +505,10 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         else:
             cntrynames = rerun_file.countrynames.values
             cntrygrid = rerun_file.countrydefinition.values
+
         cntrymean = np.zeros((len(cntrynames)))
+        cntrymedian = np.zeros((len(cntrynames)))
+        cntrymode = np.zeros((len(cntrynames)))
         cntry68 = np.zeros((len(cntrynames), len(nui)))
         cntry95 = np.zeros((len(cntrynames), len(nui)))
         cntrysd = np.zeros(len(cntrynames))
@@ -459,6 +537,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 aprioriflux += emissions_flux[:,:,mi]*np.sum(allmonths == mi)/len(allmonths)
         else:
             aprioriflux = np.squeeze(emissions_flux)
+
         for ci, cntry in enumerate(cntrynames):
             cntrytottrace = np.zeros(len(steps))
             cntrytotprior = 0
@@ -467,8 +546,18 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 cntrytottrace += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
                                3600*24*365*molarmass)*xouts[:,bf]/unit_factor
                 cntrytotprior += np.sum(area[bothinds].ravel()*aprioriflux[bothinds].ravel()* \
-                               3600*24*365*molarmass)/unit_factor
+                              3600*24*365*molarmass)/unit_factor
+
             cntrymean[ci] = np.mean(cntrytottrace)
+            cntrymedian[ci] = np.median(cntrytottrace)
+
+            if np.nanmax(cntrytottrace) > np.nanmin(cntrytottrace):
+                xes = np.linspace(np.nanmin(cntrytottrace), np.nanmax(cntrytottrace), 200)
+                kde = stats.gaussian_kde(cntrytottrace).evaluate(xes)
+                cntrymode[ci] = xes[kde.argmax()]
+            else:
+                cntrymode[ci] = np.mean(cntrytottrace)
+
             cntrysd[ci] = np.std(cntrytottrace)
             cntry68[ci, :] = pm.stats.hdi(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hdi(cntrytottrace, 0.95)
@@ -480,11 +569,20 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                             'Yerror' :(['nmeasure'], error),                          
                             'Ytime':(['nmeasure'],Ytime),
                             'Yapriori':(['nmeasure'],Yapriori),
-                            'Ymodmean':(['nmeasure'], Ymod), 
+                            'Ymodmean':(['nmeasure'], Ymodmu), 
+                            'Ymodmedian':(['nmeasure'], Ymodmed),
+                            'Ymodmode': (['nmeasure'], Ymodmode),
                             'Ymod95':(['nmeasure','nUI'], Ymod95),
                             'Ymod68':(['nmeasure','nUI'], Ymod68),
+                            'Yoffmean':(['nmeasure'], YmodmuOFF),
+                            'Yoffmedian':(['nmeasure'], YmodmedOFF),
+                            'Yoffmode':(['nmeasure'], YmodmodeOFF),
+                            'Yoff68':(['nmeasure','nUI'], Ymod68OFF),
+                            'Yoff95':(['nmeasure','nUI'], Ymod95OFF),
                             'YaprioriBC':(['nmeasure'],YaprioriBC),                            
-                            'YmodmeanBC':(['nmeasure'], YmodBC),
+                            'YmodmeanBC':(['nmeasure'], YmodmuBC),
+                            'YmodmedianBC':(['nmeasure'], YmodmedBC),
+                            'YmodmodeBC':(['nmeasure'], YmodmodeBC),
                             'Ymod95BC':(['nmeasure','nUI'], Ymod95BC),
                             'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
                             'xtrace':(['steps','nparam'], xouts),
@@ -496,10 +594,13 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                             'sitelons':(['nsite'],site_lon),
                             'sitelats':(['nsite'],site_lat),
                             'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
-                            'fluxmean':(['lat','lon'], flux),                            
-                            'scalingmean':(['lat','lon'],scalemap),
+                            'fluxmode':(['lat','lon'], flux),                            
+                            'scalingmean':(['lat','lon'],scalemap_mu),
+                            'scalingmode':(['lat','lon'],scalemap_mode),
                             'basisfunctions':(['lat','lon'],bfarray),
                             'countrymean':(['countrynames'], cntrymean),
+                            'countrymedian':(['countrynames'], cntrymedian),
+                            'countrymode':(['countrynames'], cntrymode),
                             'countrysd':(['countrynames'], cntrysd),
                             'country68':(['countrynames', 'nUI'],cntry68),
                             'country95':(['countrynames', 'nUI'],cntry95),
@@ -510,6 +611,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                         coords={'stepnum' : (['steps'], steps), 
                                    'paramnum' : (['nlatent'], nparam),
                                    'numBC' : (['nBC'], nBC),
+
+                                 #  'numOFF': (['nOFF'],nOFF),
+
                                    'measurenum' : (['nmeasure'], nmeasure), 
                                    'UInum' : (['nUI'], nui),
                                    'nsites': (['nsite'], sitenum),
@@ -519,19 +623,30 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                    'lon':(['lon'],lon),
                                    'countrynames':(['countrynames'],cntrynames)})
         
-        outds.fluxmean.attrs["units"] = "mol/m2/s"
+        outds.fluxmode.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
         outds.Yobs.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Yapriori.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymodmean.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Ymodmedian.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Ymodmode.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymod95.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymod68.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Yoffmean.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Yoffmedian.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Yoffmode.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Yoff95.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.Yoff68.attrs["units"] = obs_units+" "+"mol/mol"
         outds.YmodmeanBC.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.YmodmedianBC.attrs["units"] = obs_units+" "+"mol/mol"
+        outds.YmodmodeBC.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymod95BC.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Ymod68BC.attrs["units"] = obs_units+" "+"mol/mol"
         outds.YaprioriBC.attrs["units"] = obs_units+" "+"mol/mol"
         outds.Yerror.attrs["units"] = obs_units+" "+"mol/mol"
         outds.countrymean.attrs["units"] = country_units
+        outds.countrymedian.attrs["units"] = country_units
+        outds.countrymode.attrs["units"] = country_units
         outds.country68.attrs["units"] = country_units
         outds.country95.attrs["units"] = country_units
         outds.countrysd.attrs["units"] = country_units
@@ -545,10 +660,19 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.Ytime.attrs["longname"] = "time of measurements"
         outds.Yapriori.attrs["longname"] = "a priori simulated measurements"
         outds.Ymodmean.attrs["longname"] = "mean of posterior simulated measurements"
+        outds.Ymodmedian.attrs["longname"] = "median of posterior simulated measurements"
+        outds.Ymodmode.attrs["longname"] = "mode of posterior simulated measurements"
         outds.Ymod68.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated measurements"
         outds.Ymod95.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated measurements"
+        outds.Yoffmean.attrs["longname"] = "mean of posterior simulated offset between measurements"
+        outds.Yoffmedian.attrs["longname"] = "median of posterior simulated offset between measurements"
+        outds.Yoffmode.attrs["longname"] = "mode of posterior simulated offset between measurements"
+        outds.Yoff68.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated offset between measurements"
+        outds.Yoff95.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated offset between measurements"
         outds.YaprioriBC.attrs["longname"] = "a priori simulated boundary conditions"
         outds.YmodmeanBC.attrs["longname"] = "mean of posterior simulated boundary conditions"
+        outds.YmodmedianBC.attrs["longname"] = "median of posterior simulated boundary conditions"
+        outds.YmodmodeBC.attrs["longname"] = "mode of posterior simulated boundary conditions"
         outds.Ymod68BC.attrs["longname"] = " 0.68 Bayesian credible interval of posterior simulated boundary conditions"
         outds.Ymod95BC.attrs["longname"] = " 0.95 Bayesian credible interval of posterior simulated boundary conditions"
         outds.xtrace.attrs["longname"] = "trace of unitless scaling factors for emissions parameters"
@@ -560,10 +684,13 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.sitelons.attrs["longname"] = "site longitudes corresponding to site names"
         outds.sitelats.attrs["longname"] = "site latitudes corresponding to site names"
         outds.fluxapriori.attrs["longname"] = "mean a priori flux over period"
-        outds.fluxmean.attrs["longname"] = "mean posterior flux over period"
+        outds.fluxmode.attrs["longname"] = "mean posterior flux over period"
         outds.scalingmean.attrs["longname"] = "mean scaling factor field over period"
+        outds.scalingmode.attrs["longname"] = "mode scaling factor field over period"
         outds.basisfunctions.attrs["longname"] = "basis function field"
         outds.countrymean.attrs["longname"] = "mean of ocean and country totals"
+        outds.countrymedian.attrs["longname"] = "median of ocean and country totals"
+        outds.countrymode.attrs["longname"] = "mode of ocean and country totals"
         outds.country68.attrs["longname"] = "0.68 Bayesian credible interval of ocean and country totals"
         outds.country95.attrs["longname"] = "0.95 Bayesian credible interval of ocean and country totals"        
         outds.countrysd.attrs["longname"] = "standard deviation of ocean and country totals" 

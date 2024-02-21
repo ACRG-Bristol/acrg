@@ -39,14 +39,15 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
-                   offsetprior={"pdf":"normal", "mu":0, "sd":1},
+                   offsetprior={"pdf":"normal", "mu":0, "sd":0.6},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
-                   emissions_name=None, inlet=None, fpheight=None, instrument=None, 
+                   emissions_name=None, inlet=None, fpheight=None, instrument=None,
+                   calibration_scale = None, 
                    fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
                    fp_directory = None, bc_directory = None, flux_directory = None,
                    max_level=None,
-                   quadtree_basis=True,nbasis=100,
+                   quadtree_basis=True, bucket_basis=False, nbasis=100,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None, add_offset = False,
@@ -174,9 +175,12 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     TO DO:
         Add a wishlist...
     """    
-    data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
-                         average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+    data = getobs.get_obs(sites, species, start_date=start_date, end_date=end_date, 
+                          average=meas_period, data_directory=obs_directory,
+                          keep_missing=False, inlet=inlet, instrument=instrument,
+                          calibration_scale=calibration_scale, 
+                          max_level=max_level)
+
     fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
                                         height=fpheight, 
                                         fp_directory = fp_directory,
@@ -209,7 +213,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                    obs_directory=obs_directory)
     
     #Create basis function using quadtree algorithm if needed
-    if quadtree_basis:
+    if quadtree_basis==True and bucket_basis==False:
+        print("Using Quadtree algorithm")
         if fp_basis_case != None:
             print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
             print("Assuming you want to use %s " % fp_basis_case)
@@ -219,9 +224,22 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                           nbasis=nbasis)
             fp_basis_case= "quadtree_"+species+"-"+outputname
             basis_directory = tempdir
+
+    if bucket_basis==True and quadtree_basis==False:
+        print("Using bucket algorithm")
+        if fp_basis_case !=None:
+            print("Basis case %s supplied but bucket_basis set to True" % fp_basis_case)
+            print("Assuming you want to use %s " % fp_basis_case)
+        else:
+            tempdir = basis.bucketbasisfunction(emissions_name, fp_all, sites,
+                                                start_date, domain, species, outputname, nbasis=nbasis)
+            fp_basis_case = "bucket_"+species+"-"+outputname
+            basis_directory=tempdir
+
     else:
         basis_directory = basis_directory
-            
+ 
+    print(basis_directory)           
     fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
     fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
@@ -267,11 +285,11 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
+    xouts, bcouts, sigouts, offset_outs, Ytrace, YBCtrace, offset_trace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+                       xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
     #Process and save inversion output
-    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, offset_outs, convergence, 
+                               Hx, Hbc, Y, error, Ytrace, YBCtrace, offset_trace,
                                step1, step2, 
                                xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
