@@ -1036,11 +1036,9 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                     ml_obs = site_ds.max_level
                     ml_fp = site_fp.max_level
                     tolerance = 60e9 # footprints must match data with this tolerance in [ns]
-                    if ml_obs != ml_fp:
-                        print("ERROR: MAX LEVEL OF SAT OBS DOES NOT EQUAL MAX LEVEL IN FP")
-                        print("max_level_fp =",ml_fp)
-                        print("max_level_obs =",ml_obs)
-                        #return None
+                    if ml_obs != ml_fp:                        
+                        raise Exception(f"Max level of satellite obs ({ml_obs}) does not equal max level ({ml_fp}) in footprints. Make sure the max level in the footprints is the same as the max level in the obs data.")
+
                 elif "GAUGE-FERRY" in site.upper():
                     tolerance = '5min'
                 elif "GAUGE-FAAM" in site.upper():
