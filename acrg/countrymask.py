@@ -547,7 +547,8 @@ def create_countrymask_eez_v12(domain,lat=None,lon=None,include_land_territories
                             fp_directory=None,lat_lon_mask=False,sub_lats=None,sub_lons=None,
                             include_countries=None,include_uk_dn=False,
                             output_path=None,save=False):
-    """    
+    """
+    
     Creates a mask for all countries within the domain (or lat/lon bounds).
     Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
     for specifiying country and ocean boundaries.
@@ -737,8 +738,11 @@ def create_countrymask_eez_v12(domain,lat=None,lon=None,include_land_territories
         lats_outer = np.where((lats < sub_lats[0]) | (lats >= sub_lats[-1]))[0]
         lons_outer = np.where((lons < sub_lons[0]) | (lons >= sub_lons[-1]))[0]
         
-        all_grid[lats_outer,:] = np.nan
-        all_grid[:,lons_outer] = np.nan
+        #all_grid[lats_outer,:] = np.nan
+        #all_grid[:,lons_outer] = np.nan
+        
+        all_grid[lats_outer,:] = 0.
+        all_grid[:,lons_outer] = 0.
         
     # need to work out how to include UK DN in the current setup
     # or switch to having the mask in the format [region,lat,lon] 
@@ -804,6 +808,7 @@ def create_countrymask_eez_v12(domain,lat=None,lon=None,include_land_territories
         print(f'Output saved to {output_path}.')
         
     return ds
+				    
 if __name__=="__main__":
     
     ## EXAMPLE OF HOW THIS MODULE CAN BE USED ##
