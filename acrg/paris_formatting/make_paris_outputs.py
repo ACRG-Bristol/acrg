@@ -40,11 +40,15 @@ def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str]
 
 
 def get_inversion_outputs_with_samples(
-        species: str, output_file_path: str, min_model_error: float = 0.1, ndraw: int = 1000
+        species: str, output_file_path: str, min_model_error: float = 0.1, ndraw: int = 1000, n_files: Optional[int] = None
 ) -> list[InversionOutput]:
     """Create a list of InversionOutputs given a path to RHIME inversion outputs."""
     files = get_netcdf_files(output_file_path, filename_search=species.upper())
-    inv_outs = [InversionOutput.from_rhime(xr.open_dataset(file), min_model_error, ndraw) for file in files]
+
+    if n_files is not None:
+        files = files[:n_files]
+
+    inv_outs = [InversionOutput.from_rhime(xr.open_dataset(file), min_model_error, ndraw=ndraw) for file in files]
 
     for inv_out in inv_outs:
         inv_out.sample_predictive_distributions()
@@ -64,7 +68,7 @@ def get_time_point(inv_out: InversionOutput, time_point: Literal["start", "midpo
 
 
 def make_country_output(
-        inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3", time_point: Literal["start", "midpoint"] = "midpoint"
+        species: str, inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3", time_point: Literal["start", "midpoint"] = "midpoint"
 ) -> xr.Dataset:
     """Calculate country stats."""
     country_files_path = Path(country_files_root)
@@ -103,7 +107,7 @@ def make_country_output(
     time_func = partial(get_time_point, time_point=time_point)
 
     country_traces = [
-        countries.get_country_trace("sf6", inv_out).expand_dims({"time": [time_func(inv_out)]})
+        countries.get_country_trace(species, inv_out).expand_dims({"time": [time_func(inv_out)]})
         for inv_out in inv_outs
     ]
 
@@ -213,14 +217,10 @@ def main(
         emissions dataset and concentrations dataset
     """
     inv_outs = get_inversion_outputs_with_samples(
-        species=species, output_file_path=output_file_path, min_model_error=min_model_error
-    )
-
-    if n_files is not None:
-        inv_outs = inv_outs[:n_files]
+        species=species, output_file_path=output_file_path, min_model_error=min_model_error, n_files=n_files)
 
     # make country and flux output
-    country_output = make_country_output(inv_outs, country_files_root)
+    country_output = make_country_output(species, inv_outs, country_files_root)
     flux_output = make_flux_outputs(inv_outs)
 
     template_file = str(paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
@@ -242,7 +242,7 @@ def main(
 
     # merge and process names, attrs
     emissions = (
-        xr.merge([flux_output, country_output])
+        xr.merge([flux_output, country_output * 1e-3])  # convert g/yr to kg/yr
         .pipe(convert_time_to_unix_epoch, "1D")
         .drop_vars(vars_to_drop)
         .rename(rename_dict)
