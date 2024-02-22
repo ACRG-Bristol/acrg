@@ -40,11 +40,11 @@ def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str]
 
 
 def get_inversion_outputs_with_samples(
-    species: str, output_file_path: str, min_model_error: float = 0.1
+        species: str, output_file_path: str, min_model_error: float = 0.1, ndraw: int = 1000
 ) -> list[InversionOutput]:
     """Create a list of InversionOutputs given a path to RHIME inversion outputs."""
     files = get_netcdf_files(output_file_path, filename_search=species.upper())
-    inv_outs = [InversionOutput.from_rhime(xr.open_dataset(file), min_model_error) for file in files]
+    inv_outs = [InversionOutput.from_rhime(xr.open_dataset(file), min_model_error, ndraw) for file in files]
 
     for inv_out in inv_outs:
         inv_out.sample_predictive_distributions()
@@ -198,7 +198,8 @@ def main(
     country_files_root: str,
     min_model_error: float,
     n_files: Optional[int] = None,
-) -> tuple[xr.Dataset, xr.Dataset]:
+    return_concentrations: bool = True,
+) -> tuple[xr.Dataset, Optional[xr.Dataset]]:
     """Create formatted PARIS emissions and concentrations datasets.
 
     Args:
@@ -251,23 +252,26 @@ def main(
     emissions.attrs = make_global_attrs("flux")
 
     # make concentration outputs
-    conc_output = make_concentration_outputs(inv_outs)
-    y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
+    if return_concentrations is True:
+        conc_output = make_concentration_outputs(inv_outs)
+        y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
 
-    conc_attrs = get_data_var_attrs(
-        str(paris_formatting_path / "netcdf_template_concentrations_bm_edits.txt")
-    )
+        conc_attrs = get_data_var_attrs(
+            str(paris_formatting_path / "netcdf_template_concentrations_bm_edits.txt")
+        )
 
-    units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
+        units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
 
-    concentrations = (
-        xr.merge([y_obs, conc_output])
-        .pipe(convert_time_to_unix_epoch, "1s")
-        .rename(probs="quantile")
-        .pipe(add_variable_attrs, conc_attrs, units)
-    )
+        concentrations = (
+            xr.merge([y_obs, conc_output])
+            .pipe(convert_time_to_unix_epoch, "1s")
+            .rename(probs="quantile")
+            .pipe(add_variable_attrs, conc_attrs, units)
+        )
 
-    concentrations.attrs = make_global_attrs("conc")
+        concentrations.attrs = make_global_attrs("conc")
+    else:
+        concentrations = None
 
     return emissions, concentrations
 
@@ -288,6 +292,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
     parser.add_argument("-n", "--n-files", type=int, help="number of files to process")
+    parser.add_argument("--no-conc", type=bool, action="store_true", default=False, help="if set, only process emissions and country totals..")
 
     args = parser.parse_args()
 
@@ -297,13 +302,14 @@ if __name__ == "__main__":
         country_files_root=args.country_files_path,
         min_model_error=args.min_model_error,
         n_files=args.n_files,
+        return_concentrations=(not args.no_conc),
     )
 
     if args.output_tag:
         tag = args.output_tag
     else:
         date, time = str(timestamp_now()).split(" ")
-        tag = date + "_" + time.split(".")[0]
+        tag = date + "_" + time.split(".")[0].replace(":", "")
 
     output_path = Path(args.output_path)
 
@@ -314,4 +320,6 @@ if __name__ == "__main__":
     conc_output_path = output_path / f"PARIS_concentrations_{args.species}_{tag}.nc"
 
     emissions.to_netcdf(emissions_output_path)
-    concentrations.to_netcdf(conc_output_path)
+
+    if not args.no_conc:
+        concentrations.to_netcdf(conc_output_path) # type: ignore

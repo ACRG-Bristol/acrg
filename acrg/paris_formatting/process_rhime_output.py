@@ -131,7 +131,7 @@ class InversionOutput:
     times: xr.DataArray
 
     @classmethod
-    def from_rhime(cls: type[InvOut], ds: xr.Dataset, min_model_error: float) -> InvOut:
+    def from_rhime(cls: type[InvOut], ds: xr.Dataset, min_model_error: float, ndraw: Optional[int] = None) -> InvOut:
         """Make InversionOutput object from RHIME output dataset."""
         flux = ds.fluxapriori
         site_coordinates = ds[["sitelons", "sitelats"]]
@@ -151,7 +151,10 @@ class InversionOutput:
             **model_kwargs  # type: ignore
         )
 
-        trace = make_idata_from_rhime_outs(ds_clean)
+        if ndraw is not None:
+            trace = make_idata_from_rhime_outs(ds_clean, ndraw=ndraw)
+        else:
+            trace = make_idata_from_rhime_outs(ds_clean)
 
         return cls(
             obs=ds_clean.Yobs,
@@ -165,12 +168,12 @@ class InversionOutput:
             times=ds_clean.Ytime,
         )
 
-    def sample_predictive_distributions(self) -> None:
+    def sample_predictive_distributions(self, ndraw: int = 1000) -> None:
         """Sample prior and posterior predictive distributions.
 
         This creates prior samples as a side-effect.
         """
-        self.trace.extend(pm.sample_prior_predictive(1000, self.model))
+        self.trace.extend(pm.sample_prior_predictive(ndraw, self.model))
         self.trace.extend(pm.sample_posterior_predictive(self.trace, model=self.model, var_names=["y"]))
 
     def get_trace_dataset(
