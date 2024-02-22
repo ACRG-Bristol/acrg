@@ -109,11 +109,23 @@ def get_country_code(
     if iso3166 is None:
         iso3166 = get_iso3166_codes()
 
+    # first try to match long names
     for v in iso3166.values():  # type: ignore
+        if x.lower() == v["iso_long_name"].lower():
+            return v[code]
+
+    # next try to match unofficial names
+    for v in iso3166.values():  # type: ignore
+        if any(x.lower() == name.lower() for name in v["unofficial_names"]):
+            return v[code]
+
+    # next try to match substrings...
+    for v in iso3166.values():
         names = [v["iso_long_name"].lower()] + [name.lower() for name in v["unofficial_names"]]
         if any(x.lower() in name for name in names):
             return v[code]
 
+    # if no matches are found, return x
     return x
 
 
