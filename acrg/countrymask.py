@@ -542,15 +542,12 @@ def mask_fill_gaps(mask_array,lat,lon):
                     
     return mask_array
 
-def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territories=True,
+def create_countrymask_eez_v12(domain,lat=None,lon=None,include_land_territories=True,
                             include_ocean_territories=True,reset_index=True,fill_gaps=True,
-                            fp_directory=fp_directory,lat_lon_mask=False,sub_lats=None,sub_lons=None,
+                            fp_directory=None,lat_lon_mask=False,sub_lats=None,sub_lons=None,
                             include_countries=None,include_uk_dn=False,
                             output_path=None,save=False):
-    """
-    
-    NOTE: THIS FUNCTION IS CALLED CREATE_COUNTRY_MASK_EEZ_V12 IN THE ACRG REPO
-    
+    """    
     Creates a mask for all countries within the domain (or lat/lon bounds).
     Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
     for specifiying country and ocean boundaries.
@@ -596,7 +593,12 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
     
     print("If you are having issues with downloading the required files from natural earth:")
     print("Try installing cartopy version 0.20.0, this may fix the issue.")
-   
+    
+    if reset_index == False:
+        print('WARNING: The current code setup does not work without resetting the country '+
+              'index. This function needs to be updated to allow for this.')
+        return None
+    
     if lat is not None:
         lat_range = [lat[0],lat[-1]]
         lon_range = [lon[0],lon[-1]]
@@ -663,6 +665,13 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
                 indexes_all.append(np.where(df_land.loc[land_regions]['ADM0_A3'] == c)[0][0])
     else:
         print('Including all countries in land and ocean masks.')
+        
+    if 'FRO' in land_codes_all:
+        land_codes_all= np.delete(land_codes_all, np.where(land_codes_all == 'FRO'))
+    if 'JEY' in land_codes_all:
+        land_codes_all= np.delete(land_codes_all, np.where(land_codes_all == 'JEY'))
+    if 'GGY' in land_codes_all:
+        land_codes_all= np.delete(land_codes_all, np.where(land_codes_all == 'GGY'))
             
     count = 1
 
@@ -690,7 +699,7 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
                     land_mask_index = np.where(land_regions == r)[0][0]
 
                     all_grid[np.where(mask[land_mask_index].values == True)] = index_value
-                    
+
         elif i == 0:
             
             print('Not including land territories')
@@ -698,14 +707,14 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
         if include_ocean_territories:    
             
             # find shapefile dataset indexes that correspond to the country code
-            ocean_region_indexes = np.where(df_ocean['ISO_TER1'] == c)[0]
+            ocean_region_indexes = np.where(df_ocean['ISO_SOV1'] == c)[0]
 
             for r in ocean_region_indexes:
                 
                 # checks that ocean region is in domain and not disputed territory
                 if r in ocean_regions:
                     try:
-                        np.isnan(df_ocean['ISO_TER2'][r])
+                        np.isnan(df_ocean['ISO_SOV2'][r])
                     
                         # find ocean mask index that corresponds to the dataset index
                         ocean_mask_index = np.where(ocean_regions == r)[0][0]
@@ -715,32 +724,7 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
                         print(f'Ocean region {r} is disputed territory.')
 
         count += 1
-        
-    # fill UK crown dependencies with the UK value
-    if 'GBR' in country_codes and 'IMN' in country_codes:
-        
-        print('\nAdding the Isle of Man (IMN), Guernsey (GGY) and Jersey (JEY) to the UK mask\n')
-        
-        imn_index = np.where(all_grid == np.where(np.array(country_codes) == 'IMN')[0][0]+1)
-        gbr_value = np.where(np.array(country_codes) == 'GBR')[0][0]+1
-        
-        all_grid[imn_index] = gbr_value
-        
-        
-    if 'GBR' in country_codes and 'JEY' in country_codes:
-        
-        jey_index = np.where(all_grid == np.where(np.array(country_codes) == 'JEY')[0][0]+1)
-        gbr_value = np.where(np.array(country_codes) == 'GBR')[0][0]+1
 
-        all_grid[jey_index] = gbr_value
-        
-    if 'GBR' in country_codes and 'GGY' in country_codes:
-        
-        ggy_index = np.where(all_grid == np.where(np.array(country_codes) == 'GGY')[0][0]+1)
-        gbr_value = np.where(np.array(country_codes) == 'GBR')[0][0]+1
-
-        all_grid[ggy_index] = gbr_value
-    
     if fill_gaps:
         
         all_grid = mask_fill_gaps(all_grid,lats,lons)
@@ -775,11 +759,13 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
     lat_da = xr.DataArray(lats,
                           coords = {'lat':lats},
                           dims = ('lat'),
-                          attrs = {"long_name":"latitude","units":"degrees_north"})
+                          attrs = {"long_name":"latitude","units":"degrees_north",
+                                   'info':'latitude of the centre of the grid box'})
     lon_da = xr.DataArray(lons,
                           coords = {'lon':lons},
                           dims = ('lon'),
-                          attrs = {"long_name":"longitude","units":"degrees_east"})
+                          attrs = {"long_name":"longitude","units":"degrees_east",
+                                   'info':'longitude of the centre of the grid box'})
     
 
     country_da = xr.DataArray(all_grid,
@@ -809,8 +795,6 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
     ds.attrs["domain"] = domain
     ds.attrs["Created_by"] = f"{getpass.getuser()}@bristol.ac.uk"
     ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
-    ds.attrs['Note_on_UK_total'] = ('Isle of Man, Guernsey and Jersey have been included in the UK mask'+
-                                    ' so their mask indicies will not be present in the mask')
     
     if save == True:
         if output_path is None:
@@ -819,8 +803,7 @@ def create_country_mask_eez_v12(domain,lat=None,lon=None,include_land_territorie
         ds.to_netcdf(f'{output_path}.nc')
         print(f'Output saved to {output_path}.')
         
-    return ds           
-
+    return ds
 if __name__=="__main__":
     
     ## EXAMPLE OF HOW THIS MODULE CAN BE USED ##
