@@ -1023,7 +1023,7 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
 
     ## Extract pressure values (for z and dz outputs), these are in units of hPa, so convert to Pa by *100
     dpressure = 100*np.abs(ds[pressure_column].diff(dim="layer_bound",label="lower"))
-    pressure = 100*ds[pressure_column].isel(layer_bound=slice(0,-1)) + dpressure/2.
+    pressure = 100*ds[pressure_column].isel(layer_bound=slice(0,-1)) - dpressure/2.
     
     # Limit to max_level (if specified)
     if max_level:
