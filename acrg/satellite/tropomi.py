@@ -5,6 +5,7 @@ Created on Thu Oct 31 08:30:03 2019
 
 @author: al18242
 @author: rt17603
+@author: ky20893
 
 This module provides a set of functions for processing and using TROPOMI data.
 
@@ -157,7 +158,16 @@ def preProcessFile(filename,add_corners=False):
  
     ## Add additional parameters using same naming scheme as GOSAT
     # This is to be consistent with other processes within the repository
-    tropomi_data['xch4_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
+
+    # Check the averaging kernel is increasing with altitude across the layer dimension - this is reversed in the raw S5P_RPRO files 
+    ### A much better check should be introduced at some point ###
+    # If not, reverse the averaging kernel
+    if np.nanmean(tropomi_data_aux.column_averaging_kernel, axis = (0,1,2))[0] < np.nanmean(tropomi_data_aux.column_averaging_kernel, axis = (0,1,2))[-1]:
+        # print("Reversing the averaging kernel as this is reversed in the raw TROPOMI files.")
+        tropomi_data['xch4_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel[:,:,:,::-1]
+    else:
+        print("WARNING - Check raw input files thoroughly. Averaging kernel is in the correct order for use in the retrieval, which is not expected.")
+        tropomi_data['xch4_averaging_kernel'] = tropomi_data_aux.column_averaging_kernel
     
     # Calculating the pressure weights from the dry air subcolumns
     tropomi_data['dry_air_subcolumns'] = tropomi_data_input.dry_air_subcolumns
@@ -165,8 +175,17 @@ def preProcessFile(filename,add_corners=False):
     
     # Updating the a priori profile to match to GOSAT equations so we can
     # apply the pressure weights in the same way. Multiplying by 1e9 to be in units of ppb.
-    # CURRENTLY IN INCREASING ORDER ACROSS THE LEVELS???
-    tropomi_data['ch4_profile_apriori']= 1e9*tropomi_data_input.methane_profile_apriori/tropomi_data["dry_air_subcolumns"]
+
+    # Check the ch4_profile_apriori is increasing with altitude across the layer dimension - this is reversed in the raw S5P_RPRO files 
+    ### A much better check should be introduced at some point ###
+    # If not, reverse the ch4_profile_apriori
+    if np.nanmean(tropomi_data_aux.column_averaging_kernel, axis = (0,1,2))[0] < np.nanmean(tropomi_data_aux.column_averaging_kernel, axis = (0,1,2))[-1]:
+        # print("Reversing the prior profile as this is reversed in the raw TROPOMI files.")
+        tropomi_data['ch4_profile_apriori']= 1e9*tropomi_data_input.methane_profile_apriori[:,:,:,::-1]/tropomi_data["dry_air_subcolumns"]
+    else:
+        print("WARNING - Check raw input files thoroughly. Prior profile is in the correct order for use in the retrieval, which is not expected.")
+        tropomi_data['ch4_profile_apriori']= 1e9*tropomi_data_input.methane_profile_apriori/tropomi_data["dry_air_subcolumns"]
+
     tropomi_data['ch4_profile_apriori'].attrs["units"] = "ppb"
     tropomi_data['ch4_profile_apriori'].attrs['short_description'] = "A priori mole fraction profile of atmospheric CH4."
     
