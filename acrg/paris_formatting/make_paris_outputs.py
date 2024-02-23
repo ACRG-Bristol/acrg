@@ -292,7 +292,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
     parser.add_argument("-n", "--n-files", type=int, help="number of files to process")
-    parser.add_argument("--no-conc", type=bool, action="store_true", default=False, help="if set, only process emissions and country totals..")
+    parser.add_argument("--no-conc", action="store_true", default=False, help="if set, only process emissions and country totals.")
 
     args = parser.parse_args()
 
