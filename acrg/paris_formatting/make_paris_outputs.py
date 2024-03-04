@@ -232,6 +232,7 @@ def main(
         .drop_vars(vars_to_drop)
         .rename(rename_dict)
         .pipe(add_variable_attrs, emissions_attrs)
+        .transpose("time", "latitude", "longitude", "percentile", "country")
     )
 
     emissions.attrs = make_global_attrs("flux")
