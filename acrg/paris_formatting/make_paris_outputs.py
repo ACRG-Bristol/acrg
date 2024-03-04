@@ -1,6 +1,7 @@
 """
 Script for creating PARIS outputs from RHIME inversion outputs.
 """
+
 from argparse import ArgumentParser
 from functools import partial
 from pathlib import Path
@@ -40,7 +41,11 @@ def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str]
 
 
 def get_inversion_outputs_with_samples(
-        species: str, output_file_path: str, min_model_error: float = 0.1, ndraw: int = 1000, n_files: Optional[int] = None
+    species: str,
+    output_file_path: str,
+    min_model_error: float = 0.1,
+    ndraw: int = 1000,
+    n_files: Optional[int] = None,
 ) -> list[InversionOutput]:
     """Create a list of InversionOutputs given a path to RHIME inversion outputs."""
     files = get_netcdf_files(output_file_path, filename_search=species.upper())
@@ -48,7 +53,9 @@ def get_inversion_outputs_with_samples(
     if n_files is not None:
         files = files[:n_files]
 
-    inv_outs = [InversionOutput.from_rhime(xr.open_dataset(file), min_model_error, ndraw=ndraw) for file in files]
+    inv_outs = [
+        InversionOutput.from_rhime(xr.open_dataset(file), min_model_error, ndraw=ndraw) for file in files
+    ]
 
     for inv_out in inv_outs:
         inv_out.sample_predictive_distributions()
@@ -68,42 +75,13 @@ def get_time_point(inv_out: InversionOutput, time_point: Literal["start", "midpo
 
 
 def make_country_output(
-        species: str, inv_outs: list[InversionOutput], country_files_root: str, code: Literal["alpha2", "alpha3"] = "alpha3", time_point: Literal["start", "midpoint"] = "midpoint"
+    species: str,
+    inv_outs: list[InversionOutput],
+    countries: Countries,
+    code: Literal["alpha2", "alpha3"] = "alpha3",
+    time_point: Literal["start", "midpoint"] = "midpoint",
 ) -> xr.Dataset:
     """Calculate country stats."""
-    country_files_path = Path(country_files_root)
-    countries_path = country_files_path / "country_EUROPE.nc"
-    countries_ukmo_path = country_files_path / "country-ukmo_EUROPE.nc"
-
-    paris_countries = [
-        "BELGIUM",
-        "SWITZERLAND",
-        "AUSTRIA",
-        "ITALY",
-        "NETHERLANDS",
-        "CZECHIA",
-        "POLAND",
-        "HUNGARY",
-        "SLOVAKIA",
-        "SWEDEN",
-        "FINLAND",
-    ]
-
-    paris_countries_ukmo = [
-        "BENELUX",
-        "RestEU",
-        "SpaPor",
-        "IRELAND",
-        "UNITED KINGDOM",
-        "FRANCE",
-        "GERMANY",
-        "DENMARK",
-        "NORWAY",
-    ]
-
-    countries = Countries(xr.open_dataset(countries_path), paris_countries)
-    countries.merge(Countries(xr.open_dataset(countries_ukmo_path), paris_countries_ukmo))
-
     time_func = partial(get_time_point, time_point=time_point)
 
     country_traces = [
@@ -127,7 +105,9 @@ def make_country_output(
     return country_output
 
 
-def make_flux_outputs(inv_outs: list[InversionOutput], time_point: Literal["start", "midpoint"] = "midpoint") -> xr.Dataset:
+def make_flux_outputs(
+    inv_outs: list[InversionOutput], time_point: Literal["start", "midpoint"] = "midpoint"
+) -> xr.Dataset:
     """Make flux output dataset"""
 
     # calculate stats on flux traces
@@ -153,7 +133,9 @@ def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
     conc_stats = []
     for preds in preds_list:
         var_names = ["mu_bc_posterior", "mu_bc_prior"]
-        stats = calculate_stats(preds, name="Y", chunk_dim="nmeasure", chunk_size=1, var_names=var_names, report_mode=True)
+        stats = calculate_stats(
+            preds, name="Y", chunk_dim="nmeasure", chunk_size=1, var_names=var_names, report_mode=True
+        )
 
         var_names = ["y_posterior_predictive", "y_prior_predictive"]
         stats.extend(
@@ -199,7 +181,7 @@ def rename_drop_dvs_for_template(ds: xr.Dataset, var_name: str) -> tuple[dict[st
 def main(
     species: str,
     output_file_path: str,
-    country_files_root: str,
+    country_file_path: str,
     min_model_error: float,
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
@@ -217,10 +199,13 @@ def main(
         emissions dataset and concentrations dataset
     """
     inv_outs = get_inversion_outputs_with_samples(
-        species=species, output_file_path=output_file_path, min_model_error=min_model_error, n_files=n_files)
+        species=species, output_file_path=output_file_path, min_model_error=min_model_error, n_files=n_files
+    )
 
     # make country and flux output
-    country_output = make_country_output(species, inv_outs, country_files_root)
+    countries = Countries(xr.open_dataset(country_file_path))
+
+    country_output = make_country_output(species, inv_outs, countries)
     flux_output = make_flux_outputs(inv_outs)
 
     template_file = str(paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
@@ -284,22 +269,27 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--rhime-outputs-path", type=str, help="path to RHIME outputs")
     parser.add_argument(
         "-c",
-        "--country-files-path",
+        "--country-file-path",
         type=str,
-        help="path to country files; must contain 'country_EUROPE.nc' and 'country-ukmo_EUROPE.nc'",
+        help="path to country file; e.g. '/group/acrg/chem/LPDM/countries/country_EUROPE.nc'",
     )
     parser.add_argument("-m", "--min-model-error", type=float, help="min. model error used in inversion")
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
     parser.add_argument("-n", "--n-files", type=int, help="number of files to process")
-    parser.add_argument("--no-conc", action="store_true", default=False, help="if set, only process emissions and country totals.")
+    parser.add_argument(
+        "--no-conc",
+        action="store_true",
+        default=False,
+        help="if set, only process emissions and country totals.",
+    )
 
     args = parser.parse_args()
 
     emissions, concentrations = main(
         species=args.species,
         output_file_path=args.rhime_outputs_path,
-        country_files_root=args.country_files_path,
+        country_file_path=args.country_file_path,
         min_model_error=args.min_model_error,
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
@@ -322,4 +312,4 @@ if __name__ == "__main__":
     emissions.to_netcdf(emissions_output_path)
 
     if not args.no_conc:
-        concentrations.to_netcdf(conc_output_path) # type: ignore
+        concentrations.to_netcdf(conc_output_path)  # type: ignore
