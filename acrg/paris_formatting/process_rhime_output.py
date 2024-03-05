@@ -3,7 +3,7 @@ Code to process RHIME outputs into format that is easier to
 manipulate.
 """
 from dataclasses import dataclass
-from typing import Optional, TypeVar, Union
+from typing import Any, cast, Optional, TypeVar, Union
 
 import arviz as az
 import numpy as np
@@ -21,42 +21,50 @@ from sampling import (
 
 def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
     """Take raw RHIME output and rename/drop/create variables to get dataset ready for further processing."""
+    use_bc = "bctrace" in ds.data_vars
+
+    rename_vars_dict = dict(stepnum="draw", paramnum="nlatent", measurenum="nmeasure")
+
+    rename_dict = {
+        "nsites": "nsite",
+        "nparam": "nx",
+        "xtrace": "x",
+        "sigtrace": "sigma",
+    }
+
+    if use_bc:
+        rename_vars_dict["numBC"] = "nBC"
+        rename_dict.update({"bctrace": "bc", "nBC": "nbc"})
+
     ds = (
-        ds.rename_vars(stepnum="draw", paramnum="nlatent", numBC="nBC", measurenum="nmeasure")
+        ds.rename_vars(rename_vars_dict)
         .drop_dims(["nUI", "nlatent"])
         .swap_dims(nsite="nsites", steps="draw")
-        .rename(
-            {
-                "nsites": "nsite",
-                "nparam": "nx",
-                "nBC": "nbc",
-                "xtrace": "x",
-                "bctrace": "bc",
-                "sigtrace": "sigma",
-            }
-        )
+        .rename(rename_dict)
     )
     ds["x"] = ds.x.assign_coords(nx=("nx", np.arange(ds.dims["nx"])))
-    ds["mu_bc"] = (ds.bcsensitivity @ ds.bc).transpose("draw", ...)
 
-    ds = ds[
-        [
-            "Yobs",
-            "Yerror",
-            "Ytime",
-            "x",
-            "bc",
-            "sigma",
-            "mu_bc",
-            "siteindicator",
-            "sigmafreqindex",
-            "sitenames",
-            "fluxapriori",
-            "basisfunctions",
-            "xsensitivity",
-            "bcsensitivity",
-        ]
+    if use_bc:
+        ds["mu_bc"] = (ds.bcsensitivity @ ds.bc).transpose("draw", ...)
+
+    data_vars = [
+        "Yobs",
+        "Yerror",
+        "Ytime",
+        "x",
+        "sigma",
+        "siteindicator",
+        "sigmafreqindex",
+        "sitenames",
+        "fluxapriori",
+        "basisfunctions",
+        "xsensitivity",
     ]
+
+    if use_bc:
+        data_vars.extend(["bc", "mu_bc", "bcsensitivity"])
+
+    ds = ds[data_vars]
 
     return ds
 
@@ -120,6 +128,7 @@ InvOut = TypeVar("InvOut", bound="InversionOutput")  # for classmethod
 @dataclass
 class InversionOutput:
     """dataclass to hold the quantities we need to calculate outputs."""
+
     obs: xr.DataArray
     site_coordinates: xr.Dataset
     flux: xr.DataArray
@@ -131,7 +140,9 @@ class InversionOutput:
     times: xr.DataArray
 
     @classmethod
-    def from_rhime(cls: type[InvOut], ds: xr.Dataset, min_model_error: float, ndraw: Optional[int] = None) -> InvOut:
+    def from_rhime(
+        cls: type[InvOut], ds: xr.Dataset, min_model_error: float, ndraw: Optional[int] = None
+    ) -> InvOut:
         """Make InversionOutput object from RHIME output dataset."""
         flux = ds.fluxapriori
         site_coordinates = ds[["sitelons", "sitelats"]]
@@ -142,14 +153,21 @@ class InversionOutput:
         basis = get_xr_dummies(ds_clean.basisfunctions, cat_dim="nx")
 
         model_kwargs = get_sampling_kwargs_from_rhime_outs(ds)
-        model = get_rhime_model(
-            ds_clean,
-            xprior_dims="nx",
-            bcprior_dims="nbc",
-            sigprior_dims=("nsigma_site", "nsigma_time"),
-            min_model_error=min_model_error,
-            **model_kwargs  # type: ignore
+        model_kwargs = cast(dict[str, Any], model_kwargs)  # adding other types of values next...
+        model_kwargs.update(
+            dict(
+                xprior_dims="nx",
+                bcprior_dims="nbc",
+                sigprior_dims=("nsigma_site", "nsigma_time"),
+            )
         )
+
+        use_bc = "bc" in ds_clean.data_vars
+        if not use_bc:
+            model_kwargs["bcprior"] = None
+            model_kwargs["bcprior_dims"] = None
+
+        model = get_rhime_model(ds_clean, min_model_error=min_model_error, use_bc=use_bc, **model_kwargs)  # type: ignore
 
         if ndraw is not None:
             trace = make_idata_from_rhime_outs(ds_clean, ndraw=ndraw)

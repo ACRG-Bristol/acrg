@@ -107,13 +107,14 @@ def get_sampling_kwargs_from_rhime_outs(
 def get_rhime_model(
     rhime_outs_ds: xr.Dataset,
     xprior: PriorArgs,
-    bcprior: PriorArgs,
     sigprior: PriorArgs,
     xprior_dims: Union[str, tuple[str, ...]],
-    bcprior_dims: Union[str, tuple[str, ...]],
     sigprior_dims: Union[str, tuple[str, ...]],
+    bcprior_dims: Union[None, str, tuple[str, ...]] = None,
+    bcprior: Optional[PriorArgs] = None,
     min_model_error: float = 20.0,
     coord_dim: str = "nmeasure",
+    use_bc: bool = True,
 ) -> pm.Model:
     """Make RHIME model wih model error given by multiplicative scaling of pollution events
     plus constant minimum value.
@@ -128,6 +129,7 @@ def get_rhime_model(
         sigprior_dims: coordinate dims from rhime_outs_ds to use
         min_model_error: constant minimum model error
         coord_dim: name of dimension used for coordinates of observations
+        use_bc: if False, run without boundary conditions (e.g. if baseline subtracted from observations)
 
     Returns:
         PyMC model for RHIME model with given priors and minimum model error.
@@ -136,17 +138,24 @@ def get_rhime_model(
     for dim in [xprior_dims, bcprior_dims, sigprior_dims]:
         if isinstance(dim, str):
             coords_dict[dim] = rhime_outs_ds[dim]
+        elif dim is None:
+            continue
         else:
             for d in dim:
                 coords_dict[d] = rhime_outs_ds[d]
 
     with pm.Model(coords=coords_dict) as model:
         x = parse_prior("x", xprior, dims=xprior_dims)
-        bc = parse_prior("bc", bcprior, dims=bcprior_dims)
         sigma = parse_prior("sigma", sigprior, dims=sigprior_dims)
 
-        mu_bc = pm.Deterministic("mu_bc", pt.dot(rhime_outs_ds.bcsensitivity.values, bc), dims=coord_dim)
-        mu = pt.dot(rhime_outs_ds.xsensitivity.values, x) + mu_bc
+        if use_bc:
+            bc = parse_prior("bc", bcprior, dims=bcprior_dims)
+
+        if use_bc:
+            mu_bc = pm.Deterministic("mu_bc", pt.dot(rhime_outs_ds.bcsensitivity.values, bc), dims=coord_dim)
+            mu = pt.dot(rhime_outs_ds.xsensitivity.values, x) + mu_bc
+        else:
+            mu = pt.dot(rhime_outs_ds.xsensitivity.values, x)
 
         mult_error = (
             np.abs(pt.dot(rhime_outs_ds.xsensitivity.values, x))
