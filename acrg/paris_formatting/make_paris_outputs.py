@@ -172,7 +172,7 @@ def rename_drop_dvs_for_template(ds: xr.Dataset, var_name: str) -> tuple[dict[st
             else:
                 rename_dict[str(dv)] = f"percentile_{var_name}_total_prior"
         else:
-            if str(dv)[:-5].endswith("apost"):
+            if str(dv).endswith("apost"):
                 rename_dict[str(dv)] = f"{var_name}_total_posterior"
             else:
                 rename_dict[str(dv)] = f"{var_name}_total_prior"
