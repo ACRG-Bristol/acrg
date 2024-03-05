@@ -58,7 +58,7 @@ def calculate_stats(
     chunk_dim: str,
     chunk_size: int = 10,
     var_names: Optional[list[str]] = None,
-    report_mode: bool = False,
+    report_mode: bool = True,
     add_bc_suffix: bool = False,
 ) -> list[xr.Dataset]:
     output = []
