@@ -78,9 +78,9 @@ def calculate_stats(
         else:
             stats = [
                 ds[var_name].mean("draw").rename(f"{name}{suffix}"),
-                calc_mode(ds[var_name].dropna(dim="draw").chunk({chunk_dim: chunk_size}), sample_dim="draw")
-                .compute()
-                .rename(f"{name}{suffix}_mode"),
+                # calc_mode(ds[var_name].dropna(dim="draw").chunk({chunk_dim: chunk_size}), sample_dim="draw")
+                # .compute()
+                # .rename(f"{name}{suffix}_mode"),
             ]
         stats.append(
             make_quantiles(ds[var_name].dropna(dim="draw"), sample_dim="draw").rename(f"q{name}{suffix}")
