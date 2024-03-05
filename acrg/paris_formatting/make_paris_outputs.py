@@ -125,7 +125,7 @@ def make_flux_outputs(
     return xr.concat(flux_stats, dim="time")
 
 
-def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
+def make_concentration_outputs(inv_outs: list[InversionOutput], report_mode: bool = False) -> xr.Dataset:
     """Extract y and mu_bc traces, calculate stats, and combine along time axis."""
     predictive_vars = ["y", "mu_bc"]
     preds_list = [inv_out.get_trace_dataset(var_names=predictive_vars) for inv_out in inv_outs]
@@ -144,7 +144,7 @@ def make_concentration_outputs(inv_outs: list[InversionOutput]) -> xr.Dataset:
                 name="Y",
                 chunk_dim="nmeasure",
                 var_names=var_names,
-                report_mode=True,
+                report_mode=report_mode,
                 add_bc_suffix=True,
             )
         )
@@ -185,6 +185,7 @@ def main(
     min_model_error: float,
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
+    report_mf_mode: bool = False,
 ) -> tuple[xr.Dataset, Optional[xr.Dataset]]:
     """Create formatted PARIS emissions and concentrations datasets.
 
@@ -239,7 +240,7 @@ def main(
 
     # make concentration outputs
     if return_concentrations is True:
-        conc_output = make_concentration_outputs(inv_outs)
+        conc_output = make_concentration_outputs(inv_outs, report_mode=report_mf_mode)
         y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
 
         conc_attrs = get_data_var_attrs(
@@ -284,6 +285,13 @@ if __name__ == "__main__":
         default=False,
         help="if set, only process emissions and country totals.",
     )
+    parser.add_argument(
+        "--mode",
+        action="store_true",
+        default=False,
+        help="if set, report mode for concentrations/mole fractions (by default, mean is reported).",
+    )
+
 
     args = parser.parse_args()
 
@@ -294,6 +302,7 @@ if __name__ == "__main__":
         min_model_error=args.min_model_error,
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
+        report_mf_mode=args.mode,
     )
 
     if args.output_tag:
