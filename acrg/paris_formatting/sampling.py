@@ -134,6 +134,9 @@ def get_rhime_model(
     Returns:
         PyMC model for RHIME model with given priors and minimum model error.
     """
+    if bcprior is None or bcprior_dims is None:
+        use_bc = False
+
     coords_dict = {coord_dim: rhime_outs_ds[coord_dim]}
     for dim in [xprior_dims, bcprior_dims, sigprior_dims]:
         if isinstance(dim, str):

@@ -127,15 +127,20 @@ def make_flux_outputs(
 
 def make_concentration_outputs(inv_outs: list[InversionOutput], report_mode: bool = False) -> xr.Dataset:
     """Extract y and mu_bc traces, calculate stats, and combine along time axis."""
-    predictive_vars = ["y", "mu_bc"]
+    use_bc = "mu_bc" in inv_outs[0].trace["prior"].data_vars
+
+    predictive_vars = ["y", "mu_bc"] if use_bc else ["y"]
     preds_list = [inv_out.get_trace_dataset(var_names=predictive_vars) for inv_out in inv_outs]
 
     conc_stats = []
     for preds in preds_list:
-        var_names = ["mu_bc_posterior", "mu_bc_prior"]
-        stats = calculate_stats(
-            preds, name="Y", chunk_dim="nmeasure", chunk_size=1, var_names=var_names, report_mode=True
-        )
+        if use_bc:
+            var_names = ["mu_bc_posterior", "mu_bc_prior"]
+            stats = calculate_stats(
+                preds, name="Y", chunk_dim="nmeasure", chunk_size=1, var_names=var_names, report_mode=report_mode, add_bc_suffix=True,
+            )
+        else:
+            stats = []
 
         var_names = ["y_posterior_predictive", "y_prior_predictive"]
         stats.extend(
@@ -145,7 +150,6 @@ def make_concentration_outputs(inv_outs: list[InversionOutput], report_mode: boo
                 chunk_dim="nmeasure",
                 var_names=var_names,
                 report_mode=report_mode,
-                add_bc_suffix=True,
             )
         )
 
