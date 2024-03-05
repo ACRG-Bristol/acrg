@@ -78,7 +78,7 @@ def parse_prior(name: str, prior_params: PriorArgs, **kwargs) -> TensorVariable:
 
 def get_sampling_kwargs_from_rhime_outs(
     rhime_outs: xr.Dataset, min_model_error: Optional[float] = None
-) -> dict[str, Union[float, PriorArgs]]:
+) -> dict[str, Union[None, float, PriorArgs]]:
     """Make dict of arguments to use with `get_rhime_model` given a RHIME output file
     and minimum model error.
 
@@ -93,12 +93,19 @@ def get_sampling_kwargs_from_rhime_outs(
             prior[k] = v if k == "pdf" else float(v)
         return prior
 
-    result: dict[str, Union[float, PriorArgs]]
+    result: dict[str, Union[None, float, PriorArgs]]
     result = {
         "xprior": get_prior_from_attrs(rhime_outs.attrs["Emissions Prior"]),
-        "bcprior": get_prior_from_attrs(rhime_outs.attrs["BCs Prior"]),
         "sigprior": get_prior_from_attrs(rhime_outs.attrs["Model error Prior"]),
     }
+
+    try:
+        bcprior = get_prior_from_attrs(rhime_outs.attrs["BCs Prior"])
+    except KeyError:
+        bcprior = None
+
+    result["bcprior"] = bcprior
+
     if min_model_error:
         result["min_model_error"] = min_model_error
     return result
