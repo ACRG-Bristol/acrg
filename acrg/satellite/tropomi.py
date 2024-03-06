@@ -1046,8 +1046,8 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     
     # Limit to max_level (if specified)
     if max_level:
-        dpressure = dpressure.isel({"layer_bound":slice(0,max_level+1)})
-        pressure = pressure.isel({"layer_bound":slice(0,max_level+1)})
+        dpressure = dpressure.isel({"layer_bound":slice(0,max_level)})
+        pressure = pressure.isel({"layer_bound":slice(0,max_level)})
     else:
         max_level = dpressure["layer_bound"].size
     
@@ -1085,6 +1085,7 @@ def write_tropomi_NAME(ds,site,max_level=None,max_points=50,
     ds_name = ds_name.assign({"dz":dpressure})
     
     ## Unravel (flatten) time x layer_bound onto one dimension
+
     temp_dim = "stack"
     ds_name = ds_name.stack({temp_dim:("time","layer_bound")})
     ds_name = ds_name.reset_index(temp_dim)
