@@ -244,19 +244,32 @@ def main(
     if return_concentrations is True:
         conc_output = make_concentration_outputs(inv_outs, report_mode=report_mf_mode)
         y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
+        y_obs_err = xr.concat([inv_out.get_obs_err() for inv_out in inv_outs], dim="time")
 
         conc_attrs = get_data_var_attrs(
-            str(paris_formatting_path / "netcdf_template_concentrations_bm_edits.txt")
+            str(paris_formatting_path / "PARIS_Lagrangian_inversion_concentration_EUROPE.cdl")
         )
 
         units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
 
+        # renaming as in latest .cdl file from Stephan
+        rename_dict_conc = {"probs": "percentile", "site": "nsite", "Yerror": "uYobs", "qYapriori": "qYmod"}
+        vars_to_drop_conc = ["qYapostBC", "qYaprioriBC"]
+
+        # merge and process names, attrs
         concentrations = (
-            xr.merge([y_obs, conc_output])
-            .pipe(convert_time_to_unix_epoch, "1s")
-            .rename(probs="quantile")
+            xr.merge([y_obs, y_obs_err, conc_output])
+            .pipe(convert_time_to_unix_epoch, "1D")
+            .drop_vars(vars_to_drop_conc)
+            .rename(rename_dict_conc)
             .pipe(add_variable_attrs, conc_attrs, units)
+            .transpose("time", "percentile", "nsite")
         )
+
+        # add sitenames variable and remove nsite coordinate
+        concentrations = concentrations.assign(sitenames = ("nsite", concentrations.nsite.values.astype("|S3")))
+        concentrations["sitenames"].attrs["long_name"] = "identifier of site"
+        del concentrations["nsite"]
 
         concentrations.attrs = make_global_attrs("conc")
     else:

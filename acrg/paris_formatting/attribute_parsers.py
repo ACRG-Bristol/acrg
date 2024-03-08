@@ -77,7 +77,7 @@ def make_global_attrs(
 def add_variable_attrs(
     ds: xr.Dataset, attrs: dict[str, dict[str, Any]], units: Optional[float] = None
 ) -> xr.Dataset:
-    """Update data variables and coordinates of Dataset based on attributes dicitonary.
+    """Update data variables and coordinates of Dataset based on attributes dictionary.
 
     If `units` provided, data variables with "units" attribute will be rescaled by `units`. This is to convert e.g.
     from 1e-9 mol/mol to mol/mol.

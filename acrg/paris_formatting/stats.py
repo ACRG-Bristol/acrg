@@ -6,7 +6,7 @@ import xarray as xr
 
 
 def make_quantiles(
-    da: xr.DataArray, probs: Sequence[float] = [0.025, 0.159, 0.841, 0.975], sample_dim="steps"
+    da: xr.DataArray, probs: Sequence[float] = [0.159, 0.841], sample_dim="steps"
 ) -> xr.DataArray:
     """Return xr.DataArray of quantiles computed over dimension `sample_dim`.
 

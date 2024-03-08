@@ -130,6 +130,7 @@ class InversionOutput:
     """dataclass to hold the quantities we need to calculate outputs."""
 
     obs: xr.DataArray
+    obs_err: xr.DataArray
     site_coordinates: xr.Dataset
     flux: xr.DataArray
     basis: xr.DataArray
@@ -176,6 +177,7 @@ class InversionOutput:
 
         return cls(
             obs=ds_clean.Yobs,
+            obs_err=ds_clean.Yerror,
             site_coordinates=site_coordinates,
             flux=flux,
             basis=basis,
@@ -240,6 +242,18 @@ class InversionOutput:
         By default, `nmeasure` is converted to `site` and `time`.
         """
         result = nmeasure_to_site_time_data_array(self.obs, self.site_indicators, self.site_names, self.times)
+
+        if unstack_nmeasure:
+            return result.unstack("nmeasure")
+
+        return result
+    
+    def get_obs_err(self, unstack_nmeasure: bool = True) -> xr.DataArray:
+        """Return y observations errors.
+
+        By default, `nmeasure` is converted to `site` and `time`.
+        """
+        result = nmeasure_to_site_time_data_array(self.obs_err, self.site_indicators, self.site_names, self.times)
 
         if unstack_nmeasure:
             return result.unstack("nmeasure")
