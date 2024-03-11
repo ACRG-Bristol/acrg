@@ -74,10 +74,11 @@ def parsePrior(name, prior_params, shape = ()):
     params = {x: prior_params[x] for x in prior_params if x != "pdf"}
     return functionDict[pdf.lower()](name, shape=shape, **params)
 
-def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+def inferpymc3(Hx, Hbc, Y, Y_upper, error, siteindicator, sigma_freq_index,
                xprior={"pdf":"lognormal", "mu":1, "sd":1},
                bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+               y_upperprior={"pdf":"uniform", "lower":0, "upper":3}, 
                nit=2.5e5, burn=50000, tune=1.25e5, nchain=2, 
                sigma_per_site = True, 
                offsetprior={"pdf":"normal", "mu":0, "sd":1},
@@ -181,17 +182,19 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         x = parsePrior("x", xprior, shape=nx)
         xbc = parsePrior("xbc", bcprior, shape=nbc)
         sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
+        y_scale = parsePrior("yupp", y_upperprior, shape = 1)
+
         if add_offset:
             offset = parsePrior("offset", offsetprior, shape=nsites-1) 
             offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
         else:
-            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) 
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + (1-y_scale)*Y_upper
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
-        step2 = pm.Slice(vars=[sig])
+        step2 = pm.Slice(vars=[sig,y_scale])
         
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
                            step=[step1,step2], progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
@@ -199,6 +202,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
         bcouts = trace.get_values(xbc, burn=burn)[0:int((nit)-burn)]
         sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
+        y_scaleouts = trace.get_values(y_scale, burn=burn)[0:int((nit)-burn)]
         
         #Check for convergence
         gelrub = pm.rhat(trace)['x'].max()
@@ -214,14 +218,16 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T)   
         else:
             YBCtrace = np.dot(Hbc.T,bcouts.T)
-        Ytrace = np.dot(Hx.T,outs.T) + YBCtrace
-        
-        return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
 
-def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+        Ytrace = np.dot(Hx.T,outs.T) + YBCtrace + ((1-y_scaleouts)*Y_upper).T
+        Y_uppertrace = (y_scaleouts*Y_upper).T
+        
+        return outs, bcouts, sigouts, y_scaleouts, Ytrace, YBCtrace, Y_uppertrace, convergence, step1, step2
+
+def inferpymc3_postprocessouts(xouts,bcouts, sigouts, y_scaleouts, convergence, 
+                               Hx, Hbc, Y, Y_upper, error, Ytrace, YBCtrace, Y_uppertrace,
                                step1, step2, 
-                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                               xprior, bcprior, sigprior, y_upperprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                country_unit_prefix,
@@ -369,6 +375,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)
         YaprioriBC = np.sum(Hbc, axis=0)
         Ymod = np.mean(Ytrace, axis=1)
+        Y_uppermod = np.mean(Y_uppertrace, axis=1)
         Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
         Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
@@ -471,8 +478,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
     
         #Make output netcdf file
         outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
+                            'Y_upper':(['nmeasure'], Y_upper),
                             'Yerror' :(['nmeasure'], error),                          
-                            'Ytime':(['nmeasure'],Ytime),
+                            'Ytime':(['nmeasure'], Ytime),
                             'Yapriori':(['nmeasure'],Yapriori),
                             'Ymodmean':(['nmeasure'], Ymod), 
                             'Ymod95':(['nmeasure','nUI'], Ymod95),
@@ -480,13 +488,15 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                             'YaprioriBC':(['nmeasure'],YaprioriBC),                            
                             'YmodmeanBC':(['nmeasure'], YmodBC),
                             'Ymod95BC':(['nmeasure','nUI'], Ymod95BC),
-                            'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
+                            'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),  
+                            'Y_uppermodmean':(['nmeasure'], Y_uppermod),                   
                             'xtrace':(['steps','nparam'], xouts),
-                            'bctrace':(['steps','nBC'],bcouts),
+                            'bctrace':(['steps','nBC'], bcouts),
                             'sigtrace':(['steps', 'nsigma_site', 'nsigma_time'], sigouts),
+                            'y_uppertrace':(['steps'],np.squeeze(y_scaleouts.T)),
                             'siteindicator':(['nmeasure'],siteindicator),
                             'sigmafreqindex':(['nmeasure'],sigma_freq_index),
-                            'sitenames':(['nsite'],sites),
+                            'sitenames':(['nsite'], sites),
                             'sitelons':(['nsite'],site_lon),
                             'sitelats':(['nsite'],site_lat),
                             'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
@@ -577,6 +587,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.attrs['Emissions Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in xprior.items()])[:-1]
         outds.attrs['Model error Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in sigprior.items()])[:-1]
         outds.attrs['BCs Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in bcprior.items()])[:-1]
+        outds.attrs['Y upper level Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in y_upperprior.items()])[:-1]
         if add_offset:
             outds.attrs['Offset Prior'] = ''.join(['{0},{1},'.format(k, v) for k,v in offsetprior.items()])[:-1]
         outds.attrs['Creator'] = getpass.getuser()

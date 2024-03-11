@@ -42,6 +42,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+                   y_upperprior={"pdf":"uniform", "lower":0, "upper":3},
                    offsetprior={"pdf":"normal", "mu":0, "sd":1},
                    nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
@@ -196,12 +197,16 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         with open(filename, 'rb') as file:
             fp_data = pickle.load(file)
 
+        Y_upper = fp_data[sites[0]][0].Y_upper
+
     else:
     
         data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                             average = meas_period, data_directory=obs_directory,
                             keep_missing=keep_missing,inlet=inlet, instrument=instrument,
                             max_level=max_level)
+
+
         fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
                                             HiTRes = HiTRes,
                                             height = fpheight,
@@ -213,6 +218,9 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                             species_footprint = species_footprint)
         
         for site in sites:
+            # prior upper level factor variable
+            Y_upper = data[site][0].mf_prior_upper_level_factor.values
+
             for j in range(len(data[site])):
                 if len(data[site][j].mf) == 0:
                     print("No observations for %s to %s for %s" % (start_date, end_date, site))
@@ -259,7 +267,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                 fp_data[site] = fp_data[site].dropna(dim='time')
             
         #apply named filters to the data
-        fp_data = name.filtering(fp_data, filters)
+        if filters is not None:
+            fp_data = name.filtering(fp_data, filters)
         
         for si, site in enumerate(sites):     
             fp_data[site].attrs['Domain']=domain
@@ -300,13 +309,14 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
     #Run Pymc3 inversion
-    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
+    xouts, bcouts, sigouts, y_scaleouts, Ytrace, YBCtrace, Y_uppertrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, Y_upper, error, siteindicator, sigma_freq_index,
+           xprior,bcprior, sigprior, y_upperprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
+
     #Process and save inversion output
-    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, y_scaleouts, convergence, 
+                               Hx, Hbc, Y, Y_upper, error, Ytrace, YBCtrace, Y_uppertrace, 
                                step1, step2, 
-                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                               xprior, bcprior, sigprior, y_upperprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                country_unit_prefix,
