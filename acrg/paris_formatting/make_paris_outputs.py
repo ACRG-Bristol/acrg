@@ -254,7 +254,10 @@ def main(
 
         # renaming as in latest .cdl file from Stephan
         rename_dict_conc = {"probs": "percentile", "site": "nsite", "Yerror": "uYobs", "qYapriori": "qYmod"}
-        vars_to_drop_conc = ["qYapostBC", "qYaprioriBC"]
+        if "qYapostBC" in conc_output.data_vars:
+            vars_to_drop_conc = ["qYapostBC", "qYaprioriBC"]
+        else:
+            vars_to_drop_conc = []
 
         # merge and process names, attrs
         concentrations = (
