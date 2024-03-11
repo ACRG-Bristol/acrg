@@ -84,7 +84,7 @@ def add_variable_attrs(
     """
     for k, v in attrs.items():
         if k in ds.data_vars:
-            if units is not None and "units" in v and "mol/mol" in v["units"]:
+            if units is not None and "units" in v and v["units"].count("mol") == 2:
                 ds[k] = units * ds[k]
             ds[k].attrs = v
         elif k in ds.coords:
