@@ -1485,7 +1485,7 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         search_species = "CH4____"
 
     # analysis_mode = "OFFL"
-    #### TEMPORARY CHANGE TO RPRO BECAUSE OF UNIDENTIFIED PROBLEM WITH IF STATEMENT BELOW ####
+    # In new version of SRON product using RPRO is recommended where both OFFL and RPRO are available for same date.
     analysis_mode = "RPRO"
     search_str = f"S5P_{analysis_mode}_L2__{search_species}*.nc"
 
@@ -1498,9 +1498,9 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
         
         if len(filenames) == 0:
             current_analysis_mode = analysis_mode
-            analysis_mode = "RPRO"
+            analysis_mode = "OFFL"
             if verbose:
-                print(f"Couldn't find {current_analysis_mode} files, looking for {analysis_mode} (reprocessed)")
+                print(f"Couldn't find {current_analysis_mode} files, looking for {analysis_mode} (offline)")
             search_str_alt = search_str.replace(current_analysis_mode,analysis_mode)
             filenames = gosat_fn.extract_files(directory,search_str_alt,start,end)
         
