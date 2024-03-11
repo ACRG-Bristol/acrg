@@ -21,6 +21,7 @@ being annoying it will also slow down your run due to unnecessary forking.
 """
 import numpy as np
 import shutil
+import pickle
 
 import acrg.name.name as name
 import acrg.obs as getobs
@@ -35,7 +36,7 @@ data_path = Paths.data
 
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname,
-                   met_model = None,
+                   met_model = None, premade_fp_data_filepath = None, premade_fp_data_filename = None,
                    species_footprint = None,
                    HiTRes = False,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
@@ -184,72 +185,84 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     keep_missing = True if HiTRes else False
     if verbose and species_footprint is not None:
         print(f'species_footprint: {species_footprint}')
-    
-    data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
-                         average = meas_period, data_directory=obs_directory,
-                          keep_missing=keep_missing,inlet=inlet, instrument=instrument,
-                          max_level=max_level)
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
-                                        HiTRes = HiTRes,
-                                        height = fpheight,
-                                        calc_timeseries = False,
-                                        fp_directory = fp_directory,
-                                        bc_directory = bc_directory,
-                                        flux_directory = flux_directory,
-                                        emissions_name = emissions_name,
-                                        species_footprint = species_footprint)
-    
-    for site in sites:
-        for j in range(len(data[site])):
-            if len(data[site][j].mf) == 0:
-                print("No observations for %s to %s for %s" % (start_date, end_date, site))
-    if sites[0] not in fp_all.keys():
-        print("No footprints for %s to %s" % (start_date, end_date))
-        return
-    
-    print('Running for %s to %s' % (start_date, end_date))
-    
-    #If site contains measurement errors given as repeatability and variability, 
-    #use variability to replace missing repeatability values, then drop variability
-    for site in sites:
-        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
-            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
-                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
-            fp_all[site] = fp_all[site].drop_vars("mf_variability")
 
-    #Add measurement variability in averaging period to measurement error
-    if averagingerror:
-        fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
-                                   meas_period, inlet=inlet, instrument=instrument,
-                                   obs_directory=obs_directory)
-    
-    #Create basis function using quadtree algorithm if needed
-    if quadtree_basis:
-        if fp_basis_case != None:
-            print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
-            print("Assuming you want to use %s " % fp_basis_case)
-        else:
-            tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
-                          start_date, domain, species, outputname,
-                          nbasis=nbasis)
-            fp_basis_case= "quadtree_"+species+"-"+outputname
-            basis_directory = tempdir
+    if premade_fp_data_filepath is not None:
+
+        filename = premade_fp_data_filepath + premade_fp_data_filename + '_' + start_date + '.pkl'
+
+        print(f"Using premade footprints data merge file: {filename}")
+
+        # Open the pickle file in binary read mode and load the object
+        with open(filename, 'rb') as file:
+            fp_data = pickle.load(file)
+
     else:
-        basis_directory = basis_directory
     
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
-                                  calc_timeseries = True)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case)
-    
-    if HiTRes:
-        for site in sites:
-            fp_data[site] = fp_data[site].dropna(dim='time')
+        data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
+                            average = meas_period, data_directory=obs_directory,
+                            keep_missing=keep_missing,inlet=inlet, instrument=instrument,
+                            max_level=max_level)
+        fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
+                                            HiTRes = HiTRes,
+                                            height = fpheight,
+                                            calc_timeseries = False,
+                                            fp_directory = fp_directory,
+                                            bc_directory = bc_directory,
+                                            flux_directory = flux_directory,
+                                            emissions_name = emissions_name,
+                                            species_footprint = species_footprint)
         
-    #apply named filters to the data
-    fp_data = name.filtering(fp_data, filters)
+        for site in sites:
+            for j in range(len(data[site])):
+                if len(data[site][j].mf) == 0:
+                    print("No observations for %s to %s for %s" % (start_date, end_date, site))
+        if sites[0] not in fp_all.keys():
+            print("No footprints for %s to %s" % (start_date, end_date))
+            return
+        
+        print('Running for %s to %s' % (start_date, end_date))
+        
+        #If site contains measurement errors given as repeatability and variability, 
+        #use variability to replace missing repeatability values, then drop variability
+        for site in sites:
+            if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
+                fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
+                    fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
+                fp_all[site] = fp_all[site].drop_vars("mf_variability")
+
+        #Add measurement variability in averaging period to measurement error
+        if averagingerror:
+            fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
+                                    meas_period, inlet=inlet, instrument=instrument,
+                                    obs_directory=obs_directory)
+        
+        #Create basis function using quadtree algorithm if needed
+        if quadtree_basis:
+            if fp_basis_case != None:
+                print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
+                print("Assuming you want to use %s " % fp_basis_case)
+            else:
+                tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
+                            start_date, domain, species, outputname,
+                            nbasis=nbasis)
+                fp_basis_case= "quadtree_"+species+"-"+outputname
+                basis_directory = tempdir
+        else:
+            basis_directory = basis_directory
+        
+        fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
+                                    calc_timeseries = True)
+        fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case)
     
-    for si, site in enumerate(sites):     
-        fp_data[site].attrs['Domain']=domain
+        if HiTRes:
+            for site in sites:
+                fp_data[site] = fp_data[site].dropna(dim='time')
+            
+        #apply named filters to the data
+        fp_data = name.filtering(fp_data, filters)
+        
+        for si, site in enumerate(sites):     
+            fp_data[site].attrs['Domain']=domain
     
     #Get inputs ready
     error = np.zeros(0)
