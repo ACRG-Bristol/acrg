@@ -42,7 +42,7 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
         .swap_dims(nsite="nsites", steps="draw")
         .rename(rename_dict)
     )
-    ds["x"] = ds.x.assign_coords(nx=("nx", np.arange(ds.dims["nx"])))
+    ds["x"] = ds.x.assign_coords(nx=("nx", ds.basisfunctions.to_series().sort_values().unique()))
 
     if use_bc:
         ds["mu_bc"] = (ds.bcsensitivity @ ds.bc).transpose("draw", ...)
