@@ -197,7 +197,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         with open(filename, 'rb') as file:
             fp_data = pickle.load(file)
 
-        Y_upper = fp_data[sites[0]][0].Y_upper
+        Y_upper = fp_data[sites[0]].Y_upper.values
 
     else:
     

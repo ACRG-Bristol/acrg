@@ -193,8 +193,8 @@ def inferpymc3(Hx, Hbc, Y, Y_upper, error, siteindicator, sigma_freq_index,
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
-        step1 = pm.NUTS(vars=[x,xbc])
-        step2 = pm.Slice(vars=[sig,y_scale])
+        step1 = pm.NUTS(vars=[x,xbc,y_scale])
+        step2 = pm.Slice(vars=[sig])
         
         trace = pm.sample(nit, tune=int(tune), chains=nchain,
                            step=[step1,step2], progressbar=verbose, cores=nchain)#step=pm.Metropolis())#  #target_accept=0.8,
