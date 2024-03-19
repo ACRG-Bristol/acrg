@@ -19,7 +19,7 @@ from attribute_parsers import (
     convert_time_to_unix_epoch,
 )
 from countries import Countries
-from array_ops import sparse_xr_dot
+from array_ops import sparse_xr_dot 
 from process_rhime_output import InversionOutput
 from stats import calculate_stats
 
@@ -179,12 +179,19 @@ def rename_drop_dvs_for_template(ds: xr.Dataset, var_name: str) -> tuple[dict[st
 
     return rename_dict, vars_to_drop
 
+def shift_measurement_time_to_midpoint(ds: xr.Dataset, period: str = "4h") -> np.ndarray:
+    """Adjust `time` coordinate of concentrations to represent half averaging "period".
+    """
+    time_midpoint = ds['time'].astype('datetime64[ns]') + np.timedelta64(int(period[:-1]) , period[-1]) / 2
+
+    return time_midpoint
 
 def main(
     species: str,
     output_file_path: str,
     country_file_path: str,
     min_model_error: float,
+    avr_obs_period: str,
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
     report_mf_mode: bool = False,
@@ -196,6 +203,7 @@ def main(
         output_file_path: path to directory containing RHIME outputs
         country_files_root: path to directory containing country files
         min_model_error: the minimum model error used with the inversion
+        avr_obs_period: the averaging period for measurements used in inversion
         n_files: number of output files to process. This is mainly to keep runs small for testing.
 
     Returns:
@@ -231,7 +239,7 @@ def main(
     # merge and process names, attrs
     emissions = (
         xr.merge([flux_output, country_output * 1e-3])  # convert g/yr to kg/yr
-        .pipe(convert_time_to_unix_epoch, "1D")
+        .pipe(convert_time_to_unix_epoch, "1s")
         .drop_vars(vars_to_drop)
         .rename(rename_dict)
         .pipe(add_variable_attrs, emissions_attrs)
@@ -245,6 +253,11 @@ def main(
         conc_output = make_concentration_outputs(inv_outs, report_mode=report_mf_mode)
         y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
         y_obs_err = xr.concat([inv_out.get_obs_err() for inv_out in inv_outs], dim="time")
+
+        # shift time coordinate to represent half averaging period
+        conc_output["time"] = shift_measurement_time_to_midpoint(conc_output, avr_obs_period)
+        y_obs["time"] = shift_measurement_time_to_midpoint(y_obs, avr_obs_period)
+        y_obs_err["time"] = shift_measurement_time_to_midpoint(y_obs_err, avr_obs_period)
 
         conc_attrs = get_data_var_attrs(
             str(paris_formatting_path / "PARIS_Lagrangian_inversion_concentration_EUROPE.cdl")
@@ -262,7 +275,7 @@ def main(
         # merge and process names, attrs
         concentrations = (
             xr.merge([y_obs, y_obs_err, conc_output])
-            .pipe(convert_time_to_unix_epoch, "1D")
+            .pipe(convert_time_to_unix_epoch, "1s")
             .drop_vars(vars_to_drop_conc)
             .rename(rename_dict_conc)
             .pipe(add_variable_attrs, conc_attrs, units)
@@ -294,6 +307,7 @@ if __name__ == "__main__":
         help="path to country file; e.g. '/group/acrg/chem/LPDM/countries/country_EUROPE.nc'",
     )
     parser.add_argument("-m", "--min-model-error", type=float, help="min. model error used in inversion")
+    parser.add_argument("-p", "--avr-obs-period", type=str, help="averaging period for measurements used in inversion")
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
     parser.add_argument("-n", "--n-files", type=int, help="number of files to process")
@@ -318,6 +332,7 @@ if __name__ == "__main__":
         output_file_path=args.rhime_outputs_path,
         country_file_path=args.country_file_path,
         min_model_error=args.min_model_error,
+        avr_obs_period=args.avr_obs_period,
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
         report_mf_mode=args.mode,

@@ -128,9 +128,13 @@ def get_country_code(
     # if no matches are found, return x
     return x
 
-
 def convert_time_to_unix_epoch(x: DataSetOrArray, units: str = "1s") -> DataSetOrArray:
-    """Convert `time` coordinate of xarray Dataset or DataArray to number of "units" since
+    """Convert `time` coordinate of xarray Dataset or DataArray to number of "units" since 
     1 Jan 1970 (the "UNIX epoch").
     """
-    return x.assign_coords(time=(pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta(units))
+    if units == "1s":
+        time_converted = (pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta(units) / (24 * 3600)
+    else:
+        time_converted = (pd.DatetimeIndex(x.time) - pd.Timestamp("1970-01-01")) // pd.Timedelta(units)
+
+    return x.assign_coords(time=time_converted)
