@@ -31,7 +31,7 @@ def main(toml_path: Union[str, Path]) -> None:
     def make_name(x: dict) -> str:
         return "_".join([f"{k}_{v}" for k, v in x.items() if v is not None])
 
-    names_flat = [setup["out_prefix"] + make_name(x) for x in flatten(names_dict)]
+    names_flat = [make_name(x) for x in flatten(names_dict)]
 
     dates_df = make_dates_df(**conf["dates"])
 
@@ -65,7 +65,7 @@ def main(toml_path: Union[str, Path]) -> None:
         ini_out_path = out_path / f"{job_name}.ini"
         updated_ini = update_ini_file(ini_template_path, new_kwargs=kwargs)
 
-        with open(ini_out_path, "r") as f:
+        with open(ini_out_path, "w") as f:
             f.writelines(updated_ini)
 
         # make slurm script
