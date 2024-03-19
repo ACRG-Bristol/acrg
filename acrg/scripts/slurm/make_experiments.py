@@ -43,7 +43,7 @@ def main(toml_path: Union[str, Path]) -> None:
 
     for i, (name, kwargs) in enumerate(zip(names_flat, kwargs_flat)):
         # set up directory to hold ini. slurm scipt, config, results, logs
-        job_name = setup["job_name"] + "_" + name
+        job_name = setup["job_name"]
         out_name = setup["out_prefix"] + "_" + name
 
         out_path = job_root_path / out_name
