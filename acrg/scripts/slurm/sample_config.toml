@@ -1,0 +1,64 @@
+# config file for creating experiments
+# toml table layout:
+
+[dates]
+year = 2018
+n_periods = 5
+frequency = "annual"
+
+[setup]
+ini_file = "/group/chem/acrg/PARIS_inversions/hfc134a/annual_synthetic_no_bc/config.ini"
+job_root = "/group/chem/acrg/PARIS_inversions/hfc134a"
+python_venv = "/user/work/bm13805/.jax_venv"
+job_name = "synth_test"
+out_prefix = "annual_synthetic_no_bc"
+
+[slurm]
+n_cpu = 4
+time = "02:30:00"
+mem = "40gb"
+
+[kwargs]
+nuts_sampler = "numpyro"
+nbasis = [100, 250, 500]
+basis_algorithm = ["quadtree", "weighted"]
+
+[[kwargs.xprior]]
+pdf = "truncatednormal"
+mu = 1.0
+sigma = 1.0
+lower = 0.0
+
+[[kwargs.xprior]]
+pdf = "expon"
+lam = 1.0
+
+[[kwargs.xprior]]
+pdf = "gamma"
+mu = 1.0
+sigma = 1.5
+
+[[kwargs.xprior]]
+pdf = "lognormal"
+mu = -0.3466
+sigma = 0.8326
+
+[[kwargs.xprior]]
+pdf = "lognormal"
+mu = -0.5893
+sigma = 1.0857
+
+[[kwargs.xprior]]
+pdf = "lognormal"
+mu = -0.8047
+sigma = 1.2686
+
+[names]
+xprior = [
+          "truncnorm",
+          "exponential",
+          "gamma_mean_1_stdev_1point5",
+          "lognormal_mean_1_stdev_1",
+          "lognormal_mean_1_stdev_1point5",
+          "lognormal_mean_1_stdev_2"
+         ]

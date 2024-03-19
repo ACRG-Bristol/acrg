@@ -11,33 +11,24 @@ import csv
 import json
 from pathlib import Path
 import textwrap
-from typing import Optional, Union
+from typing import Literal, Optional
 
 import pandas as pd
 
+from helpers import make_dates_df
 
 # where should jobs be stored?
 DEFAULT_JOB_ROOT = Path.home()
 DEFAULT_INVERSIONS_PATH = Path.home() / "openghg_inversions"
 
 
-def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **kwargs) -> pd.DataFrame:
-    start = pd.Timestamp(year, initial_month, 1)
-    dr = pd.date_range(start=start, end=(start + pd.DateOffset(months=n_months)), freq="M")
-
-    # dr contains last days of each month; we want the end dates to be the first day of the next month
-    end_dates = dr + pd.DateOffset(days=1)
-    start_dates = end_dates - pd.DateOffset(months=1)
-
-    array_task_id = list(range(1, n_months + 1))
-    result = pd.DataFrame(
-        data={"array_task_id": array_task_id, "start_date": start_dates, "end_date": end_dates}
-    ).set_index("array_task_id")
+def create_array_config_df(year: int, n_periods: int, frequency: Literal["annual", "monthly"] = "annual", initial_month: int = 1, **kwargs) -> pd.DataFrame:
+    result = make_dates_df(year, n_periods, frequency, initial_month)
 
     if kwargs:
         for k, v in kwargs.items():
-            result[k] = [v] * n_months
-            result[k + "_code"] = [list(range(1, len(v) + 1))] * n_months
+            result[k] = [v] * n_periods
+            result[k + "_code"] = [list(range(1, len(v) + 1))] * n_periods
 
         kw_cols = list(kwargs.keys())
         kw_encoding = [k + "_code" for k in kw_cols]
@@ -56,6 +47,7 @@ def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **k
         result = result.drop(columns=(kw_cols + kw_encoding))
 
     result.index = result.index + 1  # slurm array jobs start at 1
+    result = result.rename_axis("array_task_id")
 
     return result
 
@@ -71,16 +63,22 @@ def make_script(
     mem: str = "20gb",
     conda_env: Optional[str] = None,
     python_venv: Optional[str] = None,
-    n_months: Optional[int] = None,
+    n_array_jobs: Optional[int] = None,
+    n_kwargs: Optional[int] = None,
 ) -> str:
     """Make script to run array job on SLURM.
 
     TODO: need to set output paths for .out, .err, and .ini
     """
-    # Get number of jobs in array
-    with open(config_file, "r") as f:
-        keywords = f.readline()[:-1].split("\t")  # remove trailing \n and split
-        n_array_jobs = len(f.readlines())
+    if n_array_jobs is None or n_kwargs is None:
+        # Get number of jobs in array
+        with open(config_file, "r") as f:
+            keywords = f.readline()[:-1].split("\t")  # remove trailing \n and split
+            #
+            if n_array_jobs is None:
+                n_array_jobs = len(f.readlines())
+            if n_kwargs is None:
+                n_kwargs = len(keywords)
 
     # Make strings for each section of wrapper script
     header_str = f"""\
@@ -140,41 +138,61 @@ def make_script(
     echo "Using commit $git_commit on branch $git_branch in repo $inversions_path" >> {log_path / "git_info.txt"}
     """
 
-    # set up parameters to be passed to run_hbmcmc
-    param_str = f"""\
-    # Specify the path to the config file
-    config={config_file}
-    nkwargs={len(keywords)}
+    if n_kwargs >= 3:
+        # set up parameters to be passed to run_hbmcmc
+        param_str = f"""\
+        # Specify the path to the config file
+        config={config_file}
 
-    # Extract start and end dates for the current $SLURM_ARRAY_TASK_ID
-    start=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $2}}' $config)
-    end=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $3}}' $config)
+        # Extract start and end dates for the current $SLURM_ARRAY_TASK_ID
+        start=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $2}}' $config)
+        end=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $3}}' $config)
 
-    # Keyword arg handling
-    if [ $nkwargs -gt 3 ]; then
-        # Extract keyword args for the current $SLURM_ARRAY_TASK_ID
-        kwargs=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $4}}' $config)
+        # Keyword arg handling
+        nkwargs={n_kwargs}
 
-        # Extract output dir name corresponding to keyword args
-        child_out_dir=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $5}}' $config)
-    fi
-    """
+        if [ $nkwargs -gt 3 ]; then
+            # Extract keyword args for the current $SLURM_ARRAY_TASK_ID
+            kwargs=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $4}}' $config)
 
-    # run the inversion
-    command_str = f"""\
+            # Extract output dir name corresponding to keyword args
+            child_out_dir=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $5}}' $config)
+        fi
+        """
 
-    # Print a message with current $SLURM_ARRAY_TASK_ID, start date, and end date
-    echo "Running array task ${{SLURM_ARRAY_TASK_ID}}: start date ${{start}}, end date is ${{end}}."
+        # run the inversion
+        command_str = f"""\
 
-    # Check if there are kwargs
-    if [ $nkwargs -le 3 ]; then
-        python ${{inversions_path}}/openghg_inversions/hbmcmc/run_hbmcmc.py "${{start}}" "${{end}}" -c {ini_file} --output-path={out_dir}
-    else
+        # Print a message with current $SLURM_ARRAY_TASK_ID, start date, and end date
+        echo "Running array task ${{SLURM_ARRAY_TASK_ID}}: start date ${{start}}, end date is ${{end}}."
+
         echo "Keyword args: ${{kwargs}}"
         echo "Output directory name: ${{child_out_dir}}"
         python ${{inversions_path}}/openghg_inversions/hbmcmc/run_hbmcmc.py "${{start}}" "${{end}}" -c {ini_file} --kwargs="${{kwargs}}" --output-path="{out_dir}/${{child_out_dir}}"
-    fi
-    """
+        """
+
+
+    else:
+        # set up parameters to be passed to run_hbmcmc
+        param_str = f"""\
+        # Specify the path to the config file
+        config={config_file}
+
+        # Extract start and end dates for the current $SLURM_ARRAY_TASK_ID
+        start=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $2}}' $config)
+        end=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $3}}' $config)
+        """
+
+        # run the inversion
+        command_str = f"""\
+
+        # Print a message with current $SLURM_ARRAY_TASK_ID, start date, and end date
+        echo "Running array task ${{SLURM_ARRAY_TASK_ID}}: start date ${{start}}, end date is ${{end}}."
+
+        # Run inversion
+        python ${{inversions_path}}/openghg_inversions/hbmcmc/run_hbmcmc.py "${{start}}" "${{end}}" -c {ini_file}
+        """
+
 
     # remove leading whitespace and combine sections
     sections = [header_str, env_str, env_log_str, branch_str, param_str, command_str]
@@ -211,8 +229,9 @@ if __name__ == "__main__":
 
     # dates for inversion
     parser.add_argument("-y", "--year", type=int)
-    parser.add_argument("-n", "--nmonths", type=int)
+    parser.add_argument("-n", "--n-periods", type=int)
     parser.add_argument("--initial-month", type=int, default=1)
+    parser.add_argument("-f", "--freq", type=str, default="annual", help="frequency: 'annual' (default) or 'monthly'")
 
     # keyword arguments
     parser.add_argument(
@@ -235,9 +254,9 @@ if __name__ == "__main__":
     # create config TSV
     kwargs = args["kwargs"] if args["kwargs"] else {}
     array_config_df = create_array_config_df(
-        args["year"],
-        args["nmonths"],
-        args["initial_month"],
+        year=args["year"],
+        n_periods=args["n_periods"],
+        initial_month=args["initial_month"],
         **kwargs,
     )
     config_path = out_path / "config.txt"
