@@ -87,7 +87,7 @@ def main(toml_path: Union[str, Path]) -> None:
 
         with open(out_path / "readme.txt", "w") as f:
             f.write("Experiment using parameters:\n\n")
-            for k, v in kwargs:
+            for k, v in kwargs.items():
                 f.write(f"{k}: {v}\n")
 
         print(f"Array config file and inversion wrapper for experiment {i} written to {out_path}.")

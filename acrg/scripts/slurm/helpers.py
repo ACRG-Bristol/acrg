@@ -117,11 +117,8 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
         for line in f:
             if m := kv_pat.match(line):
                 if (k := m.group(2)) in kwargs_copy:
-                    print(line)
                     v = kwargs_copy.pop(k)
                     new_line = make_kv_string(k, v)
-                    print(new_line)
-                    print()
                     conf_lines.append(new_line)
                 else:
                     conf_lines.append(line)
