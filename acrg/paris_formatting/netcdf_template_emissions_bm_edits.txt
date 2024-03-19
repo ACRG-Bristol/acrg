@@ -1,0 +1,96 @@
+File name: <inversion system>_<transport_model>_<domain>_<compound>_<time resolution>.nc
+
+dimensions:
+        time = <number of times of flux estimates> ;
+#       for all times that the inversions provides
+#       variable by gas (CH4, N2O: 2 files monthly and yearly averages; F-gases: 1 file yearly)        
+        probs = <user defined> ;
+	lon = ;
+	lat = ;
+#	Use defined domains. For now EUROPE (complete domain). Fill uncovered ares with FillValue
+        country = 17 ;
+#	Minimum list of countries to include here: IRELAND, UK, FRANCE, BELGIUM, NETHERLANDS, GERMANY, DENMARK, SWITZERLAND, AUSTRIA, ITALY, CZECHIA, POLAND, HUNGARY, SLOVAKIA, NORWAY, SWEDEN, FINLAND 
+#	ISO 3166-1 alpha-2: IE, GB, FR, BE, NL, DE, DK, CH, AT, IT, CZ, PL, HU, SK, NO, SE, FI
+
+#       Add Lux
+
+variables:
+        double time(time) ;
+                time:long_name = "time" ;
+                time:units = "seconds since 1970-01-01 00:00:00" ;
+                time:calendar = "proleptic_gregorian" ;
+	float quantile(probs) ;
+		quantile:FillValue = NaN ;
+		quantile:units = "-" ;
+		quantile:long_name = "quantile"
+#	typical values could be: 0.025, 0.169, 0.841, 0.975)
+	double lon(lon) ;
+                lon:FillValue = NaN ;
+                lon:units = "degree_east" ;
+                lon:long_name = "longitude_of_grid_cell_centre" ;
+	double lat(lat) ;
+                lat:FillValue = NaN ;
+                lat:units = "degree_north" ;
+                lat:long_name = "latitude_of_grid_cell_centre" ;
+        string country(country) ;
+                country:long_name = "country name" ;
+#	I suggest to use the 2-digit ISO identifiers here: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+
+#       change everything to quantile
+        float fluxapriori(time, lat, lon) ;
+                fluxapriori:FillValue = NaN ;
+                fluxapriori:units = "mol/m2/s" ;
+                fluxapriori:long_name = "apriori_flux" ;
+        float qfluxapriori(probs, time, lat, lon) ;
+                qfluxapriori:FillValue = NaN ;
+                qfluxapriori:units = "mol/m2/s" ;
+                qfluxapriori:long_name = "quantiles_of_apriori_flux" ;
+                qfluxapriori:comment = "shape of pdf" ;
+        float fluxapost(time, lat, lon) ;
+                fluxapost:FillValue = NaN ;
+                fluxapost:units = "mol/m2/s" ;
+                fluxapost:long_name = "aposteriori_flux" ;
+        float qfluxapost(probs, time, lat, lon) ;
+                qfluxapost:FillValue = NaN ;
+                qfluxapost:units = "mol/m2/s" ;
+                qfluxapost:long_name = "quantiles_of_aposteriori_flux" ;
+
+        float countryapriori(time, country) ;
+                countryapriori:FillValue = NaN ;
+                countryapriori:units = "kg" ;
+                countryapriori:long_name = "apriori_flux_per_country" ;
+        float qcountryapriori(probs, time, country) ;
+                qcountryapriori:FillValue = NaN ;
+                qcountryapriori:units = "kg" ;
+                qcountryapriori:long_name = "quantiles_of_apriori_flux_per_country" ;
+        float countryapost(time, country) ;
+                countryapost:FillValue = NaN ;
+                countryapost:units = "kg" ;
+                countryapost:long_name = "aposteriori_flux_per_country" ;
+        float qcountryapost(probs, time, country) ;
+                qcountryapost:FillValue = NaN ;
+                qcountryapost:units = "kg" ;
+                qcountryapost:long_name = "quantiles_of_aposteriori_flux_per_country" ;
+        float covcountryapost(time, country, country) ;
+                covcountryapost:FillValue = NaN ;
+                covcountryapost:units = "kg2" ;
+                covcountryapost:long_name = "spatial_covariance_of_aposteriori_flux_per_country" ;
+#	Optional
+
+
+// global attributes:
+                :title = "Flux estimates: spatially-resolved and by country" ;
+                :institution = "Empa, Duebendorf, Switzerland" ;
+                :author = "stephan.henne@empa.ch" ;
+                :source = "processed FLEXPART(9.1)-ECMWF HRES model output" ;
+                :transport_model = "FLEXPART" ;
+                :transport_model_version = "FLEXPART IFS (version 9.1_Empa)" ;
+                :met_model = "ECMWFHRES" ;
+                :species = "inert" ;
+                :domain = "EUROPE" ;
+                :inversion_method = "Empa Bayesian" ; 
+                :apriori_description = "EDGDAR 7.0" ;
+                :publication_acknowledgement = "Please acknowledge Empa in any publication that uses this data." ;
+                :history = "2023-11-18 10:35:12 saved from R;" ;
+                :comment = "" ;
+
