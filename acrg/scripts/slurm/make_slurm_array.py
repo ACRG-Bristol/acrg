@@ -17,8 +17,8 @@ import pandas as pd
 
 
 # where should jobs be stored?
-DEFAULT_JOB_ROOT = Path("/user/work/bm13805")
-DEFAULT_INVERSIONS_PATH = Path("/user/work/bm13805/openghg_inversions")
+DEFAULT_JOB_ROOT = Path.home()
+DEFAULT_INVERSIONS_PATH = Path.home() / "openghg_inversions"
 
 
 def create_array_config_df(year: int, n_months: int, initial_month: int = 1, **kwargs) -> pd.DataFrame:
