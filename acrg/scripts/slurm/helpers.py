@@ -33,6 +33,7 @@ def flatten(x: dict) -> list[dict]:
         if isinstance(x, str) or not isinstance(x, Iterable):
             return [x]
         return x
+
     vals = map(make_iterable, vals)
     vals_prod = product(*vals)  # create tuples containing all combinations of values for each key
 
@@ -40,7 +41,11 @@ def flatten(x: dict) -> list[dict]:
 
 
 def make_dates_df(
-        year: int, n_periods: int, frequency: Literal["annual", "monthly"] = "annual", initial_month: int = 1, array_job_id: bool = True,
+    year: int,
+    n_periods: int,
+    frequency: Literal["annual", "monthly"] = "annual",
+    initial_month: int = 1,
+    array_job_id: bool = True,
 ) -> pd.DataFrame:
     """Create a DataFrame containing `n_periods` start and end dates starting at the given
     `year` and initial month (`initial_month` defaults to 1).
@@ -71,7 +76,13 @@ def make_dates_df(
     start_dates = pd.date_range(start, end, inclusive="left", freq=freq)
     end_dates = start_dates + offset
 
-    return pd.DataFrame({"start_date": start_dates, "end_date": end_dates})
+    dates_df = pd.DataFrame({"start_date": start_dates, "end_date": end_dates})
+
+    if array_job_id:
+        dates_df.index +=1
+        dates_df = dates_df.rename_axis("array_job_id")
+
+    return dates_df
 
 
 def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = None) -> list[str]:
@@ -90,6 +101,7 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
     Returns:
         list of lines of the updated ini file.
     """
+
     def make_kv_string(k, v):
         if isinstance(v, (dict, list, tuple)):
             return f"{k} = {json.dumps(v)}"
@@ -103,7 +115,7 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
 
     with open(ini_file, "r") as f:
         for line in f:
-            if (m := kv_pat.match(line)):
+            if m := kv_pat.match(line):
                 if (k := m.group(2)) in kwargs_copy:
                     print(line)
                     v = kwargs_copy.pop(k)
