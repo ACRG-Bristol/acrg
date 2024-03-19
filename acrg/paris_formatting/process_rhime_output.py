@@ -42,7 +42,7 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
         .swap_dims(nsite="nsites", steps="draw")
         .rename(rename_dict)
     )
-    ds["x"] = ds.x.assign_coords(nx=("nx", np.arange(ds.dims["nx"])))
+    ds["x"] = ds.x.assign_coords(nx=("nx", ds.basisfunctions.to_series().sort_values().unique()))
 
     if use_bc:
         ds["mu_bc"] = (ds.bcsensitivity @ ds.bc).transpose("draw", ...)
@@ -151,7 +151,7 @@ class InversionOutput:
         ds_clean = clean_rhime_output(ds)
         site_indicators = ds_clean.siteindicator
 
-        basis = get_xr_dummies(ds_clean.basisfunctions, cat_dim="nx")
+        basis = get_xr_dummies(ds_clean.basisfunctions, cat_dim="nx", categories=ds_clean.nx.values)
 
         model_kwargs = get_sampling_kwargs_from_rhime_outs(ds)
         model_kwargs = cast(dict[str, Any], model_kwargs)  # adding other types of values next...

@@ -80,6 +80,7 @@ def make_country_output(
     countries: Countries,
     code: Literal["alpha2", "alpha3"] = "alpha3",
     time_point: Literal["start", "midpoint"] = "midpoint",
+    report_mode: bool = True,
 ) -> xr.Dataset:
     """Calculate country stats."""
     time_func = partial(get_time_point, time_point=time_point)
@@ -92,7 +93,7 @@ def make_country_output(
     country_traces_merged = xr.concat(country_traces, dim="time")
 
     country_output = xr.merge(
-        calculate_stats(country_traces_merged, "country", chunk_dim="country", chunk_size=1)
+        calculate_stats(country_traces_merged, "country", chunk_dim="country", chunk_size=1, report_mode=report_mode)
     )
 
     # TODO: calculate stats for composite regions e.g. BE-NE-LX
@@ -106,13 +107,13 @@ def make_country_output(
 
 
 def make_flux_outputs(
-    inv_outs: list[InversionOutput], time_point: Literal["start", "midpoint"] = "midpoint"
+        inv_outs: list[InversionOutput], time_point: Literal["start", "midpoint"] = "midpoint", report_mode: bool = True,
 ) -> xr.Dataset:
     """Make flux output dataset"""
 
     # calculate stats on flux traces
     traces = [inv_out.get_trace_dataset(convert_nmeasure=False, var_names="x") for inv_out in inv_outs]
-    stats = [xr.merge(calculate_stats(trace, "flux", chunk_dim="nx")) for trace in traces]
+    stats = [xr.merge(calculate_stats(trace, "flux", chunk_dim="nx", report_mode=report_mode)) for trace in traces]
 
     time_func = partial(get_time_point, time_point=time_point)
 
@@ -195,6 +196,7 @@ def main(
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
     report_mf_mode: bool = False,
+    report_em_mode: bool = True,
 ) -> tuple[xr.Dataset, Optional[xr.Dataset]]:
     """Create formatted PARIS emissions and concentrations datasets.
 
@@ -205,6 +207,9 @@ def main(
         min_model_error: the minimum model error used with the inversion
         avr_obs_period: the averaging period for measurements used in inversion
         n_files: number of output files to process. This is mainly to keep runs small for testing.
+        return_concentrations: if False, only country and flux outputs are returned. (None is returned for concentrations.)
+        report_mf_mode: if True, use mode for concentration prior/posterior predictives (i.e. for y and y BC)
+        report_em_mode: if True, use mode for country and flux prior/posterior totals
 
     Returns:
         emissions dataset and concentrations dataset
@@ -216,8 +221,8 @@ def main(
     # make country and flux output
     countries = Countries(xr.open_dataset(country_file_path))
 
-    country_output = make_country_output(species, inv_outs, countries)
-    flux_output = make_flux_outputs(inv_outs)
+    country_output = make_country_output(species, inv_outs, countries, report_mode=report_em_mode)
+    flux_output = make_flux_outputs(inv_outs, report_mode=report_em_mode)
 
     template_file = str(paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
     emissions_attrs = get_data_var_attrs(template_file, species)
@@ -323,6 +328,12 @@ if __name__ == "__main__":
         default=False,
         help="if set, report mode for concentrations/mole fractions (by default, mean is reported).",
     )
+    parser.add_argument(
+            "--em-mean",
+            action="store_true",
+            default=False,
+            help="if set, report mean for country and flux totals (by default, mode is reported).",
+        )
 
 
     args = parser.parse_args()
@@ -336,6 +347,7 @@ if __name__ == "__main__":
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
         report_mf_mode=args.mode,
+        report_em_mode=(not args.em_mean),
     )
 
     if args.output_tag:
