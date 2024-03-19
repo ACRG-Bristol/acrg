@@ -63,6 +63,8 @@ def main(toml_path: Union[str, Path]) -> None:
 
         # write ini file with updated kwargs
         ini_out_path = out_path / f"{job_name}.ini"
+        kwargs["outputpath"] = str(out_path)
+        kwargs["outputname"] = job_name
         updated_ini = update_ini_file(ini_template_path, new_kwargs=kwargs)
 
         with open(ini_out_path, "w") as f:

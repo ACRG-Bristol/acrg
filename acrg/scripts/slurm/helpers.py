@@ -104,10 +104,10 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
 
     def make_kv_string(k, v):
         if isinstance(v, (dict, list, tuple)):
-            return f"{k} = {json.dumps(v)}"
+            return f"{k} = {json.dumps(v)}\n"
         elif isinstance(v, str):
-            return f'{k} = "{v}"'
-        return f"{k} = {v}"
+            return f'{k} = "{v}"\n'
+        return f"{k} = {v}\n"
 
     kv_pat = re.compile(r'([;#\s])*(\w+)\s*=\s*([-\[\] "/,\w]+)')
     kwargs_copy = new_kwargs.copy() if new_kwargs else {}
