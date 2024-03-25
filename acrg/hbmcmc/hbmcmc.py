@@ -259,7 +259,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                 fp_data[site] = fp_data[site].dropna(dim='time')
             
         #apply named filters to the data
-        fp_data = name.filtering(fp_data, filters)
+        if filters is not None: 
+            fp_data = name.filtering(fp_data, filters)
         
         for si, site in enumerate(sites):     
             fp_data[site].attrs['Domain']=domain
