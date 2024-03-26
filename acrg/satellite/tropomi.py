@@ -34,6 +34,7 @@ from pathlib import Path
 from collections import OrderedDict
 import acrg.grid.regrid_xesmf as regrid
 import acrg.satellite.gosat as gosat_fn
+from acrg.convert import convert_lons_0360
 
 #from acrg_satellite.gosat import latlon_filter,extract_files,find_network
 
@@ -191,7 +192,7 @@ def preProcessFile(filename,add_corners=False):
     
     tropomi_data = tropomi_data.assign_coords({'latitude_bounds':tropomi_data_geo['latitude_bounds']})
     tropomi_data = tropomi_data.assign_coords({'longitude_bounds':tropomi_data_geo['longitude_bounds']})
-    
+
     if add_corners:
         #calculate the meshgrid of corner points in the scan grid for further processing
         #lat, lon = cornerGrid(tropomi_data_geo)
@@ -1323,6 +1324,14 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
         # the chain.
         data = preProcessFile(filename, add_corners=True)
 
+        # if longitude bounds are on 0-360 range
+        # set tropomi longitude variables to be between 0-360
+        if lon_bounds[-1] > 180:
+            print("Longitude bounds are on 0-360 range, converting data longitudes to 0-360 so data over 180 line is not cut off.")
+            data["longitude"] = convert_lons_0360(data["longitude"])
+            data['longitude_bounds'] = convert_lons_0360(data['longitude_bounds'])
+            data["lon_corners"] = convert_lons_0360(data["lon_corners"])
+
         # Make delta_time into a coordinate. This will be used
         # if splitting my time increments and also means that
         # these values do not get turned into NaT values if using
@@ -1516,6 +1525,13 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
             print(f"Processing input file: {filename}")
             data = preProcessFile(filename)
 
+            # if longitude bounds are on 0-360 range
+            # set tropomi longitude variables to be between 0-360
+            if lon_bounds[-1] > 180:
+                print("Longitude bounds are on 0-360 range, converting data longitudes to 0-360 so data over 180 line is not cut off.")
+                data["longitude"] = convert_lons_0360(data["longitude"])
+                data['longitude_bounds'] = convert_lons_0360(data['longitude_bounds'])
+                data["lon_corners"] = convert_lons_0360(data["lon_corners"])
 
             # Making delta_time into a coordinate. This will be used
             # if splitting by time increments and also means that
