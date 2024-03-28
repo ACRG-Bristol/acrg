@@ -94,6 +94,7 @@ import acrg.obs as acrg_obs
 from .barometric import pressure_at_height
 from acrg.countrymask import domain_volume
 from acrg.config.paths import Paths
+from acrg.convert import convert_lons_0360
 
 
 data_path = Paths.data
@@ -2929,6 +2930,12 @@ def gosat_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         print("========================")
         print('\nProcessing file: {0}\n'.format(filename))
     gosat = xray.open_dataset(filename)
+
+    # if longitude bounds are on 0-360 range
+    # set gosat longitude variables to be between 0-360
+    if lon_bounds[-1] > 180:
+        print("Longitude bounds are on 0-360 range, converting data longitudes to 0-360 so data over 180 line is not cut off.")
+        gosat["longitude"] = convert_lons_0360(gosat["longitude"])
     
     gosat = gosat_add_coords(gosat)
     gosat = gosat.sortby(axis)
