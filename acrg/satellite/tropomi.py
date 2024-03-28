@@ -1330,7 +1330,8 @@ def tropomi_regrid(start_date,end_date,lat_bounds,lon_bounds,coord_bin,
             print("Longitude bounds are on 0-360 range, converting data longitudes to 0-360 so data over 180 line is not cut off.")
             data["longitude"] = convert_lons_0360(data["longitude"])
             data['longitude_bounds'] = convert_lons_0360(data['longitude_bounds'])
-            data["lon_corners"] = convert_lons_0360(data["lon_corners"])
+            if "lon_corners" in data:
+                data["lon_corners"] = convert_lons_0360(data["lon_corners"])
 
         # Make delta_time into a coordinate. This will be used
         # if splitting my time increments and also means that
@@ -1531,7 +1532,8 @@ def tropomi_process(site,start_date,end_date,lat_bounds,lon_bounds,
                 print("Longitude bounds are on 0-360 range, converting data longitudes to 0-360 so data over 180 line is not cut off.")
                 data["longitude"] = convert_lons_0360(data["longitude"])
                 data['longitude_bounds'] = convert_lons_0360(data['longitude_bounds'])
-                data["lon_corners"] = convert_lons_0360(data["lon_corners"])
+                if "lon_corners" in data:
+                    data["lon_corners"] = convert_lons_0360(data["lon_corners"])
 
             # Making delta_time into a coordinate. This will be used
             # if splitting by time increments and also means that
