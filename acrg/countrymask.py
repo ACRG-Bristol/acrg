@@ -808,6 +808,294 @@ def create_countrymask_eez_v12(domain,lat=None,lon=None,include_land_territories
         print(f'Output saved to {output_path}.')
         
     return ds
+
+def create_countrymask_eez_fractional(domain,countries,include_land_territories=True,
+                            include_ocean_territories=True,fill_gaps=True,
+                            fp_directory=None,lat_lim=None,lon_lim=None,output_on_domain_grid=True,
+                            output_path=None):
+    """
+    
+    Creates a mask for all countries within the domain (or lat/lon bounds).
+    Uses Natural Earth 10m land datasets and Admin_0_map_units datasets
+    for specifiying country and ocean boundaries.
+    Option to include EEZ (Exclusive Economic Zones e.g. marine 
+    territories) is True by default. Remaining areas are given a value of 0.
+    
+    Creates a separate binary and fractional map for each country, and stacks these
+    into one array.
+    
+    Based on code written by the Wengingen University Group.
+    
+    Args:
+        domain (str):
+            Used to extract the lat/lons over the whole domain.
+        countries (list of str):
+            Country codes to create masks for. E.g. ['GBR','FRA','CHE']
+        include_land_territories (bool):
+            If True, include land territories for all countries in the 
+            country mask.
+        include_ocean_territories (bool):
+            If True, include areas within EEZ (marine territories) in the 
+            country mask.
+        fill_gaps (bool):
+            Fills in gaps between the land and ocean masks that are missed.
+        fp_directory (str, optional) :
+            Base footprint directory to use to extract domain values. Uses footprint directory on data path
+            by default and expects sub-directories of domain name.
+        lat_lim (list of float):
+            min and max latitude ranges over which to make the country mask
+        lon_lim (list of float):
+            min and max longitude ranges over which to make the country mask
+        out_path (str) (optional):
+            Path and name to save mask to. If None, does not save dataset.
+    Returns:
+        ds (xarray dataset):
+            Country mask dataset.
+    """
+    
+    # We will use the function below to make a binary (0/1) mask as well as a fractional mask (0.0-1.0). 
+    # Note that the inputs lons/lats assume 2D arrays with lower-left corners of yur gridboxes. Irregular grids are
+    # allowed too, as long as they describe quadripoles (shapes with four corners)
+                
+    # assume lons and lats as 2D-arrays from meshgrid or so, as lower-left corners of gridboxes
+    def get_mask(geomlist, lonv, latv,lon_lim=None,lat_lim=None):  
+
+        #stime = time.time()
+        if lonv.any(): # grid given
+            
+            mask=np.zeros(lonv.shape)
+            frac=np.zeros(lonv.shape)
+
+        else: # assume global    
+
+            mask=np.zeros((180,360,))
+            frac=np.zeros((180,360,))
+
+            lons= -180+np.arange(360)        
+            lats= -90+np.arange(180)
+            
+            lonv, latv = np.meshgrid(lons, lats) 
+            
+        for j in range(latv.shape[0]):
+            #if lat_lim is not None:
+                #if np.logical_and(np.any(latv[j,:]) > lat_lim[0],np.any(latv[j,:] < lat_lim[1])):
+                jj = latv[j,0]
+                
+                if j+1 < latv.shape[0]:
+                    dj = latv[j+1,0]-jj   # delta latitude from latitude array, repeat last dj value for final row from previous row
+                
+                jjp1 = jj+dj  # upper corner of polygon
+                    
+                for i in range(lonv.shape[1]):
+                    #if lon_lim is not None:
+                    #    if np.logical_and(np.any(lonv[:,i] > lon_lim[0]),np.any(lonv[0,:i] < lon_lim[1])):
+                        ii = lonv[0,i]
+                        if i+1 < lonv.shape[1]:  
+                            di = lonv[0,i+1]-ii  # delta longitude from longitude array, repeat last di value for final column from last column
+                            
+                        iip1 = ii+di  # right longitude of polygon
+
+                        lat_point_list = [jj,jj,jjp1,jjp1,jj]
+                        lon_point_list = [ii,iip1,iip1,ii,ii]
+
+                        this_box = Polygon(zip(lon_point_list, lat_point_list))
+                        
+                        for geom in geomlist:
+                            if this_box.intersects(geom):
+                                frac[j,i] += (this_box.intersection(geom).area/this_box.area)  # fractional mask
+    
+                            #switched to 0.5 from 0., so if > 50% of cell is covered by country, then it's selected - don't do this any more as it adds gaps on coasts
+                            mask[j,i] = max(mask[j,i] , frac[j,i] > 0.)  # binary mask 1/0 based on ANY overlap with geometry, be careful for double overlap, to maximize at 1.0 still...
+
+        #etime = time.time() - stime
+        #print(f'Full time = {etime}')   
+        return mask, frac
+    
+    lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
+    
+    lats_diff = [lats[i+1]-lats[i] for i in range(lats.shape[0]-1)]
+    lons_diff = [lons[i+1]-lons[i] for i in range(lons.shape[0]-1)]
+    
+    #shift lats and lons from the centre of the cell to the lower left
+    lats = lats - np.round(np.mean(lats_diff)/2,3)
+    lons = lons - np.round(np.mean(lons_diff)/2,3)
+
+    if lat_lim is not None:
+        lats_mask = lats[np.logical_and(lats > lat_lim[0],lats < lat_lim[1])]
+    else:
+        lats_mask = lats
+    if lon_lim is not None:
+        lons_mask = lons[np.logical_and(lons > lon_lim[0],lons < lon_lim[1])]
+    else:
+        lons_mask = lons
+
+    xv,yv = np.meshgrid(lons_mask,lats_mask)
+    
+    if include_land_territories == True:
+        print('Extracting land definitions')
+
+        shpfilename_land = shapereader.natural_earth('10m','cultural','admin_0_map_units')
+
+        df_land = gpd.read_file(shpfilename_land)
+
+    if include_ocean_territories == True:
+        print('Extracting marine definitions')
+
+        data_path = '/home/h02/aramsden/data'
+        shpfilename_ocean = os.path.join(data_path,'World_shape_databases/MarineRegions/eez_v12.shp')
+
+        df_ocean = gpd.read_file(shpfilename_ocean)
+        
+    country_names = np.array([])
+        
+    for i,c in enumerate(countries):
+        
+        print(f'\nSearching for {c} regions...')
+        
+        country_names = np.hstack((country_names,df_land.iloc[np.where(df_land['ADM0_A3'] == c)[0][0]]['ADMIN']))
+        
+        list_poly = [i.geometry for i in df_land.iloc if i['ADM0_A3'] == c]
+        list_poly_ocean = [i.geometry for i in df_ocean.iloc if i['ISO_SOV1'] == c and pd.isna(i['ISO_SOV2'])]
+        
+        if c == 'GBR':
+            print('Adding IMN, JER and GGY to GBR')
+            list_poly = np.hstack((list_poly,
+                                np.array([i.geometry for i in df_land.iloc if i['ADM0_A3'] == 'JEY'])))
+            list_poly_ocean = np.hstack((np.array(list_poly_ocean),
+                                np.array([i.geometry for i in df_ocean.iloc if i['ISO_TER1'] == 'JEY' and pd.isna(i['ISO_SOV2'])])))
+            list_poly = np.hstack((list_poly,
+                                np.array([i.geometry for i in df_land.iloc if i['ADM0_A3'] == 'GGY'])))
+            list_poly_ocean = np.hstack((np.array(list_poly_ocean),
+                                np.array([i.geometry for i in df_ocean.iloc if i['ISO_TER1'] == 'GGY' and pd.isna(i['ISO_SOV2'])])))
+            list_poly = np.hstack((list_poly,
+                                np.array([i.geometry for i in df_land.iloc if i['ADM0_A3'] == 'IMN'])))
+            list_poly_ocean = np.hstack((np.array(list_poly_ocean),
+                                np.array([i.geometry for i in df_ocean.iloc if i['ISO_TER1'] == 'IMN' and pd.isna(i['ISO_SOV2'])])))
+            
+            list_poly = list(list_poly)
+            
+        elif c == 'DNK':
+            print('Adding FRO to DEN')
+            list_poly = np.hstack((np.array(list_poly),
+                                np.array([i.geometry for i in df_land.iloc if i['ADM0_A3'] == 'FRO'])))
+            list_poly_ocean = np.hstack((np.array(list_poly_ocean),
+                                np.array([i.geometry for i in df_ocean.iloc if i['ISO_TER1'] == 'FRO' and pd.isna(i['ISO_SOV2'])])))
+            
+            list_poly = list(list_poly)
+            
+        print(f'Found {len(list_poly)} land and {len(list_poly_ocean)} marine regions')
+        
+        if include_land_territories == True:
+            binmask,fracmask = get_mask(list_poly,lonv=xv,latv=yv)
+            print('Retrieved land areas')
+        else:
+            binmask,fracmask = np.zeros((lats_mask.shape[0],lons_mask.shape[0])),np.zeros((lats_mask.shape[0],lons_mask.shape[0]))
+            
+        if include_ocean_territories == True:
+            binmask_ocean,fracmask_ocean = get_mask(list_poly_ocean,lonv=xv,latv=yv)
+            print('Retrieved marine areas')
+        else:
+            binmask_ocean,fracmask_ocean = np.zeros((lats_mask.shape[0],lons_mask.shape[0])),np.zeros((lats_mask.shape[0],lons_mask.shape[0]))
+            
+        c_total = binmask + binmask_ocean
+        c_total[np.where(c_total > 1.)] = 1.
+        
+        #to avoid fractional cells on the coastlines of countries, add the land bin mask to the marine fractional mask
+        f_total = binmask + fracmask_ocean          
+        f_total[np.where(f_total > 1.)] = 1.
+            
+        if i == 0:
+            country = np.expand_dims(c_total,axis=2)
+            country_frac = np.expand_dims(f_total,axis=2)
+        else:
+            country = np.dstack((country,np.expand_dims(c_total,axis=2)))
+            country_frac = np.dstack((country_frac,np.expand_dims(f_total,axis=2)))
+
+    country_out = np.zeros((lats.shape[0],lons.shape[0],country.shape[2]))
+    country_frac_out = np.zeros((lats.shape[0],lons.shape[0],country.shape[2]))
+
+    if output_on_domain_grid == True:
+
+        #expand smaller domain out to full footprint domain again
+        if lat_lim or lon_lim is not None:
+            for i in range(lats.shape[0]):
+                for j in range(lons.shape[0]):
+                    if lats[i] in lats_mask and lons[j] in lons_mask:
+                        country_out[np.where(lats == lats[i]),
+                                    np.where(lons == lons[j]),:] = country[np.where(lats_mask == lats[i]),
+                                                                        np.where(lons_mask == lons[j]),:]
+                        country_frac_out[np.where(lats == lats[i]),
+                                        np.where(lons == lons[j]),:] = country_frac[np.where(lats_mask == lats[i]),
+                                                                                np.where(lons_mask == lons[j]),:]
+                                        
+        lats_out = lats + np.round(np.mean(lats_diff)/2,3)
+        lons_out = lons + np.round(np.mean(lons_diff)/2,3)
+
+    else:
+        
+        country_out = country
+        country_frac_out = country_frac
+        lats_out = lats_mask + np.round(np.mean(lats_diff)/2,3)
+        lons_out = lons_mask + np.round(np.mean(lons_diff)/2,3)
+        
+    lat_da = xr.DataArray(lats_out,
+                            coords = {'lat':lats_out},
+                            dims = ('lat'),
+                            attrs = {"long_name":"latitude","units":"degrees_north",
+                                    'info':'latitude of the centre of the grid box'})
+    lon_da = xr.DataArray(lons_out,
+                            coords = {'lon':lons_out},
+                            dims = ('lon'),
+                            attrs = {"long_name":"longitude","units":"degrees_east",
+                                    'info':'longitude of the centre of the grid box'})
+    code_da = xr.DataArray(np.arange(country_names.shape[0]),
+                            coords = {'ncountries':np.arange(country_names.shape[0])},
+                            dims = ('ncountries'),
+                            attrs = {"long_name":"number_of_countries"})
+
+    country_name_da = xr.DataArray(country_names,
+                            coords = {'ncountries':np.arange(country_names.shape[0])},
+                            dims = ('ncountries'),
+                            attrs = {"long_name":"country_names"})
+    country_code_da = xr.DataArray(np.array(countries),
+                            coords = {'ncountries':np.arange(len(countries))},
+                            dims = ('ncountries'),
+                            attrs = {"long_name":"country_codes"})
+
+    country_da = xr.DataArray(country_out,
+                                dims=["lat", "lon","ncountries"],
+                                coords=[lat_da,lon_da,code_da],
+                                attrs={'long_name':'Land and ocean country mask'})
+
+    country_frac_da = xr.DataArray(country_frac_out,
+                                dims=["lat", "lon","ncountries"],
+                                coords=[lat_da,lon_da,code_da],
+                                attrs={'long_name':'Factional land and ocean country mask'})
+
+
+    ds = xr.Dataset({"country":country_da,
+                    "country_fraction":country_frac_da,
+                    "country_name":country_name_da,
+                    "country_code":country_code_da
+                    })
+
+    ds.attrs["Notes"] = "Created using NaturalEarth 10m Land and Marineregion datasets"
+    ds.attrs["Marine_regions_data"] = "https://www.marineregions.org/eez.php"
+    ds.attrs["Land_regions_data"] = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/"
+    ds.attrs["Includes_ocean_territories"] = str(include_ocean_territories)
+    ds.attrs["Includes_land_territories"] = str(include_land_territories)
+    ds.attrs["domain"] = domain
+    ds.attrs["Created_by"] = f"{getpass.getuser()}"
+    ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
+    ds.attrs['TO_NOTE'] = ('Binary mask attributes a grid cell to a country if there is any flux, '+
+                           'so there will be some overlap between areas in the binary masks.')
+    
+    if output_path is not None:
+    
+        ds.to_netcdf(f'{output_path}.nc')
+        print(f'Output saved to {output_path}.')
+    
+    return ds
 				    
 if __name__=="__main__":
     
