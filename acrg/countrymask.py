@@ -68,7 +68,7 @@ def domain_volume(domain,fp_directory=fp_directory):
     if listoffiles:
         filename = listoffiles[0]
         print('Using footprint file: {0} to extract domain'.format(filename))
-        if 'TROPOMI' in filename:
+        if 'GOSAT' in filename or 'TROPOMI' in filename:
             fields_ds = xr.open_dataset(filename, engine = 'zarr')
         else:
             fields_ds = xr.open_dataset(filename)

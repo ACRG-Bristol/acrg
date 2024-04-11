@@ -1006,7 +1006,7 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                 met_model_site = met_model
             
             # Get footprints
-            if site.split('-')[0] == 'TROPOMI':
+            if platform == "satellite":
                 engine = 'zarr'
 
             site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
