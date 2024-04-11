@@ -1,0 +1,74 @@
+netcdf InversionSystem_TransportModel_Domain_Experiment_Compound_Frequency_concentrations {
+dimensions:
+	nsite = 1 ;
+	time = 1 ;
+	percentile = 2 ;
+	nchar = 3 ;
+variables:
+	double time(time) ;
+		time:units = "days since 1970-01-01 00:00:00" ;
+		time:long_name = "time of mid of observation interval; UTC" ;
+		time:calendar = "proleptic_gregorian" ;
+	float Yobs(time, nsite) ;
+		Yobs:units = "mol mol-1" ;
+		Yobs:_FillValue = NaNf ;
+		Yobs:long_name = "observed_mole_fraction" ;
+	float uYobs(time, nsite) ;
+		uYobs:units = "mol mol-1" ;
+		uYobs:_FillValue = NaNf ;
+		uYobs:long_name = "uncertainty_of_observed_mole_fraction" ;
+	double percentile(percentile) ;
+		percentile:units = "1" ;
+		percentile:long_name = "percentile_of_flux_pdf" ;
+	float qYmod(time, percentile, nsite) ;
+		qYmod:units = "mol mol-1" ;
+		qYmod:_FillValue = NaNf ;
+		qYmod:long_name = "percentile_of_prior_simulated_mole_fraction" ;
+	float Yapriori(time, nsite) ;
+		Yapriori:units = "mol mol-1" ;
+		Yapriori:_FillValue = NaNf ;
+		Yapriori:long_name = "apriori_simulated_mole_fraction" ;
+	float Yapost(time, nsite) ;
+		Yapost:units = "mol mol-1" ;
+		Yapost:_FillValue = NaNf ;
+		Yapost:long_name = "aposteriori_simulated_mole_fraction" ;
+	float qYapost(time, percentile, nsite) ;
+		qYapost:units = "mol mol-1" ;
+		qYapost:_FillValue = NaNf ;
+		qYapost:long_name = "percentile_of_aposteriori_simulated_mole_fraction" ;
+	float YaprioriBC(time, nsite) ;
+		YaprioriBC:units = "mol mol-1" ;
+		YaprioriBC:_FillValue = NaNf ;
+		YaprioriBC:long_name = "apriori_simulated_boundary_condition_mole_fraction" ;
+	float YapostBC(time, nsite) ;
+		YapostBC:units = "mol mol-1" ;
+		YapostBC:_FillValue = NaNf ;
+		YapostBC:long_name = "aposteriori_simulated_boundary_condition_mole_fraction" ;
+	char sitenames(nsite, nchar) ;
+		sitenames:long_name = "identifier of site" ;
+	float YaprioriOUTER(time, nsite) ;
+		YaprioriOUTER:units = "mol mol-1" ;
+		YaprioriOUTER:_FillValue = NaNf ;
+		YaprioriOUTER:long_name = "apriori_simulated_mole_fraction_contribution_from_distant_regions" ;
+	float YapostOUTER(time, nsite) ;
+		YapostOUTER:units = "mol mol-1" ;
+		YapostOUTER:_FillValue = NaNf ;
+		YapostOUTER:long_name = "aposteriori_simulated_mole_fraction_contribution_from_distant_regions" ;
+
+// global attributes:
+		:Conventions = "CF-1.8" ;
+		:title = "In-situ mole fractions at sites: observed and simulated" ;
+		:institution = "" ;
+		:source = "Trace gas concentrations from observations and transport simulations / inverse estimation." ;
+		:author = "" ;
+		:transport_model = "" ;
+		:transport_model_version = "" ;
+		:inversion_system = "" ;
+		:inversion_system_version = "" ;
+		:experiment = "" ;
+		:project = "undefined" ;
+		:references = "" ;
+		:comment = "" ;
+		:license = "CC-BY-4.0" ;
+		:history = "" ;
+}
