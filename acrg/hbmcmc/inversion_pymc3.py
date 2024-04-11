@@ -476,8 +476,12 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
             cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
             cntryprior[ci] = cntrytotprior
+
+        if np.shape(sigouts)[2] != np.shape(np.unique(sigma_freq_index))[0]:
+            print("WARNING: nsigma time is not equal to final dimension on sigouts.")
+            print("Removing indexes from sigouts that do not appear in unique sigma_freq_index")
+            sigouts = sigouts[:,:,np.unique(sigma_freq_index)]
             
-    
         #Make output netcdf file
         outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
                             'Yerror' :(['nmeasure'], error),                          
