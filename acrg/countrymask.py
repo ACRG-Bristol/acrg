@@ -865,6 +865,9 @@ def create_countrymask_eez_fractional(domain,countries,include_land_territories=
             
             mask=np.zeros(lonv.shape)
             frac=np.zeros(lonv.shape)
+            
+            mask0 = np.zeros(lonv.shape)
+            mask5 = np.zeros(lonv.shape)
 
         else: # assume global    
 
@@ -905,11 +908,12 @@ def create_countrymask_eez_fractional(domain,countries,include_land_territories=
                                 frac[j,i] += (this_box.intersection(geom).area/this_box.area)  # fractional mask
     
                             #switched to 0.5 from 0., so if > 50% of cell is covered by country, then it's selected - don't do this any more as it adds gaps on coasts
-                            mask[j,i] = max(mask[j,i] , frac[j,i] > 0.)  # binary mask 1/0 based on ANY overlap with geometry, be careful for double overlap, to maximize at 1.0 still...
+                            mask0[j,i] = max(mask[j,i] , frac[j,i] > 0.)  # binary mask 1/0 based on ANY overlap with geometry, be careful for double overlap, to maximize at 1.0 still...
+                            mask5[j,i] = max(mask[j,i] , frac[j,i] > 0.5)  # binary mask 1/0 based on ANY overlap with geometry, be careful for double overlap, to maximize at 1.0 still...
 
         #etime = time.time() - stime
         #print(f'Full time = {etime}')   
-        return mask, frac
+        return mask0, mask5, frac
     
     lats,lons,heights = domain_volume(domain,fp_directory=fp_directory)
     
@@ -986,22 +990,30 @@ def create_countrymask_eez_fractional(domain,countries,include_land_territories=
         print(f'Found {len(list_poly)} land and {len(list_poly_ocean)} marine regions')
         
         if include_land_territories == True:
-            binmask,fracmask = get_mask(list_poly,lonv=xv,latv=yv)
+            binmask0,binmask5,fracmask = get_mask(list_poly,lonv=xv,latv=yv)
             print('Retrieved land areas')
         else:
-            binmask,fracmask = np.zeros((lats_mask.shape[0],lons_mask.shape[0])),np.zeros((lats_mask.shape[0],lons_mask.shape[0]))
+            binmask0,binmask5,fracmask = np.zeros((lats_mask.shape[0],lons_mask.shape[0])),np.zeros((lats_mask.shape[0],lons_mask.shape[0]))
             
         if include_ocean_territories == True:
-            binmask_ocean,fracmask_ocean = get_mask(list_poly_ocean,lonv=xv,latv=yv)
+            binmask_ocean0,binmask_ocean5,fracmask_ocean = get_mask(list_poly_ocean,lonv=xv,latv=yv)
             print('Retrieved marine areas')
         else:
-            binmask_ocean,fracmask_ocean = np.zeros((lats_mask.shape[0],lons_mask.shape[0])),np.zeros((lats_mask.shape[0],lons_mask.shape[0]))
+            binmask_ocean0,binmask_ocean5,fracmask_ocean = np.zeros((lats_mask.shape[0],lons_mask.shape[0])),np.zeros((lats_mask.shape[0],lons_mask.shape[0]))
             
-        c_total = binmask + binmask_ocean
-        c_total[np.where(c_total > 1.)] = 1.
-        
+        #include >0% land mask when using land and ocean regions but >50% land or ocean mask when only using one of these
+        if include_land_territories == True and include_ocean_territories == True:        
+            c_total = binmask0 + binmask_ocean5
+            c_total[np.where(c_total > 1.)] = 1.
+        elif include_land_territories == True and include_ocean_territories == False:
+            c_total = binmask5 + binmask_ocean5
+            c_total[np.where(c_total > 1.)] = 1.
+        else:
+            c_total = binmask0 + binmask_ocean5
+            c_total[np.where(c_total > 1.)] = 1.
+            
         #to avoid fractional cells on the coastlines of countries, add the land bin mask to the marine fractional mask
-        f_total = binmask + fracmask_ocean          
+        f_total = binmask0 + fracmask_ocean          
         f_total[np.where(f_total > 1.)] = 1.
             
         if i == 0:
@@ -1087,8 +1099,8 @@ def create_countrymask_eez_fractional(domain,countries,include_land_territories=
     ds.attrs["domain"] = domain
     ds.attrs["Created_by"] = f"{getpass.getuser()}"
     ds.attrs["Created_on"] = str(pd.Timestamp.now(tz="UTC"))
-    ds.attrs['TO_NOTE'] = ('Binary mask attributes a grid cell to a country if there is any flux, '+
-                           'so there will be some overlap between areas in the binary masks.')
+    ds.attrs['TO_NOTE'] = ('Binary mask attributes a grid cell to a country if more than 50 percent of the cell is within that country.'+
+                           'However there may still be some small areas of overlap in these masks.')
     
     if output_path is not None:
     
