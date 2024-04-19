@@ -31,7 +31,7 @@ def main(toml_path: Union[str, Path]) -> None:
     def make_name(x: dict) -> str:
         return "_".join([f"{k}_{v}" for k, v in x.items() if v is not None])
 
-    names_flat = [setup["out_prefix"] + make_name(x) for x in flatten(names_dict)]
+    names_flat = [make_name(x) for x in flatten(names_dict)]
 
     dates_df = make_dates_df(**conf["dates"])
 
@@ -43,7 +43,7 @@ def main(toml_path: Union[str, Path]) -> None:
 
     for i, (name, kwargs) in enumerate(zip(names_flat, kwargs_flat)):
         # set up directory to hold ini. slurm scipt, config, results, logs
-        job_name = setup["job_name"] + "_" + name
+        job_name = setup["job_name"]
         out_name = setup["out_prefix"] + "_" + name
 
         out_path = job_root_path / out_name
@@ -63,9 +63,11 @@ def main(toml_path: Union[str, Path]) -> None:
 
         # write ini file with updated kwargs
         ini_out_path = out_path / f"{job_name}.ini"
+        kwargs["outputpath"] = str(out_path)
+        kwargs["outputname"] = job_name
         updated_ini = update_ini_file(ini_template_path, new_kwargs=kwargs)
 
-        with open(ini_out_path, "r") as f:
+        with open(ini_out_path, "w") as f:
             f.writelines(updated_ini)
 
         # make slurm script
@@ -87,7 +89,7 @@ def main(toml_path: Union[str, Path]) -> None:
 
         with open(out_path / "readme.txt", "w") as f:
             f.write("Experiment using parameters:\n\n")
-            for k, v in kwargs:
+            for k, v in kwargs.items():
                 f.write(f"{k}: {v}\n")
 
         print(f"Array config file and inversion wrapper for experiment {i} written to {out_path}.")
