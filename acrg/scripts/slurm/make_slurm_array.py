@@ -132,7 +132,7 @@ def make_script(
 
     # record what branch and commit was used for these inversions
     branch_str = f"""\
-    inversions_path=$(pip list | grep "openghg-inversion" | awk '{{ print $3 }}')
+    inversions_path=$(pip list | grep "openghg_inversions" | awk '{{ print $3 }}')
     git_branch=$(git -C $inversions_path status | awk 'NR==1{{ print $3 }}')
     git_commit=$(git -C $inversions_path log --oneline -n 1 $git_branch | awk '{{ print $1 }}')
     echo "Using commit $git_commit on branch $git_branch in repo $inversions_path" >> {log_path / "git_info.txt"}
