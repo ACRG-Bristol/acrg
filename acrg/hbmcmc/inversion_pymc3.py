@@ -188,6 +188,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         else:
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) 
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+        eps = pm.Deterministic('eps', epsilon)
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
@@ -199,6 +200,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         outs = trace.get_values(x, burn=burn)[0:int((nit)-burn)]
         bcouts = trace.get_values(xbc, burn=burn)[0:int((nit)-burn)]
         sigouts = trace.get_values(sig, burn=burn)[0:int((nit)-burn)]
+        epsouts = trace.get_values(eps, burn=burn)[0:int((nit)-burn)]
         
         #Check for convergence
         gelrub = pm.rhat(trace)['x'].max()
@@ -214,7 +216,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             YBCtrace = np.dot(Hbc.T,bcouts.T) + np.dot(B, offset_trace.T)   
         else:
             YBCtrace = np.dot(Hbc.T,bcouts.T)
-        Ytrace = np.dot(Hx.T,outs.T) + YBCtrace
+        Ytrace = np.random.normal(loc=np.dot(Hx.T,outs.T) + YBCtrace, scale=epsouts.T)
         
         return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
 
