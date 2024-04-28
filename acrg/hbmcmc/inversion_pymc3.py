@@ -187,8 +187,8 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
         else:
             mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)  
-        eps = pm.Deterministic('eps', epsilon)     
         epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+        eps = pm.Deterministic('eps', epsilon)     
         y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
         
         step1 = pm.NUTS(vars=[x,xbc])
