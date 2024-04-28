@@ -1008,6 +1008,8 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
             # Get footprints
             if platform == "satellite":
                 engine = 'zarr'
+            else:
+                engine = None
 
             site_fp = footprints(site_modifier_fp, met_model = met_model_site, fp_directory = fp_directory, 
                                  start = start, end = end,
