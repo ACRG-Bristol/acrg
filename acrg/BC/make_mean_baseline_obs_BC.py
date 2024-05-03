@@ -28,14 +28,27 @@ def create_dates(initial_year: int, n_years: int, freq: str = "MS") -> list[tupl
     return list(zip(sdr, sdr_end))
 
 
-def get_baseline(species: str, start_date: str, end_date: str, inlet: Optional[str] = None, obs_store: Optional[str] = None, fp_store: Optional[str] = None) -> dict[str, Any]:
+def get_baseline(
+    species: str,
+    start_date: str,
+    end_date: str,
+    inlet: Optional[str] = None,
+    fp_species: Optional[str] = "inert",
+    obs_store: Optional[str] = None,
+    fp_store: Optional[str] = None
+) -> dict[str, Any]:
 
     """Calculate baseline mole fraction using MHD observations when the wind direction is 180 to 300 degrees."""
     if inlet is None:
         obs = get_obs_surface(species=species, site="mhd", start_date=start_date, end_date=end_date, store=obs_store).data
         wind = get_footprint(
-            site="mhd", domain="europe", start_date=start_date, end_date=end_date, store=fp_store
-        ).data.wind_direction
+            site="mhd",
+            domain="europe",
+            species=fp_species,
+            start_date=start_date,
+            end_date=end_date,
+            store=fp_store
+        ).data.wind_from_direction
     else:
         obs = get_obs_surface(
             species=species, site="mhd", start_date=start_date, end_date=end_date, inlet=inlet, store=obs_store
@@ -43,15 +56,16 @@ def get_baseline(species: str, start_date: str, end_date: str, inlet: Optional[s
         wind = get_footprint(
             site="mhd",
             domain="europe",
+            species=fp_species,
             start_date=start_date,
             end_date=end_date,
             inlet=inlet,
             store=fp_store
-        ).data.wind_direction
+        ).data.wind_from_direction
 
     wind = wind.reindex_like(obs, method="nearest")
 
-    baseline = obs.where(wind < 300, drop=True).where(wind > 180, drop=True)
+    baseline = obs.where((wind < 300).compute(), drop=True).where((wind > 180).compute(), drop=True)
 
     result = dict(
         baseline=float(baseline.mf.mean().values),
@@ -66,7 +80,14 @@ def get_baseline(species: str, start_date: str, end_date: str, inlet: Optional[s
 
 
 def make_baseline_df(
-    species: str, initial_year: int, n_years: int, inlet: Optional[str] = None, freq: Optional[str] = None, obs_store: Optional[str] = None, fp_store: Optional[str] = None
+    species: str,
+    initial_year: int,
+    n_years: int,
+    inlet: Optional[str] = None,
+    fp_species: Optional[str] = "inert",
+    freq: Optional[str] = None,
+    obs_store: Optional[str] = None,
+    fp_store: Optional[str] = None
 ) -> pd.DataFrame:
     """Create DataFrame with MHD baseline mean and std over each month starting at 1 Jan `initial_year`,
     for `n_years` with frequency `freq` (default freq. is quarterly).
@@ -79,7 +100,7 @@ def make_baseline_df(
     results = []
     for start, end in dates:
         try:
-            baseline = get_baseline(species, start, end, inlet, obs_store, fp_store)
+            baseline = get_baseline(species, start, end, inlet, fp_species, obs_store, fp_store)
         except (SearchError, AttributeError) as e:
             print(f"Error for start {start}: {e}")
             baseline = {"baseline": np.NaN, "baseline_std": np.NaN, "percent_baseline": np.NaN}
@@ -137,6 +158,7 @@ def main(
     creation_method: str = "MHD obs when wind direction between 180 and 300 degrees",
     freq: str = "MS",
     inlet: Optional[str] = None,
+    fp_species: Optional[str] = "inert",
     output_dir: str = "/group/chem/acrg/LPDM/bc/EUROPE/paris_flat",
     uncert_output_dir: Optional[str] = None,
     standardise: bool = False,
@@ -145,7 +167,16 @@ def main(
     obs_store: Optional[str] = None,
     fp_store: Optional[str] = None,
 ) -> None:
-    baseline_df = make_baseline_df(species, initial_year, n_years, freq=freq, inlet=inlet , obs_store=obs_store, fp_store=fp_store).ffill()
+    baseline_df = make_baseline_df(
+        species,
+        initial_year,
+        n_years,
+        freq=freq,
+        inlet=inlet,
+        fp_species=fp_species,
+        obs_store=obs_store,
+        fp_store=fp_store
+    ).ffill()
     bc_ds = create_flat_bc_prior(
         species, baseline_df["baseline"], units=units, author=author, creation_method=creation_method
     )
@@ -180,6 +211,7 @@ if __name__ == "__main__":
     parser.add_argument("--creation-method", type=str)
     parser.add_argument("--freq", type=str)
     parser.add_argument("--inlet", type=str)
+    parser.add_argument("--fp_species", type=str)
     parser.add_argument("-o", "--output-dir", type=str)
     parser.add_argument("-u", "--uncert-output-dir", type=str)
     parser.add_argument("-s", "--standardise", default=False, action="store_true")
