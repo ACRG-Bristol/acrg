@@ -198,8 +198,7 @@ def main(
 
     if standardise:
         bc_input = bc_input if bc_input is not None else "flat"
-        standardise_bc(file_path, species, bc_input, "EUROPE", period=freq, store=output_store, overwrite=True) # added overwrite=True --> to change with openghg v8
-        # standardise_bc(file_path, species, bc_input, "EUROPE", period=freq, store=output_store, if_exists='new', save_current='no') # added if_exists='new', save_current='no'
+        standardise_bc(file_path, species, bc_input, "EUROPE", period=freq, store=output_store, if_exists='new', save_current='no')
 
 if __name__ == "__main__":
     parser = ArgumentParser()
