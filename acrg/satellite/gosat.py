@@ -1906,7 +1906,8 @@ def midpoint_bounds(pressure_levels,delta_pressure=None,pressure_NAME=None,set_a
             
             dpressure[:,-1] = delta_pressure[:,-1] # Set last dpressure as matching previous
             bound_below_min = np.where(pressure_levels[:,-1] - dpressure[:,-1]/2. < min_pressure)[0]
-            dpressure[bound_below_min,-1] = pressure_levels[:,-1] + delta_pressure[:,-1]/2. - min_pressure # If pressure would be < min pressure (e.g. 0), set dpressure as distance from min_pressure
+            if len(bound_below_min):
+                dpressure[bound_below_min,-1] = pressure_levels[:,-1] + delta_pressure[:,-1]/2. - min_pressure # If pressure would be < min pressure (e.g. 0), set dpressure as distance from min_pressure
             
             new_pressure_levels[:,1:] = (pressure_levels[:,1:] + delta_pressure/2.) - dpressure[:,1:]/2.
     else:
@@ -2097,7 +2098,10 @@ def gosat_output_filename(output_directory,network,instrument,date,species,inlet
     
     output_directory = os.path.join(output_directory,network)
     
-    satellite = 'gosat'
+    if 'gosat' in instrument.lower():
+        satellite = 'gosat'
+    elif 'tccon' in instrument.lower():
+        satellite = 'tccon'
     
     date = date.replace('-','') # Turn date from e.g. 2012-09-20 to 20120920
     
@@ -2176,7 +2180,7 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
         if ident not in data_vars:
             print('WARNING: Identifier column {0} is not within input data_vars: {1}. No ident column will be included'.format(ident,data_vars))
     
-    if isinstance(index,int):
+    if isinstance(index,(int,np.integer)):
         indices = [index]
     else:
         indices = index
@@ -2188,10 +2192,17 @@ def gosat_split_output(ds,index,mapping=None,data_vars=[],split_dim="time",ident
     for name,new_name in list(mapping.items()):
         
         dims = ds[name].dims # Extract dimensions for variable from current dataset
+        print('##################################################################')
+        print('##################################################################')
+        print('##################################################################')
+        print([dims,name])
+        print('##################################################################')
+        print('##################################################################')
+        print('##################################################################')
         data_var = ds[name][indices]
         
         # Format the identifier data variable (e.g. exposure_id) to contain an extra "id" dimension to allow for multiple values
-        if name == ident:
+        if name == ident: # what is the content of exposure_id
             identifiers = [value.split(ident_sep) for value in data_var.values] # Split identifier value by the ident_sep value (e.g. ',')
             identifiers = np.array(list(itertools.zip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
             #identifiers = np.array(list(itertools.izip_longest(*identifiers,fillvalue=np.nan))).T # Create array with consistent dimensions for "id" and fill in any gaps with np.nan values
@@ -2955,7 +2966,7 @@ def gosat_process(site,species="ch4",input_directory=input_directory,start=None,
 
     
     if input_directory.find("$DATA_PATH"):
-        input_directory = input_directory.replace("$DATA_PATH",data_path)
+        input_directory = input_directory.replace("$DATA_PATH",str(data_path))
     
     input_directory_format = "year_split" # "year_split" (subdirectories are split into years) or None
     search_str = "*.nc"
