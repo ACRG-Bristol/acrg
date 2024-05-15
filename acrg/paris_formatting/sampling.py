@@ -77,10 +77,9 @@ def parse_prior(name: str, prior_params: PriorArgs, **kwargs) -> TensorVariable:
 
 
 def get_sampling_kwargs_from_rhime_outs(
-    rhime_outs: xr.Dataset, min_model_error: Optional[float] = None
+    rhime_outs: xr.Dataset
 ) -> dict[str, Union[None, float, PriorArgs]]:
     """Make dict of arguments to use with `get_rhime_model` given a RHIME output file
-    and minimum model error.
 
     Convenience function for creating PARIS outputs based on RHIME/HBMCMC outputs.
     """
@@ -105,23 +104,23 @@ def get_sampling_kwargs_from_rhime_outs(
         bcprior = None
 
     result["bcprior"] = bcprior
+    result["min_model_error"] = rhime_outs.attrs["min_model_error"]
 
-    if min_model_error:
-        result["min_model_error"] = min_model_error
     return result
 
 
 def get_rhime_model(
     rhime_outs_ds: xr.Dataset,
+    min_model_error: float,
     xprior: PriorArgs,
     sigprior: PriorArgs,
     xprior_dims: Union[str, tuple[str, ...]],
     sigprior_dims: Union[str, tuple[str, ...]],
     bcprior_dims: Union[None, str, tuple[str, ...]] = None,
     bcprior: Optional[PriorArgs] = None,
-    min_model_error: float = 20.0,
     coord_dim: str = "nmeasure",
     use_bc: bool = True,
+    pol_from_obs: bool = False,
 ) -> pm.Model:
     """Make RHIME model wih model error given by multiplicative scaling of pollution events
     plus constant minimum value.
@@ -137,6 +136,7 @@ def get_rhime_model(
         min_model_error: constant minimum model error
         coord_dim: name of dimension used for coordinates of observations
         use_bc: if False, run without boundary conditions (e.g. if baseline subtracted from observations)
+        pol_from_obs: if True, this means that pollution_events_from_obs=True was specified
 
     Returns:
         PyMC model for RHIME model with given priors and minimum model error.
@@ -167,8 +167,16 @@ def get_rhime_model(
         else:
             mu = pt.dot(rhime_outs_ds.xsensitivity.values, x)
 
+        if pol_from_obs is True:
+            if use_bc is True:
+                pollution_event = np.abs(rhime_outs_ds.Yobs.values - pt.dot(rhime_outs_ds.bcsensitivity.values, bc))
+            else:
+                pollution_event = rhime_outs_ds.Yobs.values
+        else:
+            pollution_event = np.abs(pt.dot(rhime_outs_ds.xsensitivity.values, x))
+                
         mult_error = (
-            np.abs(pt.dot(rhime_outs_ds.xsensitivity.values, x))
+            pollution_event
             * sigma[
                 rhime_outs_ds.siteindicator.values.astype(int),
                 rhime_outs_ds.sigmafreqindex.values.astype(int),
@@ -176,7 +184,7 @@ def get_rhime_model(
         )
         epsilon = pm.Deterministic(
             "epsilon",
-            pt.sqrt(rhime_outs_ds.Yerror.values**2 + mult_error**2 + min_model_error**2),
+            pt.maximum(pt.sqrt(rhime_outs_ds.Yerror.values**2 + mult_error**2), min_model_error),
             dims=coord_dim,
         )
         pm.Normal("y", mu, epsilon, dims=coord_dim, observed=rhime_outs_ds.Yobs)
