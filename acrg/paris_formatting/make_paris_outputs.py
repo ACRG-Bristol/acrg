@@ -138,7 +138,7 @@ def make_country_output(
 def make_flux_outputs(
     inv_outs: list[InversionOutput],
     time_point: Literal["start", "midpoint"] = "midpoint",
-    report_mode: bool = True,
+    report_mode: bool = False,
 ) -> xr.Dataset:
     """Make flux output dataset"""
 
@@ -235,7 +235,7 @@ def main(
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
     report_mf_mode: bool = False,
-    report_em_mode: bool = True,
+    report_em_mode: bool = False,
     pol_from_obs: bool = False,
     no_model_error: bool = False,
     ndraw: int = 10000,
@@ -377,10 +377,10 @@ if __name__ == "__main__":
         help="if set, report mode for concentrations/mole fractions (by default, mean is reported).",
     )
     parser.add_argument(
-        "--em-mean",
+        "--em-mod",
         action="store_true",
         default=False,
-        help="if set, report mean for country and flux totals (by default, mode is reported).",
+        help="if set, report mode for country and flux totals (by default, mean is reported).",
     )
     parser.add_argument(
         "--pol-obs",
@@ -406,7 +406,7 @@ if __name__ == "__main__":
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
         report_mf_mode=args.mode,
-        report_em_mode=(not args.em_mean),
+        report_em_mode=args.em_mode,
         pol_from_obs=args.pol_obs,
         no_model_error=args.no_model_error,
         ndraw=args.ndraw,
