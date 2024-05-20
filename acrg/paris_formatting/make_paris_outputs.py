@@ -106,7 +106,7 @@ def make_country_output(
                 'NW_EU_CONTINENT':'BEL-DEU-FRA-LUX-NLD'}
 
     region_traces = []
-    for region, countries_str in regions_dict:
+    for region, countries_str in regions_dict.items():
         countries = countries_str.split("-")
         region_ds = country_traces_merged.sel(country=countries).sum("country").expand_dims({"country": [region]})
         region_traces.append(region_ds)
