@@ -377,7 +377,7 @@ if __name__ == "__main__":
         help="if set, report mode for concentrations/mole fractions (by default, mean is reported).",
     )
     parser.add_argument(
-        "--em-mod",
+        "--em-mode",
         action="store_true",
         default=False,
         help="if set, report mode for country and flux totals (by default, mean is reported).",
