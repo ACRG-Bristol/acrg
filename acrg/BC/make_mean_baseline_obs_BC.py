@@ -34,6 +34,7 @@ def get_baseline(
     end_date: str,
     inlet: Optional[str] = None,
     fp_species: Optional[str] = "inert",
+    met_model: Optional[str] = "ukv",
     obs_store: Optional[str] = None,
     fp_store: Optional[str] = None
 ) -> dict[str, Any]:
@@ -45,6 +46,7 @@ def get_baseline(
             site="mhd",
             domain="europe",
             species=fp_species,
+            met_model=met_model,
             start_date=start_date,
             end_date=end_date,
             store=fp_store
@@ -57,6 +59,7 @@ def get_baseline(
             site="mhd",
             domain="europe",
             species=fp_species,
+            met_model=met_model,
             start_date=start_date,
             end_date=end_date,
             inlet=inlet,
@@ -85,6 +88,7 @@ def make_baseline_df(
     n_years: int,
     inlet: Optional[str] = None,
     fp_species: Optional[str] = "inert",
+    met_model: Optional[str] = "ukv",
     freq: Optional[str] = None,
     obs_store: Optional[str] = None,
     fp_store: Optional[str] = None
@@ -100,7 +104,7 @@ def make_baseline_df(
     results = []
     for start, end in dates:
         try:
-            baseline = get_baseline(species, start, end, inlet, fp_species, obs_store, fp_store)
+            baseline = get_baseline(species, start, end, inlet, fp_species, met_model, obs_store, fp_store)
         except (SearchError, AttributeError) as e:
             print(f"Error for start {start}: {e}")
             baseline = {"baseline": np.NaN, "baseline_std": np.NaN, "percent_baseline": np.NaN}
@@ -159,6 +163,7 @@ def main(
     freq: str = "MS",
     inlet: Optional[str] = None,
     fp_species: Optional[str] = "inert",
+    met_model: Optional[str] = "ukv",
     output_dir: str = "/group/chem/acrg/LPDM/bc/EUROPE/paris_flat",
     uncert_output_dir: Optional[str] = None,
     standardise: bool = False,
@@ -174,6 +179,7 @@ def main(
         freq=freq,
         inlet=inlet,
         fp_species=fp_species,
+        met_model=met_model,
         obs_store=obs_store,
         fp_store=fp_store
     ).ffill()
@@ -211,6 +217,7 @@ if __name__ == "__main__":
     parser.add_argument("--freq", type=str)
     parser.add_argument("--inlet", type=str)
     parser.add_argument("--fp_species", type=str)
+    parser.add_argument("--met_model", type=str)
     parser.add_argument("-o", "--output-dir", type=str)
     parser.add_argument("-u", "--uncert-output-dir", type=str)
     parser.add_argument("-s", "--standardise", default=False, action="store_true")
