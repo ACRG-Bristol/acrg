@@ -375,19 +375,20 @@ if __name__ == "__main__":
         pol_from_obs=args.pol_obs
     )
 
-    if args.output_tag:
-        tag = args.output_tag
-    else:
-        date, time = str(timestamp_now()).split(" ")
-        tag = date + "_" + time.split(".")[0].replace(":", "")
-
     output_path = Path(args.output_path)
 
     if not output_path.exists():
         output_path.mkdir(parents=True)
 
-    emissions_output_path = output_path / f"PARIS_emissions_{args.species}_{tag}.nc"
-    conc_output_path = output_path / f"PARIS_concentrations_{args.species}_{tag}.nc"
+    if args.output_tag:
+        tag = args.output_tag
+        emissions_output_path = output_path / f"{tag}_{args.species}_yearly.nc"
+        conc_output_path = output_path / f"{tag}_{args.species}_yearly_concentrations.nc"
+    else:
+        date, time = str(timestamp_now()).split(" ")
+        tag = date + "_" + time.split(".")[0].replace(":", "")
+        emissions_output_path = output_path / f"PARIS_emissions_{args.species}_{tag}.nc"
+        conc_output_path = output_path / f"PARIS_concentrations_{args.species}_{tag}.nc"
 
     emissions.to_netcdf(emissions_output_path)
 
