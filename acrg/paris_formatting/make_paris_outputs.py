@@ -46,6 +46,7 @@ def get_inversion_outputs_with_samples(
     ndraw: int = 1000,
     n_files: Optional[int] = None,
     pol_from_obs: bool = False,
+    no_model_error: bool = False,
 ) -> list[InversionOutput]:
     """Create a list of InversionOutputs given a path to RHIME inversion outputs."""
     files = get_netcdf_files(output_file_path, filename_search=species.upper())
@@ -54,7 +55,9 @@ def get_inversion_outputs_with_samples(
         files = files[:n_files]
 
     inv_outs = [
-        InversionOutput.from_rhime(xr.open_dataset(file), pol_from_obs=pol_from_obs, ndraw=ndraw)
+        InversionOutput.from_rhime(
+            xr.open_dataset(file), pol_from_obs=pol_from_obs, no_model_error=no_model_error, ndraw=ndraw
+        )
         for file in files
     ]
 
@@ -235,6 +238,7 @@ def main(
     report_em_mode: bool = True,
     pol_from_obs: bool = False,
     no_model_error: bool = False,
+    ndraw: int = 10000,
 ) -> tuple[xr.Dataset, Optional[xr.Dataset]]:
     """Create formatted PARIS emissions and concentrations datasets.
 
@@ -258,6 +262,7 @@ def main(
         n_files=n_files,
         pol_from_obs=pol_from_obs,
         no_model_error=no_model_error,
+        ndraw=ndraw,
     )
 
     # make country and flux output
@@ -389,6 +394,7 @@ if __name__ == "__main__":
         default=False,
         help="if set, this means that no_model_error=True was specified",
     )
+    parser.add_argument("--ndraw", type=int, default=10000, help="number of prior/predictive samples to produce")
 
     args = parser.parse_args()
 
@@ -403,6 +409,7 @@ if __name__ == "__main__":
         report_em_mode=(not args.em_mean),
         pol_from_obs=args.pol_obs,
         no_model_error=args.no_model_error,
+        ndraw=args.ndraw,
     )
 
     output_path = Path(args.output_path)
