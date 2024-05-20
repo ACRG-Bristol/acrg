@@ -142,7 +142,7 @@ class InversionOutput:
 
     @classmethod
     def from_rhime(
-        cls: type[InvOut], ds: xr.Dataset, min_model_error: float, ndraw: Optional[int] = None
+        cls: type[InvOut], ds: xr.Dataset, pol_from_obs: bool, ndraw: Optional[int] = None
     ) -> InvOut:
         """Make InversionOutput object from RHIME output dataset."""
         flux = ds.fluxapriori
@@ -168,7 +168,7 @@ class InversionOutput:
             model_kwargs["bcprior"] = None
             model_kwargs["bcprior_dims"] = None
 
-        model = get_rhime_model(ds_clean, min_model_error=min_model_error, use_bc=use_bc, **model_kwargs)  # type: ignore
+        model = get_rhime_model(ds_clean, use_bc=use_bc, pol_from_obs=pol_from_obs, **model_kwargs)  # type: ignore
 
         if ndraw is not None:
             trace = make_idata_from_rhime_outs(ds_clean, ndraw=ndraw)

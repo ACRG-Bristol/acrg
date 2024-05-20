@@ -43,9 +43,9 @@ def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str]
 def get_inversion_outputs_with_samples(
     species: str,
     output_file_path: str,
-    min_model_error: float = 0.1,
     ndraw: int = 1000,
     n_files: Optional[int] = None,
+    pol_from_obs: bool = False,
 ) -> list[InversionOutput]:
     """Create a list of InversionOutputs given a path to RHIME inversion outputs."""
     files = get_netcdf_files(output_file_path, filename_search=species.upper())
@@ -54,7 +54,7 @@ def get_inversion_outputs_with_samples(
         files = files[:n_files]
 
     inv_outs = [
-        InversionOutput.from_rhime(xr.open_dataset(file), min_model_error, ndraw=ndraw) for file in files
+        InversionOutput.from_rhime(xr.open_dataset(file), pol_from_obs=pol_from_obs, ndraw=ndraw) for file in files
     ]
 
     for inv_out in inv_outs:
@@ -211,12 +211,12 @@ def main(
     species: str,
     output_file_path: str,
     country_file_path: str,
-    min_model_error: float,
     avr_obs_period: str,
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
     report_mf_mode: bool = False,
     report_em_mode: bool = True,
+    pol_from_obs: bool = False,
 ) -> tuple[xr.Dataset, Optional[xr.Dataset]]:
     """Create formatted PARIS emissions and concentrations datasets.
 
@@ -224,18 +224,18 @@ def main(
         species: species used in inversion
         output_file_path: path to directory containing RHIME outputs
         country_files_root: path to directory containing country files
-        min_model_error: the minimum model error used with the inversion
         avr_obs_period: the averaging period for measurements used in inversion
         n_files: number of output files to process. This is mainly to keep runs small for testing.
         return_concentrations: if False, only country and flux outputs are returned. (None is returned for concentrations.)
         report_mf_mode: if True, use mode for concentration prior/posterior predictives (i.e. for y and y BC)
         report_em_mode: if True, use mode for country and flux prior/posterior totals
+        pol_from_obs: if True, this means that pollution_events_from_obs=True was specified
 
     Returns:
         emissions dataset and concentrations dataset
     """
     inv_outs = get_inversion_outputs_with_samples(
-        species=species, output_file_path=output_file_path, min_model_error=min_model_error, n_files=n_files
+        species=species, output_file_path=output_file_path, n_files=n_files, pol_from_obs=pol_from_obs
     )
 
     # make country and flux output
@@ -331,7 +331,6 @@ if __name__ == "__main__":
         type=str,
         help="path to country file; e.g. '/group/acrg/chem/LPDM/countries/country_EUROPE.nc'",
     )
-    parser.add_argument("-m", "--min-model-error", type=float, help="min. model error used in inversion")
     parser.add_argument("-p", "--avr-obs-period", type=str, help="averaging period for measurements used in inversion")
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
@@ -353,7 +352,13 @@ if __name__ == "__main__":
             action="store_true",
             default=False,
             help="if set, report mean for country and flux totals (by default, mode is reported).",
-        )
+    )
+    parser.add_argument(
+            "--pol-obs",
+            action="store_true",
+            default=False,
+            help="if set, this means that pollution_events_from_obs=True was specified",
+    )
 
 
     args = parser.parse_args()
@@ -362,12 +367,12 @@ if __name__ == "__main__":
         species=args.species,
         output_file_path=args.rhime_outputs_path,
         country_file_path=args.country_file_path,
-        min_model_error=args.min_model_error,
         avr_obs_period=args.avr_obs_period,
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
         report_mf_mode=args.mode,
         report_em_mode=(not args.em_mean),
+        pol_from_obs=args.pol_obs
     )
 
     if args.output_tag:
