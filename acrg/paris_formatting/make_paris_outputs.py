@@ -92,16 +92,36 @@ def make_country_output(
 
     country_traces_merged = xr.concat(country_traces, dim="time")
 
+    # apply `get_country_code` to each element of `country` coordinate
+    country_codes = list(map(partial(get_country_code, code=code), map(str, country_traces_merged.country.values)))
+    country_traces_merged = country_traces_merged.assign_coords(country=country_codes)
+
+    # add country regions
+    regions_dict = {'BELUX':'BEL-LUX',
+                'BENELUX':'BEL-LUX-NLD',
+                'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVN',
+                'EU_GRP2':'AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD',
+                'NW_EU':'BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD',
+                'NW_EU2':'BEL-DEU-FRA-GBR-IRL-LUX-NLD',
+                'NW_EU_CONTINENT':'BEL-DEU-FRA-LUX-NLD'}
+
+    region_traces = []
+    for region, countries_str in regions_dict:
+        countries = countries_str.split("-")
+        region_ds = country_traces_merged.sel(country=countries).sum("country").expand_dims({"country": [region]})
+        region_traces.append(region_ds)
+
+    region_traces_merged = xr.concat(region_traces, dim="country")
+
+    # combine country and region traces
+    all_traces_merged = xr.merge([country_traces_merged, region_traces_merged])
+
     country_output = xr.merge(
-        calculate_stats(country_traces_merged, "country", chunk_dim="country", chunk_size=1, report_mode=report_mode)
+        calculate_stats(all_traces_merged, "country", chunk_dim="country", chunk_size=1, report_mode=report_mode)
     )
 
-    # TODO: calculate stats for composite regions e.g. BE-NE-LX
-    # to do this, we need country codes applied to country_traces_merged
 
-    # apply `get_country_code` to each element of `country` coordinate
-    country_codes = list(map(partial(get_country_code, code=code), map(str, country_output.country.values)))
-    country_output = country_output.assign_coords(country=country_codes)
+
 
     return country_output
 
