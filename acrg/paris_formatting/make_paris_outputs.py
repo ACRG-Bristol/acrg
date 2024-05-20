@@ -419,8 +419,8 @@ if __name__ == "__main__":
 
     if args.output_tag:
         tag = args.output_tag
-        emissions_output_path = output_path / f"{tag}_{args.species}_yearly.nc"
-        conc_output_path = output_path / f"{tag}_{args.species}_yearly_concentrations.nc"
+        emissions_output_path = output_path / f"{tag}.nc"
+        conc_output_path = output_path / f"{tag}_concentrations.nc"
     else:
         date, time = str(timestamp_now()).split(" ")
         tag = date + "_" + time.split(".")[0].replace(":", "")
