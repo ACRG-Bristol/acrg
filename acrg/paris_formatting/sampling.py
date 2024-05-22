@@ -121,6 +121,7 @@ def get_rhime_model(
     coord_dim: str = "nmeasure",
     use_bc: bool = True,
     pol_from_obs: bool = False,
+    no_model_error: bool = False,
 ) -> pm.Model:
     """Make RHIME model wih model error given by multiplicative scaling of pollution events
     plus constant minimum value.
@@ -137,6 +138,7 @@ def get_rhime_model(
         coord_dim: name of dimension used for coordinates of observations
         use_bc: if False, run without boundary conditions (e.g. if baseline subtracted from observations)
         pol_from_obs: if True, this means that pollution_events_from_obs=True was specified
+        no_model_error: if True, only use obs error in likelihood
 
     Returns:
         PyMC model for RHIME model with given priors and minimum model error.
@@ -182,11 +184,16 @@ def get_rhime_model(
                 rhime_outs_ds.sigmafreqindex.values.astype(int),
             ]
         )
-        epsilon = pm.Deterministic(
-            "epsilon",
-            pt.maximum(pt.sqrt(rhime_outs_ds.Yerror.values**2 + mult_error**2), min_model_error),
-            dims=coord_dim,
-        )
+        # set up obs + model error
+        if no_model_error is True:
+            epsilon = pm.Deterministic("epsilon", np.abs(rhime_outs_ds.Yerror.values), dims=coord_dim)
+        else:
+            epsilon = pm.Deterministic(
+                "epsilon",
+                pt.maximum(pt.sqrt(rhime_outs_ds.Yerror.values**2 + mult_error**2), min_model_error),  # type: ignore
+                dims=coord_dim,
+            )
+
         pm.Normal("y", mu, epsilon, dims=coord_dim, observed=rhime_outs_ds.Yobs)
 
     return model

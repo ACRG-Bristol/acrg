@@ -19,7 +19,7 @@ from attribute_parsers import (
     convert_time_to_unix_epoch,
 )
 from countries import Countries
-from array_ops import sparse_xr_dot 
+from array_ops import sparse_xr_dot
 from process_rhime_output import InversionOutput
 from stats import calculate_stats
 
@@ -46,6 +46,7 @@ def get_inversion_outputs_with_samples(
     ndraw: int = 1000,
     n_files: Optional[int] = None,
     pol_from_obs: bool = False,
+    no_model_error: bool = False,
 ) -> list[InversionOutput]:
     """Create a list of InversionOutputs given a path to RHIME inversion outputs."""
     files = get_netcdf_files(output_file_path, filename_search=species.upper())
@@ -54,7 +55,10 @@ def get_inversion_outputs_with_samples(
         files = files[:n_files]
 
     inv_outs = [
-        InversionOutput.from_rhime(xr.open_dataset(file), pol_from_obs=pol_from_obs, ndraw=ndraw) for file in files
+        InversionOutput.from_rhime(
+            xr.open_dataset(file), pol_from_obs=pol_from_obs, no_model_error=no_model_error, ndraw=ndraw
+        )
+        for file in files
     ]
 
     for inv_out in inv_outs:
@@ -93,22 +97,28 @@ def make_country_output(
     country_traces_merged = xr.concat(country_traces, dim="time")
 
     # apply `get_country_code` to each element of `country` coordinate
-    country_codes = list(map(partial(get_country_code, code=code), map(str, country_traces_merged.country.values)))
+    country_codes = list(
+        map(partial(get_country_code, code=code), map(str, country_traces_merged.country.values))
+    )
     country_traces_merged = country_traces_merged.assign_coords(country=country_codes)
 
     # add country regions
-    regions_dict = {'BELUX':'BEL-LUX',
-                'BENELUX':'BEL-LUX-NLD',
-                'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVN',
-                'EU_GRP2':'AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD',
-                'NW_EU':'BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD',
-                'NW_EU2':'BEL-DEU-FRA-GBR-IRL-LUX-NLD',
-                'NW_EU_CONTINENT':'BEL-DEU-FRA-LUX-NLD'}
+    regions_dict = {
+        "BELUX": "BEL-LUX",
+        "BENELUX": "BEL-LUX-NLD",
+        "CW_EU": "AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVN",
+        "EU_GRP2": "AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD",
+        "NW_EU": "BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD",
+        "NW_EU2": "BEL-DEU-FRA-GBR-IRL-LUX-NLD",
+        "NW_EU_CONTINENT": "BEL-DEU-FRA-LUX-NLD",
+    }
 
     region_traces = []
     for region, countries_str in regions_dict.items():
         countries = countries_str.split("-")
-        region_ds = country_traces_merged.sel(country=countries).sum("country").expand_dims({"country": [region]})
+        region_ds = (
+            country_traces_merged.sel(country=countries).sum("country").expand_dims({"country": [region]})
+        )
         region_traces.append(region_ds)
 
     region_traces_merged = xr.concat(region_traces, dim="country")
@@ -117,23 +127,26 @@ def make_country_output(
     all_traces_merged = xr.merge([country_traces_merged, region_traces_merged])
 
     country_output = xr.merge(
-        calculate_stats(all_traces_merged, "country", chunk_dim="country", chunk_size=1, report_mode=report_mode)
+        calculate_stats(
+            all_traces_merged, "country", chunk_dim="country", chunk_size=1, report_mode=report_mode
+        )
     )
-
-
-
 
     return country_output
 
 
 def make_flux_outputs(
-        inv_outs: list[InversionOutput], time_point: Literal["start", "midpoint"] = "midpoint", report_mode: bool = True,
+    inv_outs: list[InversionOutput],
+    time_point: Literal["start", "midpoint"] = "midpoint",
+    report_mode: bool = False,
 ) -> xr.Dataset:
     """Make flux output dataset"""
 
     # calculate stats on flux traces
     traces = [inv_out.get_trace_dataset(convert_nmeasure=False, var_names="x") for inv_out in inv_outs]
-    stats = [xr.merge(calculate_stats(trace, "flux", chunk_dim="nx", report_mode=report_mode)) for trace in traces]
+    stats = [
+        xr.merge(calculate_stats(trace, "flux", chunk_dim="nx", report_mode=report_mode)) for trace in traces
+    ]
 
     time_func = partial(get_time_point, time_point=time_point)
 
@@ -158,7 +171,13 @@ def make_concentration_outputs(inv_outs: list[InversionOutput], report_mode: boo
         if use_bc:
             var_names = ["mu_bc_posterior", "mu_bc_prior"]
             stats = calculate_stats(
-                preds, name="Y", chunk_dim="nmeasure", chunk_size=1, var_names=var_names, report_mode=report_mode, add_bc_suffix=True,
+                preds,
+                name="Y",
+                chunk_dim="nmeasure",
+                chunk_size=1,
+                var_names=var_names,
+                report_mode=report_mode,
+                add_bc_suffix=True,
             )
         else:
             stats = []
@@ -200,12 +219,13 @@ def rename_drop_dvs_for_template(ds: xr.Dataset, var_name: str) -> tuple[dict[st
 
     return rename_dict, vars_to_drop
 
+
 def shift_measurement_time_to_midpoint(ds: xr.Dataset, period: str = "4h") -> np.ndarray:
-    """Adjust `time` coordinate of concentrations to represent half averaging "period".
-    """
-    time_midpoint = ds['time'].astype('datetime64[ns]') + np.timedelta64(int(period[:-1]) , period[-1]) / 2
+    """Adjust `time` coordinate of concentrations to represent half averaging "period"."""
+    time_midpoint = ds["time"].astype("datetime64[ns]") + np.timedelta64(int(period[:-1]), period[-1]) / 2
 
     return time_midpoint
+
 
 def main(
     species: str,
@@ -215,8 +235,10 @@ def main(
     n_files: Optional[int] = None,
     return_concentrations: bool = True,
     report_mf_mode: bool = False,
-    report_em_mode: bool = True,
+    report_em_mode: bool = False,
     pol_from_obs: bool = False,
+    no_model_error: bool = False,
+    ndraw: int = 10000,
 ) -> tuple[xr.Dataset, Optional[xr.Dataset]]:
     """Create formatted PARIS emissions and concentrations datasets.
 
@@ -235,7 +257,12 @@ def main(
         emissions dataset and concentrations dataset
     """
     inv_outs = get_inversion_outputs_with_samples(
-        species=species, output_file_path=output_file_path, n_files=n_files, pol_from_obs=pol_from_obs
+        species=species,
+        output_file_path=output_file_path,
+        n_files=n_files,
+        pol_from_obs=pol_from_obs,
+        no_model_error=no_model_error,
+        ndraw=ndraw,
     )
 
     # make country and flux output
@@ -308,7 +335,7 @@ def main(
         )
 
         # add sitenames variable and remove nsite coordinate
-        concentrations = concentrations.assign(sitenames = ("nsite", concentrations.nsite.values.astype("|S3")))
+        concentrations = concentrations.assign(sitenames=("nsite", concentrations.nsite.values.astype("|S3")))
         concentrations["sitenames"].attrs["long_name"] = "identifier of site"
         del concentrations["nsite"]
 
@@ -331,7 +358,9 @@ if __name__ == "__main__":
         type=str,
         help="path to country file; e.g. '/group/acrg/chem/LPDM/countries/country_EUROPE.nc'",
     )
-    parser.add_argument("-p", "--avr-obs-period", type=str, help="averaging period for measurements used in inversion")
+    parser.add_argument(
+        "-p", "--avr-obs-period", type=str, help="averaging period for measurements used in inversion"
+    )
     parser.add_argument("-o", "--output-path", type=str, help="path to dir to write formatted outputs")
     parser.add_argument("-t", "--output-tag", type=str, help="tag to add to output file names")
     parser.add_argument("-n", "--n-files", type=int, help="number of files to process")
@@ -348,18 +377,24 @@ if __name__ == "__main__":
         help="if set, report mode for concentrations/mole fractions (by default, mean is reported).",
     )
     parser.add_argument(
-            "--em-mean",
-            action="store_true",
-            default=False,
-            help="if set, report mean for country and flux totals (by default, mode is reported).",
+        "--em-mode",
+        action="store_true",
+        default=False,
+        help="if set, report mode for country and flux totals (by default, mean is reported).",
     )
     parser.add_argument(
-            "--pol-obs",
-            action="store_true",
-            default=False,
-            help="if set, this means that pollution_events_from_obs=True was specified",
+        "--pol-obs",
+        action="store_true",
+        default=False,
+        help="if set, this means that pollution_events_from_obs=True was specified",
     )
-
+    parser.add_argument(
+        "--no-model-error",
+        action="store_true",
+        default=False,
+        help="if set, this means that no_model_error=True was specified",
+    )
+    parser.add_argument("--ndraw", type=int, default=10000, help="number of prior/predictive samples to produce")
 
     args = parser.parse_args()
 
@@ -371,8 +406,10 @@ if __name__ == "__main__":
         n_files=args.n_files,
         return_concentrations=(not args.no_conc),
         report_mf_mode=args.mode,
-        report_em_mode=(not args.em_mean),
-        pol_from_obs=args.pol_obs
+        report_em_mode=args.em_mode,
+        pol_from_obs=args.pol_obs,
+        no_model_error=args.no_model_error,
+        ndraw=args.ndraw,
     )
 
     output_path = Path(args.output_path)
@@ -382,8 +419,8 @@ if __name__ == "__main__":
 
     if args.output_tag:
         tag = args.output_tag
-        emissions_output_path = output_path / f"{tag}_{args.species}_yearly.nc"
-        conc_output_path = output_path / f"{tag}_{args.species}_yearly_concentrations.nc"
+        emissions_output_path = output_path / f"{tag}.nc"
+        conc_output_path = output_path / f"{tag}_concentrations.nc"
     else:
         date, time = str(timestamp_now()).split(" ")
         tag = date + "_" + time.split(".")[0].replace(":", "")
