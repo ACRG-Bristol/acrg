@@ -43,7 +43,7 @@ def get_netcdf_files(directory: Union[str, Path], filename_search: Optional[str]
 def get_inversion_outputs_with_samples(
     species: str,
     output_file_path: str,
-    ndraw: int = 1000,
+    ndraw: int = 10000,
     n_files: Optional[int] = None,
     pol_from_obs: bool = False,
     no_model_error: bool = False,

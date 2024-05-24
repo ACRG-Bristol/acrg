@@ -199,7 +199,7 @@ def get_rhime_model(
     return model
 
 
-def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset, ndraw: int = 1000) -> az.InferenceData:
+def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset, ndraw: int = 10000) -> az.InferenceData:
     """Create arviz InferenceData with posterior group created from RHIME output."""
     trace_dvs = [dv for dv in rhime_out_ds.data_vars if "draw" in list(rhime_out_ds[dv].coords)]
     traces = rhime_out_ds[trace_dvs].expand_dims({"chain": [0]})

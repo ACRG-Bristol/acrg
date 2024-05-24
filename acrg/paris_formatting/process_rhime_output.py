@@ -195,7 +195,7 @@ class InversionOutput:
             times=ds_clean.Ytime,
         )
 
-    def sample_predictive_distributions(self, ndraw: int = 1000) -> None:
+    def sample_predictive_distributions(self, ndraw: int = 10000) -> None:
         """Sample prior and posterior predictive distributions.
 
         This creates prior samples as a side-effect.
