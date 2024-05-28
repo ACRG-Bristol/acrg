@@ -62,7 +62,7 @@ def get_inversion_outputs_with_samples(
     ]
 
     for inv_out in inv_outs:
-        inv_out.sample_predictive_distributions()
+        inv_out.sample_predictive_distributions(ndraw=ndraw)
 
     return inv_outs
 
