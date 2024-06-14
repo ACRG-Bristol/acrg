@@ -115,9 +115,9 @@ def make_country_output(
 
     region_traces = []
     for region, countries_str in regions_dict.items():
-        countries = countries_str.split("-")
+        region_countries = countries_str.split("-")
         region_ds = (
-            country_traces_merged.sel(country=countries).sum("country").expand_dims({"country": [region]})
+            country_traces_merged.sel(country=region_countries).sum("country").expand_dims({"country": [region]})
         )
         region_traces.append(region_ds)
 
