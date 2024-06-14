@@ -220,7 +220,7 @@ def rename_drop_dvs_for_template(ds: xr.Dataset, var_name: str) -> tuple[dict[st
     return rename_dict, vars_to_drop
 
 
-def shift_measurement_time_to_midpoint(ds: xr.Dataset, period: str = "4h") -> np.ndarray:
+def shift_measurement_time_to_midpoint(ds: Union[xr.Dataset, xr.DataArray], period: str = "4h") -> xr.DataArray:
     """Adjust `time` coordinate of concentrations to represent half averaging "period"."""
     time_midpoint = ds["time"].astype("datetime64[ns]") + np.timedelta64(int(period[:-1]), period[-1]) / 2
 
