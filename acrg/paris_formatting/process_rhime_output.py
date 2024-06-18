@@ -45,9 +45,6 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
     )
     ds["x"] = ds.x.assign_coords(nx=("nx", ds.basisfunctions.to_series().sort_values().unique()))
 
-    if use_bc:
-        ds["mu_bc"] = (ds.bcsensitivity @ ds.bc).transpose("draw", ...)
-
     data_vars = [
         "Yobs",
         "Yerror",
@@ -63,7 +60,7 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
     ]
 
     if use_bc:
-        data_vars.extend(["bc", "mu_bc", "bcsensitivity"])
+        data_vars.extend(["bc", "bcsensitivity"])
 
     ds = ds[data_vars]
 
@@ -178,9 +175,9 @@ class InversionOutput:
         )  # type: ignore
 
         if ndraw is not None:
-            trace = make_idata_from_rhime_outs(ds_clean, ndraw=ndraw)
+            trace = make_idata_from_rhime_outs(ds_clean, model=model, ndraw=ndraw)
         else:
-            trace = make_idata_from_rhime_outs(ds_clean)
+            trace = make_idata_from_rhime_outs(ds_clean, model=model)
 
         return cls(
             obs=ds_clean.Yobs,
