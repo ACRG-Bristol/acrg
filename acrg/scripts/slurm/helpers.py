@@ -104,7 +104,14 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
 
     def make_kv_string(k, v):
         if isinstance(v, (dict, list, tuple)):
-            return f"{k} = {json.dumps(v)}\n"
+            new_val = json.dumps(v)
+
+            # fix json values
+            new_val = new_value.replace("false", "False")
+            new_val = new_value.replace("true", "True")
+            new_val = new_value.replace("null", "None")
+
+            return f"{k} = {new_val}\n"
         elif isinstance(v, str):
             return f'{k} = "{v}"\n'
         return f"{k} = {v}\n"
