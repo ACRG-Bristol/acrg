@@ -107,9 +107,9 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
             new_val = json.dumps(v)
 
             # fix json values
-            new_val = new_value.replace("false", "False")
-            new_val = new_value.replace("true", "True")
-            new_val = new_value.replace("null", "None")
+            new_val = new_val.replace("false", "False")
+            new_val = new_val.replace("true", "True")
+            new_val = new_val.replace("null", "None")
 
             return f"{k} = {new_val}\n"
         elif isinstance(v, str):
