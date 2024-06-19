@@ -283,7 +283,7 @@ class InversionOutput:
         if unstack_nmeasure:
             return result.unstack("nmeasure")
 
-        return result
+        return result.rename("obs_repeatability")
 
     def get_obs_variability(self, unstack_nmeasure: bool = True) -> xr.DataArray:
         """Return "variability" uncertainty term for y observations.
@@ -301,4 +301,4 @@ class InversionOutput:
         if unstack_nmeasure:
             return result.unstack("nmeasure")
 
-        return xr.zeros_like(result)
+        return xr.zeros_like(result).rename("obs_variability")
