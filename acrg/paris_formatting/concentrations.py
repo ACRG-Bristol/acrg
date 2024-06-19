@@ -9,7 +9,6 @@ from attribute_parsers import (
     convert_time_to_unix_epoch,
     get_data_var_attrs,
     make_global_attrs,
-    rename_drop_dvs_for_template,
 )
 from process_rhime_output import InversionOutput
 from stats import calculate_stats
@@ -57,12 +56,12 @@ def _make_concentration_outputs(inv_outs: list[InversionOutput], report_mode: bo
 
 
 def shift_measurement_time_to_midpoint(
-    ds: Union[xr.Dataset, xr.DataArray], period: str = "4h"
-) -> xr.DataArray:
+    ds: xr.Dataset, period: str = "4h"
+) -> xr.Dataset:
     """Adjust `time` coordinate of concentrations to represent half averaging "period"."""
-    time_midpoint = ds["time"].astype("datetime64[ns]") + np.timedelta64(int(period[:-1]), period[-1]) / 2
-
-    return time_midpoint
+    time_shifted = ds["time"].astype("datetime64[ns]") + np.timedelta64(int(period[:-1]), period[-1]) / 2
+    ds = ds.assign_coords(time=time_shifted)
+    return ds
 
 
 def make_concentration_outputs(
@@ -71,11 +70,6 @@ def make_concentration_outputs(
     conc_output = _make_concentration_outputs(inv_outs, report_mode=report_mode)
     y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
     y_obs_err = xr.concat([inv_out.get_obs_err() for inv_out in inv_outs], dim="time")
-
-    # shift time coordinate to represent half averaging period
-    conc_output["time"] = shift_measurement_time_to_midpoint(conc_output, avr_obs_period)
-    y_obs["time"] = shift_measurement_time_to_midpoint(y_obs, avr_obs_period)
-    y_obs_err["time"] = shift_measurement_time_to_midpoint(y_obs_err, avr_obs_period)
 
     conc_attrs = get_data_var_attrs(conc_template_path)
 
@@ -91,6 +85,7 @@ def make_concentration_outputs(
     # merge and process names, attrs
     concentrations = (
         xr.merge([y_obs, y_obs_err, conc_output])
+        .pipe(shift_measurement_time_to_midpoint, avr_obs_period)
         .pipe(convert_time_to_unix_epoch, "1s")
         .drop_vars(vars_to_drop_conc)
         .rename(rename_dict_conc)
@@ -99,6 +94,8 @@ def make_concentration_outputs(
     )
 
     # add sitenames variable and remove nsite coordinate
+    # TODO: should sitenames be a coordinate?
+    # it would be better to leave site as a dimension coordinate so we can just do `.sel(site="MHD")` etc.
     concentrations = concentrations.assign(sitenames=("nsite", concentrations.nsite.values.astype("|S3")))
     concentrations["sitenames"].attrs["long_name"] = "identifier of site"
     del concentrations["nsite"]
