@@ -299,7 +299,7 @@ class InversionOutput:
         )
 
         if unstack_nmeasure:
-            return result.unstack("nmeasure")
+            result = result.unstack("nmeasure")
 
         return xr.zeros_like(result).rename("obs_variability")
 
