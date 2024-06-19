@@ -256,6 +256,8 @@ class InversionOutput:
         """Return y observations errors.
 
         By default, `nmeasure` is converted to `site` and `time`.
+
+        TODO: need to return total error, once separate terms are available
         """
         result = nmeasure_to_site_time_data_array(
             self.obs_err, self.site_indicators, self.site_names, self.times
@@ -265,3 +267,38 @@ class InversionOutput:
             return result.unstack("nmeasure")
 
         return result
+
+    def get_obs_repeatability(self, unstack_nmeasure: bool = True) -> xr.DataArray:
+        """Return "repeatbility" uncertainty term for y observations.
+
+        By default, `nmeasure` is converted to `site` and `time`.
+
+        TODO: this needs to be fixed when we have separate repeatability and variability outputs
+        from RHIME
+        """
+        result = nmeasure_to_site_time_data_array(
+            self.obs_err, self.site_indicators, self.site_names, self.times
+        )
+
+        if unstack_nmeasure:
+            return result.unstack("nmeasure")
+
+        return result
+
+    def get_obs_variability(self, unstack_nmeasure: bool = True) -> xr.DataArray:
+        """Return "variability" uncertainty term for y observations.
+
+        By default, `nmeasure` is converted to `site` and `time`.
+
+        NOTE: currently returns all 0's
+        TODO: this needs to be fixed when we have separate repeatability and variability outputs
+        from RHIME
+        """
+        result = nmeasure_to_site_time_data_array(
+            self.obs_err, self.site_indicators, self.site_names, self.times
+        )
+
+        if unstack_nmeasure:
+            return result.unstack("nmeasure")
+
+        return xr.zeros_like(result)
