@@ -14,7 +14,7 @@ from xarray.core.common import DataWithCoords
 paris_formatting_path = Path(__file__).parent
 
 # paths to template files
-conc_template_path = paris_formatting_path / "PARIS_Lagrangian_inversion_concentration_EUROPE.cdl"
+conc_template_path = paris_formatting_path / "PARIS_Lagrangian_inversion_concentration_EUROPE_v02.cdl"
 flux_template_path = paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl"
 
 

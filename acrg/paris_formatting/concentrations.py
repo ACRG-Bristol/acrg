@@ -69,14 +69,19 @@ def make_concentration_outputs(
 ) -> xr.Dataset:
     conc_output = _make_concentration_outputs(inv_outs, report_mode=report_mode)
     y_obs = xr.concat([inv_out.get_obs() for inv_out in inv_outs], dim="time")
-    y_obs_err = xr.concat([inv_out.get_obs_err() for inv_out in inv_outs], dim="time")
+    y_obs_repeatability = xr.concat([inv_out.get_obs_repeatability() for inv_out in inv_outs], dim="time").rename("uYobs_repeatability")
+    y_obs_variability = xr.concat([inv_out.get_obs_variability() for inv_out in inv_outs], dim="time").rename("uYobs_variability")
+    y_total_err  = xr.concat([inv_out.get_total_err() for inv_out in inv_outs], dim="time").rename("uYtotal")
+    y_model_err = xr.concat([inv_out.get_model_err() for inv_out in inv_outs], dim="time").rename("uYmod")
+
+    to_merge = [y_obs, y_obs_repeatability, y_obs_variability, y_model_err, y_total_err, conc_output]
 
     conc_attrs = get_data_var_attrs(conc_template_path)
 
     units = float(y_obs.attrs["units"].split(" ")[0])  # e.g. get 1e-12 from "1e-12 mol/mol"
 
     # renaming as in latest .cdl file from Stephan
-    rename_dict_conc = {"probs": "percentile", "site": "nsite", "Yerror": "uYobs", "qYapriori": "qYmod"}
+    rename_dict_conc = {"probs": "percentile", "site": "nsite"}
     if "qYapostBC" in conc_output.data_vars:
         vars_to_drop_conc = ["qYapostBC", "qYaprioriBC"]
     else:
@@ -84,7 +89,7 @@ def make_concentration_outputs(
 
     # merge and process names, attrs
     concentrations = (
-        xr.merge([y_obs, y_obs_err, conc_output])
+        xr.merge(to_merge)
         .pipe(shift_measurement_time_to_midpoint, avr_obs_period)
         .pipe(convert_time_to_unix_epoch, "1s")
         .drop_vars(vars_to_drop_conc)
@@ -93,12 +98,9 @@ def make_concentration_outputs(
         .transpose("time", "percentile", "nsite")
     )
 
-    # add sitenames variable and remove nsite coordinate
-    # TODO: should sitenames be a coordinate?
-    # it would be better to leave site as a dimension coordinate so we can just do `.sel(site="MHD")` etc.
-    concentrations = concentrations.assign(sitenames=("nsite", concentrations.nsite.values.astype("|S3")))
+    # rename "nsite" coordinate to "sitenames"
+    concentrations = concentrations.rename_vars(nsite="sitenames")
     concentrations["sitenames"].attrs["long_name"] = "identifier of site"
-    del concentrations["nsite"]
 
     concentrations.attrs = make_global_attrs("conc")
 

@@ -302,3 +302,34 @@ class InversionOutput:
             return result.unstack("nmeasure")
 
         return xr.zeros_like(result).rename("obs_variability")
+
+
+    def get_total_err(self, unstack_nmeasure: bool = True, take_mean: bool = True) -> xr.DataArray:
+        """Return sqrt(repeatability**2 + variability**2 + model_error**2)
+
+        Args:
+            unstack_nmeasure: if True, convert `nmeasure` `site` and `time`. (Default: True)
+            take_mean: if True, take mean over trace of error term
+
+        """
+        result = self.get_trace_dataset(var_names="epsilon").epsilon_posterior
+
+        if unstack_nmeasure:
+            result = result.unstack("nmeasure")
+
+        if take_mean:
+            result = result.mean("draw")
+
+        return result.rename("total_error")
+
+    def get_model_err(self, unstack_nmeasure: bool = True) -> xr.DataArray:
+            """Return model_error
+
+            By default, `nmeasure` is converted to `site` and `time`.
+            """
+            total_err = self.get_total_err(unstack_nmeasure=unstack_nmeasure, take_mean=False)
+            total_obs_err = self.get_obs_err(unstack_nmeasure=unstack_nmeasure)
+
+            result = np.sqrt(np.maximum(total_err**2 - total_obs_err**2, 0)).mean("draw")  # type: ignore
+
+            return result.rename("model_error")
