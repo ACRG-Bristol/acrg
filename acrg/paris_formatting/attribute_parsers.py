@@ -3,11 +3,20 @@ import functools
 import json
 import re
 from pathlib import Path
-from typing import Any, Literal, Optional, TypeVar
+from typing import Any, Literal, Optional, TypeVar, Union
 
 import pandas as pd
 import xarray as xr
 from xarray.core.common import DataWithCoords
+
+
+# path to `paris_formatting` submodule
+paris_formatting_path = Path(__file__).parent
+
+# paths to template files
+conc_template_path = paris_formatting_path / "PARIS_Lagrangian_inversion_concentration_EUROPE.cdl"
+flux_template_path = paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl"
+
 
 
 # type for xr.Dataset *or* xr.DataArray
@@ -18,7 +27,7 @@ var_pat = re.compile(r"\s*[a-z]+ ([a-zA-Z_]+)\(.*\)")
 attr_pat = re.compile(r"\s+([a-zA-Z_]+):([a-zA-Z_]+)\s*=\s*([^;]+)")
 
 
-def get_data_var_attrs(template_file: str, species: Optional[str] = None) -> dict[str, dict[str, Any]]:
+def get_data_var_attrs(template_file: Union[str, Path], species: Optional[str] = None) -> dict[str, dict[str, Any]]:
     """Extract data variable attributes from template file."""
     attr_dict: dict[str, Any] = {}
 

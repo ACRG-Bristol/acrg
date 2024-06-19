@@ -13,6 +13,7 @@ from openghg.util import timestamp_now
 
 from attribute_parsers import (
     add_variable_attrs,
+    flux_template_path,
     get_data_var_attrs,
     make_global_attrs,
     get_country_code,
@@ -271,8 +272,7 @@ def main(
     country_output = make_country_output(species, inv_outs, countries, report_mode=report_em_mode)
     flux_output = make_flux_outputs(inv_outs, report_mode=report_em_mode)
 
-    template_file = str(paris_formatting_path / "PARIS_Lagrangian_inversion_flux_EUROPE.cdl")
-    emissions_attrs = get_data_var_attrs(template_file, species)
+    emissions_attrs = get_data_var_attrs(flux_template_path, species)
 
     # renaming as in latest .cdl file from Stephan
     rename_dict = {"lat": "latitude", "lon": "longitude", "probs": "percentile"}
