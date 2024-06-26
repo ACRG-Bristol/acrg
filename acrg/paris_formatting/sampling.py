@@ -188,7 +188,7 @@ def get_rhime_model(
         # set up obs + model error
         if no_model_error is True:
             # need some small non-zero value to avoid sampling problems
-            mean_err = rhime_outs_ds.Yerror.mean().values
+            mean_err = rhime_outs_ds.Yerror.mean(skipna=True).values
             small_amount = 1e-9 * mean_err
             epsilon = pm.Deterministic(
                 "epsilon",
