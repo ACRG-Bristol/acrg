@@ -89,9 +89,14 @@ class Countries:
         Returns:
             xr.DataArray with coordinate dimensions ("country", "basis_region")
         """
+        # align basis to the country lat/lon (inv_out.basis is aligned to "xsensitivity" in the RHIME outputs,
+        # which could have different lat/lon coordinates from inv_out.flux if the footprints and flux had differing
+        # lat/lon coordinates)
+        _, basis = xr.align(inv_out.basis, self.area_grid, join="override")
+
         # compute matrix/tensor product: country_mat.T @ (area_grid * flux * basis_mat)
         # transpose doesn't need to be taken explicitly because alignment is done by dimension name
-        result = sparse_xr_dot(self.matrix, self.area_grid * inv_out.flux * inv_out.basis)
+        result = sparse_xr_dot(self.matrix, self.area_grid * inv_out.flux * basis)
 
         if sparse:
             return result
