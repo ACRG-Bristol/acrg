@@ -155,7 +155,6 @@ class InversionOutput:
 
         ds_clean = clean_rhime_output(ds)
         site_indicators = ds_clean.siteindicator
-
         basis = get_xr_dummies(ds_clean.basisfunctions, cat_dim="nx", categories=ds_clean.nx.values)
 
         model_kwargs = get_sampling_kwargs_from_rhime_outs(ds)
