@@ -68,6 +68,13 @@ class Substitution:
     def root(self) -> str:
         return self.keys[0]
 
+    def apply(self, value: str) -> str:
+        left = value[:self.start]
+        right = value[self.end:]
+        center = "{" + f"config.{self.root}" + "".join([f"[{key}]" for key in self.keys[1:]]) + "}"
+        return left + center + right
+
+
 
 @dataclass
 class Param:
@@ -108,10 +115,7 @@ class Param:
         if isinstance(self.value, str):
             # iteratively replace <key1.key2> with {config.key1[key2]} to set up for formatting below
             while (s := self._find_next_sub(skip=["dates"])):
-                left = self.value[:s.start]
-                right = self.value[s.end:]
-                center = "{" + f"config.{s.root}" + "".join([f"[{key}]" for key in s.keys[1:]]) + "}"
-                self.value = left + center + right
+                self.value = s.apply(self.value)
 
             self.value = self.value.format(config=config)
 
@@ -249,3 +253,11 @@ class Config:
 
         for exp in self.experiments:
             exp.format(self)
+
+
+def get_experiments_from_conf():
+    """Parse config file and get list of Experiment objects.
+
+    This can handle the case where there are
+    """
+    pass
