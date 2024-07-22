@@ -19,46 +19,14 @@ time = "02:30:00"
 mem = "40gb"
 
 [kwargs]
+emissions_name = [["edgar-annual-total"], ["flat-annual-total"]]
+use_bc = [True, False]
+
 nuts_sampler = "numpyro"
-nbasis = [100, 250, 500]
-basis_algorithm = ["quadtree", "weighted"]
+nbasis = 500
+basis_algorithm = "weighted"
 
-[[kwargs.xprior]]
-pdf = "truncatednormal"
-mu = 1.0
-sigma = 1.0
-lower = 0.0
-
-[[kwargs.xprior]]
-pdf = "expon"
-lam = 1.0
-
-[[kwargs.xprior]]
-pdf = "gamma"
-mu = 1.0
-sigma = 1.5
-
-[[kwargs.xprior]]
-pdf = "lognormal"
-mu = -0.3466
-sigma = 0.8326
-
-[[kwargs.xprior]]
-pdf = "lognormal"
-mu = -0.5893
-sigma = 1.0857
-
-[[kwargs.xprior]]
-pdf = "lognormal"
-mu = -0.8047
-sigma = 1.2686
 
 [names]
-xprior = [
-          "truncnorm",
-          "exponential",
-          "gamma_mean_1_stdev_1point5",
-          "lognormal_mean_1_stdev_1",
-          "lognormal_mean_1_stdev_1point5",
-          "lognormal_mean_1_stdev_2"
-         ]
+emissions_name = ["EDGAR", "FLAT"]
+use_bc = ["rhime_baseline_optimized", "intem_baseline_fixed"]
