@@ -42,7 +42,7 @@ def main(toml_path: Union[str, Path]) -> None:
         return "_".join(name_strings)
 
     # make list of name strings in same shape as kwargs_flat
-    names_flat = [make_name(x) for x in flatten(names_dict)]
+    names_flat = [make_name(x, conf["names"]) for x in flatten(names_dict)]
 
     dates_df = make_dates_df(**conf["dates"])
 
