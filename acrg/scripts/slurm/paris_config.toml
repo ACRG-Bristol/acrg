@@ -10,23 +10,79 @@ frequency = "annual"
 ini_file = "/group/chem/acrg/PARIS_inversions/hfc134a/annual_synthetic_no_bc/config.ini"
 job_root = "/group/chem/acrg/PARIS_inversions/hfc134a"
 python_venv = "/user/work/bm13805/.jax_venv"
-job_name = "synth_test"
-out_prefix = "annual_synthetic_no_bc"
+job_name = "paris_<general.species>"  # you can include other variables from the "general" and "dates" sections
+
 
 [slurm]
 n_cpu = 4
 time = "02:30:00"
 mem = "40gb"
 
-[kwargs]
-emissions_name = [["edgar-annual-total"], ["flat-annual-total"]]
-use_bc = [True, False]
-
+# general: applied to all experiments/combos
+[general]
+species = "hfc134a"
 nuts_sampler = "numpyro"
-nbasis = 500
+nbasis = 250
 basis_algorithm = "weighted"
+fix_basis_outer_regions = true  # NOTE: true/false are lowercase in toml
+calculate_min_error = true
+pollution_events_from_obs = true
+reparameterise_log_normal = true
 
+# experiments: specify groups of parameters and a directory name explicitly
+# "general" arguments will be applied, but they will be overwritten by experiment values
+[experiments]
+[experiments.RHIME_NAME_EUROPE_EDGAR_all_obs_rhime_baseline_optimized_hfc134a_yearly]
+emissions_name = ["edgar-annual-total"]
+use_bc = true
 
-[names]
-emissions_name = ["EDGAR", "FLAT"]
-use_bc = ["rhime_baseline_optimized", "intem_baseline_fixed"]
+[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_intem_bf_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
+emissions_name = ["edgar-annual-total"]
+use_bc = false
+fp_basis_case = "intem_<general.species>_<dates.year>"
+
+[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
+emissions_name = ["edgar-annual-total"]
+use_bc = false
+
+[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_rhime_baseline_optimized_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs", "intem_obs", "intem_obs", "intem_obs"]
+emissions_name = ["edgar-annual-total"]
+use_bc = true
+
+[experiments.RHIME_NAME_EUROPE_EDGAR_rhime_obs_rhime_baseline_optimized_hfc134a_yearly]
+emissions_name = ["edgar-annual-total"]
+use_bc = true
+
+# NOTE: dictionary in toml is different from json/OpenGHG inversions ini files
+# NOTE: there is no "None" type in toml, so we omit the sites without filters and
+# fix this in the parser
+filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pblh_min"] }  # CMN, JFJ omitted
+
+[experiments.RHIME_NAME_EUROPE_FLAT_all_obs_rhime_baseline_optimized_hfc134a_yearly]
+emissions_name = ["flat-annual-total"]
+emissions_store = "paris_store_zarr"
+use_bc = true
+
+[experiments.RHIME_NAME_EUROPE_FLAT_intem_obs_intem_baseline_fixed_no_mod_err_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
+emissions_name = ["flat-annual-total"]
+emissions_store = "paris_store_zarr"
+use_bc = false
+no_model_error = true
+
+[experiments.RHIME_NAME_EUROPE_FLAT_rhime_obs_rhime_baseline_optimized_hfc134a_yearly]
+emissions_name = ["flat-annual-total"]
+emissions_store = "paris_store_zarr"
+use_bc = true
+
+# NOTE: dictionary in toml is different from json/OpenGHG inversions ini files
+# NOTE: there is no "None" type in toml, so we omit the sites without filters and
+# fix this in the parser
+filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pblh_min"] }  # CMN, JFJ omitted
