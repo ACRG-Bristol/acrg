@@ -28,9 +28,20 @@ def main(toml_path: Union[str, Path]) -> None:
         else:
             names_dict[k] = list(map(str, v))
 
-    def make_name(x: dict) -> str:
-        return "_".join([f"{k}_{v}" for k, v in x.items() if v is not None])
+    def make_name(x: dict, conf_names: dict) -> str:
+        name_strings = []
+        for k, v in x.items():
+            if v is None:
+                continue
+            if k in conf_names:
+                # don't add key for custom names
+                name_strings.append(v)
+            else:
+                name_strings.append(f"{k}_{v}")
 
+        return "_".join(name_strings)
+
+    # make list of name strings in same shape as kwargs_flat
     names_flat = [make_name(x) for x in flatten(names_dict)]
 
     dates_df = make_dates_df(**conf["dates"])
