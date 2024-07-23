@@ -43,7 +43,7 @@ def flatten(x: dict) -> list[dict]:
 def make_dates_df(
     year: int,
     n_periods: int,
-    frequency: Literal["annual", "monthly"] = "annual",
+    frequency: Literal["annual", "yearly", "monthly"] = "annual",
     initial_month: int = 1,
     array_job_id: bool = True,
 ) -> pd.DataFrame:
@@ -59,7 +59,7 @@ def make_dates_df(
     Returns:
         DataFrame containing columns for start and end dates.
     """
-    if frequency == "annual":
+    if frequency in ["annual", "yearly"]:
         freq = "YS"
         n_years, n_months = n_periods, 0
         offset = pd.DateOffset(years=1)  # offset for start vs. end dates
