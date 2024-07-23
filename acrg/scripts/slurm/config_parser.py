@@ -54,6 +54,7 @@ def find_bare_keys(s: str) -> list[str]:
 
 sub_pat = re.compile(rf"<({toml_key_str})>")
 
+
 @dataclass
 class Substitution:
     start: int
@@ -69,11 +70,10 @@ class Substitution:
         return self.keys[0]
 
     def apply(self, value: str) -> str:
-        left = value[:self.start]
-        right = value[self.end:]
+        left = value[: self.start]
+        right = value[self.end :]
         center = "{" + f"config.{self.root}" + "".join([f"[{key}]" for key in self.keys[1:]]) + "}"
         return left + center + right
-
 
 
 @dataclass
@@ -114,7 +114,7 @@ class Param:
     def format(self, config: Config) -> None:
         if isinstance(self.value, str):
             # iteratively replace <key1.key2> with {config.key1[key2]} to set up for formatting below
-            while (s := self._find_next_sub(skip=["dates"])):
+            while s := self._find_next_sub(skip=["dates"]):
                 self.value = s.apply(self.value)
 
             self.value = self.value.format(config=config)
@@ -137,6 +137,14 @@ class Params:
     def format(self, config: Config) -> None:
         for v in self.params.values():
             v.format(config)
+
+    def update(self, other: Params, priority: Literal["self", "other"] = "self") -> None:
+        if priority == "self":
+            self.params = other.params | self.params
+        elif priority == "other":
+            self.params = self.params | other.params
+        else:
+            raise ValueError(f"priority must be 'self' or 'other', not '{priority}'.")
 
 
 CT = TypeVar("CT", bound="Combos")  # for classmethod typing
@@ -222,12 +230,14 @@ class Config:
     experiments: list[Experiment] = field(default_factory=list)
 
     @classmethod
-    def from_conf(cls: type[ConfT], toml_path: Union[str, Path]) -> ConfT:
+    def from_conf(cls: type[ConfT], toml_path: Union[str, Path], general: Optional[Params] = None) -> ConfT:
         conf = load_conf(toml_path)
         dates = Dates(**conf["dates"])
         setup = conf["setup"]
         slurm = conf["slurm"]
-        general = Params.from_dict(conf["general"])
+
+        if general is None:
+            general = Params.from_dict(conf["general"])
 
         if "combos" not in conf:
             combos = None
@@ -246,18 +256,28 @@ class Config:
 
         return result
 
-
     def __post_init__(self) -> None:
         if self.combos is not None:
-            self.experiments.extend(self.combos.get_experiments())
+            self.experiments.extend(self.combos.get_experiments(dates=self.dates, setup=self.setup, slurm=self.slurm))
 
         for exp in self.experiments:
             exp.format(self)
 
 
-def get_experiments_from_conf():
-    """Parse config file and get list of Experiment objects.
-
-    This can handle the case where there are
+def get_configs(toml_path: Union[str, Path]) -> list[Config]:
+    """Parse config when there are multiple values for parameters in "general", specified
+    via "general.combos".
     """
-    pass
+    conf = load_conf(toml_path)
+
+    if "combos" in conf["general"]:
+        general_combos = Combos.from_conf(conf["general"]["combos"])
+        gc_experiments = general_combos.get_experiments()
+        general_params = [x.params for x in gc_experiments]
+
+        for x in general_params:
+            x.update(conf["general"])
+    else:
+        general_params = conf["general"]
+
+    return [Config.from_conf(toml_path=toml_path, general=general) for general in general_params]
