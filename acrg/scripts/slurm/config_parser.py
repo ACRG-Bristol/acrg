@@ -111,13 +111,31 @@ class Param:
 
         return subs[0]
 
-    def format(self, config: Config) -> None:
+    def _format(self, config: Config) -> None:
         if isinstance(self.value, str):
             # iteratively replace <key1.key2> with {config.key1[key2]} to set up for formatting below
             while s := self._find_next_sub(skip=["dates"]):
                 self.value = s.apply(self.value)
 
             self.value = self.value.format(config=config)
+
+    def format(self, config: Config) -> None:
+        """Recursively apply _format"""
+        if isinstance(self.value, list):
+            tmp = [Param(x) for x in self.value]
+            for x in tmp:
+                x.format(config)
+            self.value = [x.value for x in tmp]
+
+        if isinstance(self.value, dict):
+            tmp = {k: Param(v) for k, v in self.value.items()}
+            for x in tmp.values():
+                x.format(config)
+            self.value = {k: v.value for k, v in tmp.items()}
+
+        # base case
+        if isinstance(self.value, str):
+            self._format(config)
 
 
 PT = TypeVar("PT", bound="Params")  # for classmethod typing
@@ -129,7 +147,7 @@ class Params:
 
     @classmethod
     def from_dict(cls: type[PT], d: dict) -> PT:
-        return cls({k: Param(v) for k, v in d.items()})
+        return cls({k: Param(v, key=k) for k, v in d.items()})
 
     def __getitem__(self, key: str) -> Param:
         return self.params[key]
@@ -138,7 +156,10 @@ class Params:
         for v in self.params.values():
             v.format(config)
 
-    def update(self, other: Params, priority: Literal["self", "other"] = "self") -> None:
+    def update(self, other: Params | dict, priority: Literal["self", "other"] = "self") -> None:
+        if isinstance(other, dict):
+            other = Params.from_dict(other)
+
         if priority == "self":
             self.params = other.params | self.params
         elif priority == "other":
@@ -166,11 +187,21 @@ class Combos:
 
         return cls(param_lists, names)
 
-    def get_experiments(self) -> list[Experiment]:
+    def get_params(self) -> list[Params]:
+        return [Params(x) for x in flatten(self.param_lists)]
+
+    def get_names(self) -> list[str]:
         names_dicts = self.parse_names()
-        names_flat = [self.make_name(nd) for nd in flatten(names_dicts)]
-        params_flat = [Params(x) for x in flatten(self.param_lists)]
-        return [Experiment(name, params) for name, params in zip(names_flat, params_flat)]
+        return [self.make_name(nd) for nd in flatten(names_dicts)]
+
+    def get_experiments(self, setup: dict, slurm: dict, dates: Dates | None) -> list[Experiment]:
+        names_flat = self.get_names()
+        params_flat = self.get_params()
+
+        return [
+            Experiment(name, params, dates=dates, setup=setup, slurm=slurm)
+            for name, params in zip(names_flat, params_flat)
+        ]
 
     # name parsing for combos
     def parse_names(self) -> dict:
@@ -210,11 +241,20 @@ class Experiment:
     Note: "experiments" in a toml config file will ultimately result in an Experiment object,
     but the Config class needs to add the general info to the experiment-specific config.
     """
+
     name: str
     params: Params
+    dates: Optional[Dates] = None
+    setup: dict = field(default_factory=dict)
+    slurm: dict = field(default_factory=dict)
 
     def format(self, config: Config) -> None:
         self.params.format(config)
+
+        # format name
+        tmp = Param(self.name)
+        tmp.format(config)
+        self.name = tmp.value
 
 
 ConfT = TypeVar("ConfT", bound="Config")  # for classmethod typing
@@ -222,10 +262,10 @@ ConfT = TypeVar("ConfT", bound="Config")  # for classmethod typing
 
 @dataclass
 class Config:
-    dates: Dates
-    setup: dict
-    slurm: dict
     general: Params
+    dates: Optional[Dates] = None
+    setup: dict = field(default_factory=dict)
+    slurm: dict = field(default_factory=dict)
     combos: Optional[Combos] = None
     experiments: list[Experiment] = field(default_factory=list)
 
@@ -247,19 +287,32 @@ class Config:
         if "experiments" not in conf:
             experiments = None
         else:
-            experiments = [Experiment(name=k, params=Params.from_dict(v)) for k, v in conf["experiments"].items()]
+            experiments = [
+                Experiment(name=k, params=Params.from_dict(v), dates=dates, setup=setup, slurm=slurm)
+                for k, v in conf["experiments"].items()
+            ]
 
         if experiments:
-            result = cls(dates, setup, slurm, general, combos, experiments)
+            result = cls(
+                general=general, dates=dates, setup=setup, slurm=slurm, combos=combos, experiments=experiments
+            )
         else:
-            result = cls(dates, setup, slurm, general, combos)
+            result = cls(general=general, dates=dates, setup=setup, slurm=slurm, combos=combos)
+
+        # add any extra sections
+        for k, v in conf.items():
+            if k not in result.__dict__:
+                result.__dict__[k] = v
 
         return result
 
     def __post_init__(self) -> None:
         if self.combos is not None:
-            self.experiments.extend(self.combos.get_experiments(dates=self.dates, setup=self.setup, slurm=self.slurm))
+            self.experiments.extend(
+                self.combos.get_experiments(dates=self.dates, setup=self.setup, slurm=self.slurm)
+            )
 
+    def format(self) -> None:
         for exp in self.experiments:
             exp.format(self)
 
@@ -272,12 +325,11 @@ def get_configs(toml_path: Union[str, Path]) -> list[Config]:
 
     if "combos" in conf["general"]:
         general_combos = Combos.from_conf(conf["general"]["combos"])
-        gc_experiments = general_combos.get_experiments()
-        general_params = [x.params for x in gc_experiments]
+        general_params = general_combos.get_params()
 
         for x in general_params:
             x.update(conf["general"])
     else:
-        general_params = conf["general"]
+        general_params = [conf["general"]]
 
     return [Config.from_conf(toml_path=toml_path, general=general) for general in general_params]

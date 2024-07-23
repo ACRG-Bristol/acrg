@@ -7,8 +7,8 @@ n_periods = 5
 frequency = "annual"
 
 [setup]
-ini_file = "/group/chem/acrg/PARIS_inversions/hfc134a/annual_synthetic_no_bc/config.ini"
-job_root = "/group/chem/acrg/PARIS_inversions/hfc134a"
+ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
+job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
 python_venv = "/user/work/bm13805/.jax_venv"
 job_name = "paris_<general.species>"  # you can include other variables from the "general" and "dates" sections
 
@@ -29,33 +29,40 @@ calculate_min_error = true
 pollution_events_from_obs = true
 reparameterise_log_normal = true
 
+# general.combos: as if you specified multiple values for something in "general" using multiple config files
+# these take precedence over the values in "general"
+# these will be used if you call `get_configs`, if the `Config.from_conf` method is used, they will be ignored
+# and the values from "general" will be used.
+[general.combos]
+species = ["hfc134a", "hfc32", "pfc218"]  # just refer to this via <general.species>
+
 # experiments: specify groups of parameters and a directory name explicitly
 # "general" arguments will be applied, but they will be overwritten by experiment values
 [experiments]
-[experiments.RHIME_NAME_EUROPE_EDGAR_all_obs_rhime_baseline_optimized_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_EDGAR_all_obs_rhime_baseline_optimized_<general.species>_yearly"]
 emissions_name = ["edgar-annual-total"]
 use_bc = true
 
-[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_intem_bf_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_intem_bf_<general.species>_yearly"]
 obs_store = "paris_store_zarr"
 instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
 emissions_name = ["edgar-annual-total"]
 use_bc = false
 fp_basis_case = "intem_<general.species>_<dates.year>"
 
-[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_<general.species>_yearly"]
 obs_store = "paris_store_zarr"
 instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
 emissions_name = ["edgar-annual-total"]
 use_bc = false
 
-[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_rhime_baseline_optimized_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_EDGAR_intem_obs_rhime_baseline_optimized_<general.species>_yearly"]
 obs_store = "paris_store_zarr"
 instrument = ["intem_obs", "intem_obs", "intem_obs", "intem_obs"]
 emissions_name = ["edgar-annual-total"]
 use_bc = true
 
-[experiments.RHIME_NAME_EUROPE_EDGAR_rhime_obs_rhime_baseline_optimized_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_EDGAR_rhime_obs_rhime_baseline_optimized_<general.species>_yearly"]
 emissions_name = ["edgar-annual-total"]
 use_bc = true
 
@@ -64,12 +71,12 @@ use_bc = true
 # fix this in the parser
 filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pblh_min"] }  # CMN, JFJ omitted
 
-[experiments.RHIME_NAME_EUROPE_FLAT_all_obs_rhime_baseline_optimized_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_FLAT_all_obs_rhime_baseline_optimized_<general.species>_yearly"]
 emissions_name = ["flat-annual-total"]
 emissions_store = "paris_store_zarr"
 use_bc = true
 
-[experiments.RHIME_NAME_EUROPE_FLAT_intem_obs_intem_baseline_fixed_no_mod_err_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_FLAT_intem_obs_intem_baseline_fixed_no_mod_err_<general.species>_yearly"]
 obs_store = "paris_store_zarr"
 instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
 emissions_name = ["flat-annual-total"]
@@ -77,7 +84,7 @@ emissions_store = "paris_store_zarr"
 use_bc = false
 no_model_error = true
 
-[experiments.RHIME_NAME_EUROPE_FLAT_rhime_obs_rhime_baseline_optimized_hfc134a_yearly]
+[experiments."RHIME_NAME_EUROPE_FLAT_rhime_obs_rhime_baseline_optimized_<general.species>_yearly"]
 emissions_name = ["flat-annual-total"]
 emissions_store = "paris_store_zarr"
 use_bc = true
@@ -86,3 +93,12 @@ use_bc = true
 # NOTE: there is no "None" type in toml, so we omit the sites without filters and
 # fix this in the parser
 filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pblh_min"] }  # CMN, JFJ omitted
+
+
+# you can add more sections
+[extra]
+key = "abc"
+
+# and these can be referenced elsewhere
+[experiments.test]
+emissions_name = ["<extra.key>-annual-total"]
