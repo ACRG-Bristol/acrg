@@ -4,7 +4,9 @@ from pathlib import Path
 import re
 from typing import Any, Iterator, Literal, Optional, TypeVar, Union
 
-from helpers import flatten
+import pandas as pd
+
+from helpers import flatten, make_dates_df
 
 try:
     import tomllib
@@ -25,9 +27,12 @@ def load_conf(toml_path: Union[str, Path]) -> dict:
 class Dates:
     year: int
     n_periods: int
-    frequency: Literal["monthly", "annual"] = "annual"
+    frequency: Literal["monthly", "annual", "yearly"] = "annual"
     initial_month: int = 1
     array_job_id: bool = True
+
+    def to_df(self) -> pd.DataFrame:
+        return make_dates_df(self.year, self.n_periods, self.frequency, self.initial_month, self.array_job_id)
 
 
 # regexes for toml keys and substitution parameters in config files
@@ -263,7 +268,7 @@ class Experiment:
         self.name = tmp.value
 
     def _find_date_params(self) -> list[str]:
-        """Find params that have substitutions matching the """
+        """Find params that have substitutions matching the date_flag."""
         result = []
         for param in self.params:
             subs = self.params[param].find_subsitutions()
