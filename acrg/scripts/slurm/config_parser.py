@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 import re
-from typing import Any, Literal, Optional, TypeVar, Union
+from typing import Any, Iterator, Literal, Optional, TypeVar, Union
 
 from helpers import flatten
 
@@ -10,6 +10,9 @@ try:
     import tomllib
 except ImportError:
     import pip._vendor.tomli as tomllib
+
+
+date_flag = "dates"  # flag value for parameterising values by date in config
 
 
 def load_conf(toml_path: Union[str, Path]) -> dict:
@@ -111,15 +114,15 @@ class Param:
 
         return subs[0]
 
-    def _format(self, config: Config) -> None:
+    def _format(self, config: Config, skip: list[str] | None) -> None:
         if isinstance(self.value, str):
             # iteratively replace <key1.key2> with {config.key1[key2]} to set up for formatting below
-            while s := self._find_next_sub(skip=["dates"]):
+            while s := self._find_next_sub(skip=skip):
                 self.value = s.apply(self.value)
 
             self.value = self.value.format(config=config)
 
-    def format(self, config: Config) -> None:
+    def format(self, config: Config, skip: list[str] | None = None) -> None:
         """Recursively apply _format"""
         if isinstance(self.value, list):
             tmp = [Param(x) for x in self.value]
@@ -135,7 +138,7 @@ class Param:
 
         # base case
         if isinstance(self.value, str):
-            self._format(config)
+            self._format(config, skip)
 
 
 PT = TypeVar("PT", bound="Params")  # for classmethod typing
@@ -152,9 +155,12 @@ class Params:
     def __getitem__(self, key: str) -> Param:
         return self.params[key]
 
-    def format(self, config: Config) -> None:
+    def __iter__(self) -> Iterator:
+        yield from self.params.keys()
+
+    def format(self, config: Config, skip: list[str] | None = None) -> None:
         for v in self.params.values():
-            v.format(config)
+            v.format(config, skip)
 
     def update(self, other: Params | dict, priority: Literal["self", "other"] = "self") -> None:
         if isinstance(other, dict):
@@ -249,12 +255,21 @@ class Experiment:
     slurm: dict = field(default_factory=dict)
 
     def format(self, config: Config) -> None:
-        self.params.format(config)
+        self.params.format(config, skip=[date_flag])
 
         # format name
         tmp = Param(self.name)
         tmp.format(config)
         self.name = tmp.value
+
+    def _find_date_params(self) -> list[str]:
+        """Find params that have substitutions matching the """
+        result = []
+        for param in self.params:
+            subs = self.params[param].find_subsitutions()
+            if subs is not None and any(s.root == date_flag for s in subs):
+                result.append(param)
+        return result
 
 
 ConfT = TypeVar("ConfT", bound="Config")  # for classmethod typing
