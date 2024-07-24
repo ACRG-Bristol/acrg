@@ -7,10 +7,8 @@ n_periods = 5
 frequency = "annual"
 
 [setup]
-# ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
-ini_file = "/Users/bm13805/Documents/rhime_paris_hfc134a.ini"
-# job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
-job_root = "/Users/bm13805/Documents/PARIS_inversions/<general.species>"
+ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
+job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
 python_venv = "/user/work/bm13805/.jax_venv"
 job_name = "paris_<general.species>"  # you can include other variables from the "general" and "dates" sections
 
@@ -107,9 +105,9 @@ filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pb
 
 
 # you can add more sections
-[extra]
-key = "abc"
+# [extra]
+# key = "abc"
 
-# and these can be referenced elsewhere
-[experiments.test]
-emissions_name = ["<extra.key>-annual-total"]  # will be converted to "abc-annual-total"
+# # and these can be referenced elsewhere
+# [experiments.test]
+# emissions_name = ["<extra.key>-annual-total"]  # will be converted to "abc-annual-total"
