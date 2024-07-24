@@ -61,6 +61,7 @@ def make_script(
     n_cpu: int = 4,
     time: str = "02:00:00",
     mem: str = "20gb",
+    account: str = "acct00xxxx",
     conda_env: Optional[str] = None,
     python_venv: Optional[str] = None,
     n_array_jobs: Optional[int] = None,
@@ -91,7 +92,7 @@ def make_script(
     #SBATCH --cpus-per-task={n_cpu}
     #SBATCH --time={time}
     #SBATCH --mem={mem}
-    #SBATCH --account=chem007981
+    #SBATCH --account={account}
     #SBATCH --array=1-{n_array_jobs}
     """
 
@@ -138,7 +139,7 @@ def make_script(
     echo "Using commit $git_commit on branch $git_branch in repo $inversions_path" >> {log_path / "git_info.txt"}
     """
 
-    if n_kwargs >= 3:
+    if n_kwargs >  3:
         # set up parameters to be passed to run_hbmcmc
         param_str = f"""\
         # Specify the path to the config file
@@ -171,6 +172,34 @@ def make_script(
         python ${{inversions_path}}/openghg_inversions/hbmcmc/run_hbmcmc.py "${{start}}" "${{end}}" -c {ini_file} --kwargs="${{kwargs}}" --output-path="{out_dir}/${{child_out_dir}}"
         """
 
+    elif n_kwargs ==  3:
+        # set up parameters to be passed to run_hbmcmc
+        param_str = f"""\
+        # Specify the path to the config file
+        config={config_file}
+
+        # Extract start and end dates for the current $SLURM_ARRAY_TASK_ID
+        start=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $2}}' $config)
+        end=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $3}}' $config)
+
+        # Keyword arg handling
+        nkwargs={n_kwargs}
+
+        if [ $nkwargs -eq 3 ]; then
+            # Extract keyword args for the current $SLURM_ARRAY_TASK_ID
+            kwargs=$(awk -v array_task_id=$SLURM_ARRAY_TASK_ID -F'\\t' '$1==array_task_id {{print $4}}' $config)
+        fi
+        """
+
+        # run the inversion
+        command_str = f"""\
+
+        # Print a message with current $SLURM_ARRAY_TASK_ID, start date, and end date
+        echo "Running array task ${{SLURM_ARRAY_TASK_ID}}: start date ${{start}}, end date is ${{end}}."
+
+        echo "Keyword args: ${{kwargs}}"
+        python ${{inversions_path}}/openghg_inversions/hbmcmc/run_hbmcmc.py "${{start}}" "${{end}}" -c {ini_file} --kwargs="${{kwargs}}"
+        """
 
     else:
         # set up parameters to be passed to run_hbmcmc

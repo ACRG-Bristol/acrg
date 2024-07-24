@@ -4,6 +4,7 @@ from itertools import product
 from pathlib import Path
 from typing import Iterable, Literal, Optional, Union
 
+from openghg.util import synonyms
 import pandas as pd
 
 
@@ -125,6 +126,10 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
             if m := kv_pat.match(line):
                 if (k := m.group(2)) in kwargs_copy:
                     v = kwargs_copy.pop(k)
+
+                    if k == "species":
+                        v = synonyms(v)
+
                     new_line = make_kv_string(k, v)
                     conf_lines.append(new_line)
                 else:

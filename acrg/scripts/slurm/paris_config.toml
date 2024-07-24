@@ -7,8 +7,10 @@ n_periods = 5
 frequency = "annual"
 
 [setup]
-ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
-job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
+# ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
+ini_file = "/Users/bm13805/Documents/rhime_paris_hfc134a.ini"
+# job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
+job_root = "/Users/bm13805/Documents/PARIS_inversions/<general.species>"
 python_venv = "/user/work/bm13805/.jax_venv"
 job_name = "paris_<general.species>"  # you can include other variables from the "general" and "dates" sections
 
@@ -17,6 +19,7 @@ job_name = "paris_<general.species>"  # you can include other variables from the
 n_cpu = 4
 time = "02:30:00"
 mem = "40gb"
+account = "acct00xxxx"  # fill with your account code
 
 # general: applied to all experiments/combos
 [general]
@@ -48,7 +51,15 @@ obs_store = "paris_store_zarr"
 instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
 emissions_name = ["edgar-annual-total"]
 use_bc = false
-fp_basis_case = "intem_<general.species>_<dates.year>"
+
+# dates of the inversion periods are stored in pd.DataFrame with columns "start_date" and "end_date"
+# the pattern <array_row.start_date.year> will be replaced with the year of the start date, for each
+# year covered by the array job.
+#
+# this syntax is similar to the pandas syntax: array_row.start_date selects the start date column of a row
+# of the array dataframe, and .year selects the year.
+fp_basis_case = "intem_<general.species>_<array_row.start_date.year>"
+# fp_basis_case = "intem_<general.species>_<array_row.start_date.year>-<array_row.start_date.month>"  # extract year and month
 
 [experiments."RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_<general.species>_yearly"]
 obs_store = "paris_store_zarr"
@@ -68,7 +79,7 @@ use_bc = true
 
 # NOTE: dictionary in toml is different from json/OpenGHG inversions ini files
 # NOTE: there is no "None" type in toml, so we omit the sites without filters and
-# fix this in the parser
+# TODO: fix this in the parser? fix in inversions?
 filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pblh_min"] }  # CMN, JFJ omitted
 
 [experiments."RHIME_NAME_EUROPE_FLAT_all_obs_rhime_baseline_optimized_<general.species>_yearly"]
@@ -101,4 +112,4 @@ key = "abc"
 
 # and these can be referenced elsewhere
 [experiments.test]
-emissions_name = ["<extra.key>-annual-total"]
+emissions_name = ["<extra.key>-annual-total"]  # will be converted to "abc-annual-total"
