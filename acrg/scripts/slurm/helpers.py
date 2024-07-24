@@ -117,14 +117,14 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
             return f'{k} = "{v}"\n'
         return f"{k} = {v}\n"
 
-    kv_pat = re.compile(r'([;#\s])*(\w+)\s*=\s*([-\[\] "/,\w]+)')
+    kv_pat = re.compile(r'([;#\s])*(\w+)\s*=\s*([-\[\] "/,{}\w]+)')
     kwargs_copy = new_kwargs.copy() if new_kwargs else {}
     conf_lines = []
-
+    replaced = []
     with open(ini_file, "r") as f:
         for line in f:
             if m := kv_pat.match(line):
-                if (k := m.group(2)) in kwargs_copy:
+                if (k := m.group(2)) in kwargs_copy and k not in replaced:
                     v = kwargs_copy.pop(k)
 
                     if k == "species":
@@ -132,6 +132,7 @@ def update_ini_file(ini_file: Union[str, Path], new_kwargs: Optional[dict] = Non
 
                     new_line = make_kv_string(k, v)
                     conf_lines.append(new_line)
+                    replaced.append(k)
                 else:
                     conf_lines.append(line)
             else:
