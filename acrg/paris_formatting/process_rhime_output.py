@@ -2,6 +2,7 @@
 Code to process RHIME outputs into format that is easier to
 manipulate.
 """
+
 from dataclasses import dataclass
 from typing import Any, cast, Optional, TypeVar, Union
 
@@ -142,7 +143,11 @@ class InversionOutput:
 
     @classmethod
     def from_rhime(
-        cls: type[InvOut], ds: xr.Dataset, min_model_error: float, ndraw: Optional[int] = None
+        cls: type[InvOut],
+        ds: xr.Dataset,
+        pol_from_obs: bool,
+        no_model_error: bool = False,
+        ndraw: Optional[int] = None,
     ) -> InvOut:
         """Make InversionOutput object from RHIME output dataset."""
         flux = ds.fluxapriori
@@ -150,7 +155,6 @@ class InversionOutput:
 
         ds_clean = clean_rhime_output(ds)
         site_indicators = ds_clean.siteindicator
-
         basis = get_xr_dummies(ds_clean.basisfunctions, cat_dim="nx", categories=ds_clean.nx.values)
 
         model_kwargs = get_sampling_kwargs_from_rhime_outs(ds)
@@ -168,7 +172,9 @@ class InversionOutput:
             model_kwargs["bcprior"] = None
             model_kwargs["bcprior_dims"] = None
 
-        model = get_rhime_model(ds_clean, min_model_error=min_model_error, use_bc=use_bc, **model_kwargs)  # type: ignore
+        model = get_rhime_model(
+            ds_clean, use_bc=use_bc, pol_from_obs=pol_from_obs, no_model_error=no_model_error, **model_kwargs
+        )  # type: ignore
 
         if ndraw is not None:
             trace = make_idata_from_rhime_outs(ds_clean, ndraw=ndraw)
@@ -188,7 +194,7 @@ class InversionOutput:
             times=ds_clean.Ytime,
         )
 
-    def sample_predictive_distributions(self, ndraw: int = 1000) -> None:
+    def sample_predictive_distributions(self, ndraw: int = 10000) -> None:
         """Sample prior and posterior predictive distributions.
 
         This creates prior samples as a side-effect.
@@ -247,13 +253,15 @@ class InversionOutput:
             return result.unstack("nmeasure")
 
         return result
-    
+
     def get_obs_err(self, unstack_nmeasure: bool = True) -> xr.DataArray:
         """Return y observations errors.
 
         By default, `nmeasure` is converted to `site` and `time`.
         """
-        result = nmeasure_to_site_time_data_array(self.obs_err, self.site_indicators, self.site_names, self.times)
+        result = nmeasure_to_site_time_data_array(
+            self.obs_err, self.site_indicators, self.site_names, self.times
+        )
 
         if unstack_nmeasure:
             return result.unstack("nmeasure")
