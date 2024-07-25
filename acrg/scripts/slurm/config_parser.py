@@ -386,11 +386,14 @@ class Experiment:
             col = param.map(df)
             arrays_dict[name] = col
 
-        kwargs = (pd.DataFrame.from_dict(arrays_dict)
-               .apply(lambda x: x.to_dict(), axis=1)  # combine columns into dict because we need to pass them via --kwargs
-               .rename("kwargs")
-               )
-        return df.join(kwargs)
+        if arrays_dict:
+            kwargs = (pd.DataFrame.from_dict(arrays_dict)
+                   .apply(lambda x: x.to_dict(), axis=1)  # combine columns into dict because we need to pass them via --kwargs
+                   .rename("kwargs")
+                   )
+            return df.join(kwargs)
+
+        return df
 
     def make(self) -> None:
         """Make experiment directory with associated files."""
@@ -425,6 +428,9 @@ class Experiment:
 
         out_path.mkdir(parents=True)
 
+        # get optional readme text
+        readme = kwargs.pop("_readme", None)
+
         # write config file with dates
         config_path = out_path / "inversion_dates.txt"
         dates_df.to_csv(config_path, sep="\t")
@@ -433,7 +439,9 @@ class Experiment:
         ini_out_path = out_path / f"{job_name}.ini"
 
         kwargs["outputpath"] = str(out_path)
-        kwargs["outputname"] = job_name
+
+        if "outputname" not in kwargs:
+            kwargs["outputname"] = job_name
 
         if "merged_data_dir" not in self.setup and "merged_data_dir" not in kwargs:
             kwargs["merged_data_dir"] = str(job_root_path / "merged_data")
@@ -461,7 +469,14 @@ class Experiment:
             f.write(slurm_script)
 
         with open(out_path / "readme.txt", "w") as f:
-            f.write("Experiment using parameters:\n\n")
+            f.write(f"Experiment: {self.name}")
+            f.write("\n\n")
+
+            if readme is not None:
+                f.write(readme)
+                f.write("\n\n")
+
+            f.write("Experiment parameters:\n\n")
             for k, v in kwargs.items():
                 f.write(f"{k}: {v}\n")
 

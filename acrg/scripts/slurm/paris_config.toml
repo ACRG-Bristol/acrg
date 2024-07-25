@@ -7,11 +7,13 @@ n_periods = 5
 frequency = "annual"
 
 [setup]
-ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
-job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
+# ini_file = "/group/chem/acrg/PARIS_inversions/ini_templates/<general.species>_template.ini"
+# job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
+ini_file = "/Users/bm13805/Documents/rhime_paris_hfc134a.ini"
+job_root = "/Users/bm13805/Documents/paris_inversions/<general.species>"
 python_venv = "/user/work/bm13805/.jax_venv"
 job_name = "paris_<general.species>"  # you can include other variables from the "general" and "dates" sections
-
+# merged_data_dir = "/group/chem/acrg/PARIS_inversions/merged_data"  # default is job_root / "merged_data", but you can change it
 
 [slurm]
 n_cpu = 4
@@ -41,6 +43,10 @@ species = ["hfc134a", "hfc32", "pfc218"]  # just refer to this via <general.spec
 # "general" arguments will be applied, but they will be overwritten by experiment values
 [experiments]
 [experiments."RHIME_NAME_EUROPE_EDGAR_all_obs_rhime_baseline_optimized_<general.species>_yearly"]
+_readme = """
+Annual inversions for <general.species> using EDGAR prior, no filtering,
+with basis functions fitted and baseline solved for by RHIME.
+"""
 emissions_name = ["edgar-annual-total"]
 use_bc = true
 
