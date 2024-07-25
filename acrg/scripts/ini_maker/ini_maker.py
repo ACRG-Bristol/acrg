@@ -10,12 +10,7 @@ import json
 from typing import Any, Optional
 
 
-def get_paris_site_info(
-    sites: Optional[list[str]] = None, filename: Optional[str] = None
-) -> dict[str, list[Optional[str]]]:
-    """Get site code, averaging period, inlet, instrument, and fp height for selected sites."""
-    if sites is None:
-        sites = [
+paris_sites = [
             "BIR",
             "BSD",
             "CBW",
@@ -47,6 +42,13 @@ def get_paris_site_info(
             "UTO",
             "WAO",
         ]
+
+
+def get_paris_site_info(
+    sites: Optional[list[str]] = None, filename: Optional[str] = None
+) -> dict[str, list[Optional[str]]]:
+    """Get site code, averaging period, inlet, instrument, and fp height for selected sites."""
+    sites = paris_sites if sites is None else sites
 
     if filename is None:
         filename = "site_params.csv"
