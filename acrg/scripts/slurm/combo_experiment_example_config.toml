@@ -1,0 +1,66 @@
+# config file for creating experiments
+# toml table layout:
+
+[dates]
+year = 2018
+n_periods = 5
+frequency = "annual"
+
+[setup]
+ini_file = "/group/chem/acrg/PARIS_inversions/ini_files/<general.species>_template.ini"
+job_root = "/group/chem/acrg/PARIS_inversions/<general.species>"
+python_venv = "/user/work/bm13805/.jax_venv"
+job_name = "PARIS <general.species>"
+out_prefix = "TEST"
+
+[slurm]
+n_cpu = 4
+time = "02:30:00"
+mem = "40gb"
+
+# general: applied to all experiments/combos
+[general]
+species = "hfc134a"
+nuts_sampler = "numpyro"
+nbasis = 250
+basis_algorithm = "weighted"
+
+# combos: create one experiment for each combination of the parameters listed below
+[combos]
+emissions_name = [["edgar-annual-total"], ["flat-annual-total"]]
+use_bc = [true, false]
+
+# use _names to avoid conflict with parameters named "names"
+[combos._names]
+emissions_name = ["EDGAR", "FLAT"]
+use_bc = ["rhime_baseline_optimized", "intem_baseline_fixed"]
+
+# experiments: specify groups of parameters and a directory name explicitly
+# "general" arguments will be applied, but they will be overwritten by experiment values
+[experiments]
+[experiments.RHIME_NAME_EUROPE_EDGAR_all_obs_rhime_baseline_optimized_hfc134a_yearly]
+emissions_name = ["edgar-annual-total"]
+use_bc = true
+
+[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_intem_bf_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
+
+emissions_name = ["edgar-annual-total"]
+use_bc = false
+
+fp_basis_case = "intem_<general.species>_<dates.year>"
+
+[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_fixed_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted", "intem_obs_baseline_subtracted"]
+
+emissions_name = ["edgar-annual-total"]
+use_bc = false
+
+[experiments.RHIME_NAME_EUROPE_EDGAR_intem_obs_rhime_baseline_optimized_hfc134a_yearly]
+obs_store = "paris_store_zarr"
+instrument = ["intem_obs", "intem_obs", "intem_obs", "intem_obs"]
+
+emissions_name = ["edgar-annual-total"]
+use_bc = true
