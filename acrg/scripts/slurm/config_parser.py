@@ -18,8 +18,8 @@ except ImportError:
 
 
 # flag value for parameterising values by dates dervied from array job pd.DataFrame,
-# which has "start_date" and "end_date" columns.
-skip_flags = ["array_df", "array_row"]
+# which has "start_date" and "end_date" columns
+skip_flags = ["array_row"]
 
 
 def load_conf(toml_path: Union[str, Path]) -> dict:
@@ -44,7 +44,7 @@ class Dates:
 # The idea is that "<general.species>" will be replaced by the value of "species" in
 # the "general" section of the config file.
 #
-# An exception: "<dates.year>" is treated specially, since array jobs may span many years
+# An exception: e.g. "<array_row.start_date.year>" is treated specially, since array jobs may span many years
 # so this info is put into the slurm config.txt file used by the slurm script
 
 # toml bare keys:
