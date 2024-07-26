@@ -157,3 +157,26 @@ def sparse_xr_dot(
     func = wrapper if debug else _func
 
     return xr.apply_ufunc(func, da1, da2, input_core_dims=input_core_dims, join="outer")
+
+
+def align_sparse_lat_lon(sparse_da: xr.DataArray, other_array: DataWithCoords) -> xr.DataArray:
+    """Align lat/lon coordinates of sparse_da with lat/lon coordinates from other_array.
+
+    NOTE: This is a work-around for an xarray Issue: https://github.com/pydata/xarray/issues/3445
+
+    Args:
+        sparse_da: xarray DataArray with sparse underlying array
+        other_array: xarray Dataset or DataArray whose lat/lon coordinates should be used
+            to replace the lat/lon coordinates in sparse_da
+
+    Returns:
+        copy of sparse_da with lat/lon coords from other_array
+    """
+    if len(sparse_da.lon) != len(other_array.lon):
+        raise ValueError("Both arrays must have the same number lon "
+                         f"coordinates: {len(sparse_da.lon)} != {len(other_array.lon)}")
+    if len(sparse_da.lat) != len(other_array.lat):
+        raise ValueError("Both arrays must have the same number lat "
+                         f"coordinates: {len(sparse_da.lat)} != {len(other_array.lat)}")
+
+    return sparse_da.assign_coords(lat=other_array.lat, lon=other_array.lon)

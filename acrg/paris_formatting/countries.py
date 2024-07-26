@@ -9,7 +9,7 @@ import xarray as xr
 from openghg_inversions import convert, utils
 from xarray.core.common import DataWithCoords
 
-from array_ops import get_xr_dummies, sparse_xr_dot
+from array_ops import align_sparse_lat_lon, get_xr_dummies, sparse_xr_dot
 from process_rhime_output import InversionOutput
 
 # type for xr.Dataset *or* xr.DataArray
@@ -89,9 +89,12 @@ class Countries:
         Returns:
             xr.DataArray with coordinate dimensions ("country", "basis_region")
         """
+        # multiply flux and basis and align to country lat/lon
+        flux_x_basis = align_sparse_lat_lon(inv_out.flux * inv_out.basis, self.area_grid)
+
         # compute matrix/tensor product: country_mat.T @ (area_grid * flux * basis_mat)
         # transpose doesn't need to be taken explicitly because alignment is done by dimension name
-        result = sparse_xr_dot(self.matrix, self.area_grid * inv_out.flux * inv_out.basis)
+        result = sparse_xr_dot(self.matrix, self.area_grid * flux_x_basis)
 
         if sparse:
             return result
