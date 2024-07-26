@@ -1,0 +1,99 @@
+netcdf InversionSystem_TransportModel_Domain_Experiment_Compound_Frequency_concentrations {
+dimensions:
+	nsite = 1 ;
+	time = 1 ;
+	percentile = 2 ;
+	nchar = 3 ;
+variables:
+	double time(time) ;
+		time:units = "days since 1970-01-01 00:00:00" ;
+		time:long_name = "time of mid of observation interval; UTC" ;
+		time:calendar = "proleptic_gregorian" ;
+	double percentile(percentile) ;
+		percentile:units = "1" ;
+		percentile:long_name = "percentile_of_flux_pdf" ;
+	float Yobs(time, nsite) ;
+		Yobs:units = "mol mol-1" ;
+		Yobs:_FillValue = NaNf ;
+		Yobs:long_name = "observed_mole_fraction" ;
+	float uYobs_repeatability(time, nsite) ;
+		uYobs_repeatability:units = "mol mol-1" ;
+		uYobs_repeatability:_FillValue = NaNf ;
+		uYobs_repeatability:long_name = "repeatability_uncertainty_of_observed_mole_fraction" ;
+	float uYobs_variability(time, nsite) ;
+		uYobs_variability:units = "mol mol-1" ;
+		uYobs_variability:_FillValue = NaNf ;
+		uYobs_variability:long_name = "variability_of_observed_mole_fraction_within_aggregation_interval" ;
+	float uYmod(time, nsite) ;
+		uYmod:units = "mol mol-1" ;
+		uYmod:_FillValue = NaNf ;
+		uYmod:long_name = "model_error_of_simulated_mole_fraction" ;
+	float uYtotal(time, nsite) ;
+		uYtotal:units = "mol mol-1" ;
+		uYtotal:_FillValue = NaNf ;
+		uYtotal:long_name = "total_error (model-data-mismatch uncertainty)" ;
+// Yapriori and Yapost contain the complete simulated concentration, this is the sum of the regional contribution within the transport domain (not given in file) and a boundary (baseline) concentration (given as YaprioriBC and YapostBC), i.e. Yapost = YapostREG + YapostBC
+	float Yapriori(time, nsite) ;
+		Yapriori:units = "mol mol-1" ;
+		Yapriori:_FillValue = NaNf ;
+		Yapriori:long_name = "apriori_simulated_mole_fraction" ;
+	float Yapost(time, nsite) ;
+		Yapost:units = "mol mol-1" ;
+		Yapost:_FillValue = NaNf ;
+		Yapost:long_name = "aposteriori_simulated_mole_fraction" ;
+	float qYapriori(time, percentile, nsite) ;
+		qYapriori:units = "mol mol-1" ;
+		qYapriori:_FillValue = NaNf ;
+		qYapriori:long_name = "percentile_of_apriori_simulated_mole_fraction" ;
+	float qYapost(time, percentile, nsite) ;
+		qYapost:units = "mol mol-1" ;
+		qYapost:_FillValue = NaNf ;
+		qYapost:long_name = "percentile_of_aposteriori_simulated_mole_fraction" ;
+// YaprioriBC and YapostBC should contain boundary condition (baseline) concentrations and a concentration bias by site for systems that solve for it, i.e. YapostBC = Yapost_bias + Yapost_boundary (the latter not given in file)
+	float YaprioriBC(time, nsite) ;
+		YaprioriBC:units = "mol mol-1" ;
+		YaprioriBC:_FillValue = NaNf ;
+		YaprioriBC:long_name = "apriori_simulated_boundary_condition_mole_fraction_incl_bias" ;
+	float YapostBC(time, nsite) ;
+		YapostBC:units = "mol mol-1" ;
+		YapostBC:_FillValue = NaNf ;
+		YapostBC:long_name = "aposteriori_simulated_boundary_condition_mole_fraction_incl_bias" ;
+// Yapriori_bias is an optional variable used in systems that solve for a concentration bias by site
+    float Yapriori_bias(time, nsite) ;
+        Yapriori_bias:units = "mol mol-1" ;
+        Yapriori_bias:_FillValue = NaNf ;
+        Yapriori_bias:long_name = "apriori_simulated_mole_fraction_bias" ;
+// Yapost_bias is an optional variable used in systems that solve for a concentration bias by site
+	float Yapost_bias(time, nsite) ;
+        Yapost_bias:units = "mol mol-1" ;
+        Yapost_bias:_FillValue = NaNf ;
+        Yapost_bias:long_name = "aposteriori_simulated_mole_fraction_bias" ;
+// YaprioriOUTER and YapostOUTER should contain concentration contributions for regions outside the main inversion domain but included in the transport domain; optional only for systems that solve for such contributions. YaprioriOUTER and YapostOUTER are part of YaprioriREG and YapostREG, respectively, i.e. YapostREG = YapostOUTER + Yapost_inversionDomain (the latter not given in file)
+	float YaprioriOUTER(time, nsite) ;
+		YaprioriOUTER:units = "mol mol-1" ;
+		YaprioriOUTER:_FillValue = NaNf ;
+		YaprioriOUTER:long_name = "apriori_simulated_mole_fraction_contribution_from_distant_regions" ;
+	float YapostOUTER(time, nsite) ;
+		YapostOUTER:units = "mol mol-1" ;
+		YapostOUTER:_FillValue = NaNf ;
+		YapostOUTER:long_name = "aposteriori_simulated_mole_fraction_contribution_from_distant_regions" ;
+	char sitenames(nsite, nchar) ;
+		sitenames:long_name = "identifier of site" ;
+
+// global attributes:
+		:Conventions = "CF-1.8" ;
+		:title = "In-situ mole fractions at sites: observed and simulated" ;
+		:institution = "" ;
+		:source = "Trace gas concentrations from observations and transport simulations / inverse estimation." ;
+		:author = "" ;
+		:transport_model = "" ;
+		:transport_model_version = "" ;
+		:inversion_system = "" ;
+		:inversion_system_version = "" ;
+		:experiment = "" ;
+		:project = "undefined" ;
+		:references = "" ;
+		:comment = "" ;
+		:license = "CC-BY-4.0" ;
+		:history = "" ;
+}
