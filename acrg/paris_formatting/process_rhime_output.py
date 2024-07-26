@@ -48,6 +48,8 @@ def clean_rhime_output(ds: xr.Dataset) -> xr.Dataset:
     data_vars = [
         "Yobs",
         "Yerror",
+        "Yerror_repeatability",
+        "Yerror_variability",
         "Ytime",
         "x",
         "sigma",
@@ -129,6 +131,8 @@ class InversionOutput:
 
     obs: xr.DataArray
     obs_err: xr.DataArray
+    obs_repeatability: xr.DataArray
+    obs_variability: xr.DataArray
     site_coordinates: xr.Dataset
     flux: xr.DataArray
     basis: xr.DataArray
@@ -181,6 +185,8 @@ class InversionOutput:
         return cls(
             obs=ds_clean.Yobs,
             obs_err=ds_clean.Yerror,
+            obs_repeatability=ds_clean.Yerror_repeatability,
+            obs_variability=ds_clean.Yerror_variability,
             site_coordinates=site_coordinates,
             flux=flux,
             basis=basis,
@@ -255,8 +261,6 @@ class InversionOutput:
         """Return y observations errors.
 
         By default, `nmeasure` is converted to `site` and `time`.
-
-        TODO: need to return total error, once separate terms are available
         """
         result = nmeasure_to_site_time_data_array(
             self.obs_err, self.site_indicators, self.site_names, self.times
@@ -276,7 +280,7 @@ class InversionOutput:
         from RHIME
         """
         result = nmeasure_to_site_time_data_array(
-            self.obs_err, self.site_indicators, self.site_names, self.times
+            self.obs_repeatability, self.site_indicators, self.site_names, self.times
         )
 
         if unstack_nmeasure:
@@ -288,13 +292,9 @@ class InversionOutput:
         """Return "variability" uncertainty term for y observations.
 
         By default, `nmeasure` is converted to `site` and `time`.
-
-        NOTE: currently returns all 0's
-        TODO: this needs to be fixed when we have separate repeatability and variability outputs
-        from RHIME
         """
         result = nmeasure_to_site_time_data_array(
-            self.obs_err, self.site_indicators, self.site_names, self.times
+            self.obs_variability, self.site_indicators, self.site_names, self.times
         )
 
         if unstack_nmeasure:
