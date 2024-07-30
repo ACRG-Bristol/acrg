@@ -199,7 +199,7 @@ def get_rhime_model(
     return model
 
 
-def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset, ndraw: int = 10000) -> az.InferenceData:
+def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset, model: pm.Model, ndraw: int = 10000) -> az.InferenceData:
     """Create arviz InferenceData with posterior group created from RHIME output."""
     trace_dvs = [dv for dv in rhime_out_ds.data_vars if "draw" in list(rhime_out_ds[dv].coords)]
     traces = rhime_out_ds[trace_dvs].expand_dims({"chain": [0]})
@@ -209,8 +209,10 @@ def make_idata_from_rhime_outs(rhime_out_ds: xr.Dataset, ndraw: int = 10000) -> 
         traces = traces.isel(draw=slice(None, None, thin_by))
         traces = traces.assign_coords(draw=(traces.draw / thin_by).astype(int))
 
-    return az.InferenceData(posterior=traces)
+    # compute deterministics `mu_bc` and `epsilon`
+    traces = pm.compute_deterministics(traces, model=model, merge_dataset=True)
 
+    return az.InferenceData(posterior=traces)
 
 def convert_idata_to_dataset(idata: az.InferenceData) -> xr.Dataset:
     """Merge prior, prior predictive, posterior, and posterior predictive samples into a single
