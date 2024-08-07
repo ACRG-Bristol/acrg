@@ -5,6 +5,7 @@ RHIME outputs.
 This module is needed because some quantities aren't
 sampled by `fixedbasisMCMC` in `openghg_inversions` currently.
 """
+
 from typing import Optional, Union, TypeVar
 
 import arviz as az
@@ -76,9 +77,7 @@ def parse_prior(name: str, prior_params: PriorArgs, **kwargs) -> TensorVariable:
     return dist(name, **params, **kwargs)
 
 
-def get_sampling_kwargs_from_rhime_outs(
-    rhime_outs: xr.Dataset
-) -> dict[str, Union[None, float, PriorArgs]]:
+def get_sampling_kwargs_from_rhime_outs(rhime_outs: xr.Dataset) -> dict[str, Union[None, float, PriorArgs]]:
     """Make dict of arguments to use with `get_rhime_model` given a RHIME output file
 
     Convenience function for creating PARIS outputs based on RHIME/HBMCMC outputs.
@@ -171,12 +170,14 @@ def get_rhime_model(
 
         if pol_from_obs is True:
             if use_bc is True:
-                pollution_event = np.abs(rhime_outs_ds.Yobs.values - pt.dot(rhime_outs_ds.bcsensitivity.values, bc))
+                pollution_event = np.abs(
+                    rhime_outs_ds.Yobs.values - pt.dot(rhime_outs_ds.bcsensitivity.values, bc)
+                )
             else:
                 pollution_event = rhime_outs_ds.Yobs.values
         else:
             pollution_event = np.abs(pt.dot(rhime_outs_ds.xsensitivity.values, x))
-                
+
         mult_error = (
             pollution_event
             * sigma[
@@ -186,7 +187,14 @@ def get_rhime_model(
         )
         # set up obs + model error
         if no_model_error is True:
-            epsilon = pm.Deterministic("epsilon", np.abs(rhime_outs_ds.Yerror.values), dims=coord_dim)
+            # need some small non-zero value to avoid sampling problems
+            mean_obs = rhime_outs_ds.Yobs.mean(skipna=True).values
+            small_amount = 1e-12 * mean_obs
+            epsilon = pm.Deterministic(
+                "epsilon",
+                pt.maximum(pt.abs(rhime_outs_ds.Yerror.values), small_amount),  # type: ignore
+                dims=coord_dim
+            )
         else:
             epsilon = pm.Deterministic(
                 "epsilon",
