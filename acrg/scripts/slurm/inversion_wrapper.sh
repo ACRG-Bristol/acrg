@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=slurm_script_test
+#SBATCH --job-name=name
 #SBATCH --output=/user/work/bm13805/slurm_script_test/logs/test_%a.out
 #SBATCH --error=/user/work/bm13805/slurm_script_test/logs/test_%a.err
 #SBATCH --nodes=1
