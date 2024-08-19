@@ -164,15 +164,12 @@ def tccon_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_doma
     
 
 def tccon_add_coords(ds,data_vars=[]):
-########################## Begin change ##########################
     dims_current = ['time', 'prior_altitude', 'ak_altitude']
-##########################  End change  ##########################
     dims = ['time','lev']
     
     if list(ds.dims.keys()) != dims_current and list(ds.dims.keys()) != dims_current[::-1]: # Check dimensions match what we expect (check forward and reverse list)
-        print('WARNING: Do not recognise dimensions of input gosat dataset. Unable to add new dimensions.')
+        print('WARNING: Do not recognise dimensions of input tccon dataset. Unable to add new dimensions.')
         return None
-    #dims_current = ['n','m']
     
     # Define co-ordinate values. Extract from Dataset if already present (e.g. time), construct if not (e.g. lev)
     coords = {}
@@ -199,14 +196,14 @@ def tccon_add_coords(ds,data_vars=[]):
                     raise ValueError("Cannot find a dimension of matching size.")
             elif len(ds[name].dims) == 2:
                 data[name] = ([dims[0],dims[1]],ds[name].values)
-########################## Begin change ##########################
+
     for name in dims_current:
         if name not in dims:
             if ds[name].values.size == coords[dims[0]].size:
                 data[name] = (dims[0],ds[name].values)
             elif ds[name].values.size == coords[dims[1]].size:
                 data[name] = (dims[1],ds[name].values)
-##########################  End change  ##########################
+
 
     #coord_dict = {dims[0]:dim1,dims[1]:dim2}
     
@@ -229,20 +226,18 @@ def tccon_add_coords(ds,data_vars=[]):
     return ds_new
     
 def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],domain=None,
-                       coord_bin=None,quality_filt=True,bad_pressure_filt=True,
+                       coord_bin=None,method='integration_operator',
+                       quality_filt=True,bad_pressure_filt=True,
                        name_sp_filt=False,name_filters=[],cutoff=5.,layer_range=[50.,500.],                       
                        mode=None,use_name_pressure=False,pressure_base_dir=name_pressure_directory,
                        pressure_domain=None,pressure_max_days=31.,pressure_day_template=True,
                        write_nc=False,output_directory=obs_directory,
                        write_name=False,name_directory=name_csv_directory,
-                       file_per_day=False,max_name_level=17,max_name_points=None,overwrite=False,
+                       file_per_day=False,max_name_height=17,max_name_points=None,overwrite=False,
                        verbose=True):
     '''
     '''
-    print("\n\n\n############################################################")
-    print("WARNING : Default max_name_level has to be changed (see what level is ~15km)")
-    print("############################################################\n\n\n")  
-    
+
     axis="time"
     
     if use_name_pressure or name_sp_filt:
@@ -267,36 +262,134 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
     if verbose:
         print("========================")
         print('\nProcessing file: {0}\n'.format(filename))
-    tccon = xray.open_dataset(filename)#[['time','prior_time',
-                                        #  'lat','long','zobs','zmin',
-                                        #  'prior_altitude',
-                                        #  'ak_altitude','ak_pressure',
-                                        #  'ak_xch4','prior_ch4','xch4','xch4_error',
-                                        #  'airmass','tout','pout','hout',
-                                        #  'prior_temperature','prior_pressure','prior_density']]
+    tccon = xray.open_dataset(filename)
     
     tccon = tccon_add_coords(tccon)
-    tccon = tccon.assign({'pressure_levels':(('time','lev'), \
-                           tccon.ak_pressure.values[np.newaxis,:] \
-                           *np.ones((tccon.time.values.size,tccon.lev.values.size)))
-                            })
-    
-    print("\n\n\n############################################################")
-    print("WARNING : Pressure_weights is crap (but I wanted to go on)")
-    print("Should I put integrator operator in this variable?")
-    tmp = tccon.ak_pressure.values[:-1]- tccon.ak_pressure.values[1:]
-    tmp = np.concatenate([tmp,[tccon.ak_pressure.values[-1]]])/tccon.ak_pressure.values[0]
-    tccon = tccon.assign({'pressure_weight':(('time','lev'), \
-                        tmp*np.ones((tccon.time.values.size,tccon.lev.values.size)))
-                        })
-    print("############################################################\n\n\n")  
 
-    print("\n\n\n############################################################")
-    print("WARNING :  Equivalence of variables has to be checked") 
-    print("('ak_xch4':'xch4_averaging_kernel','prior_ch4':'ch4_profile_apriori','xch4_error':'xch4_uncertainty')") 
+    # Align the units
+    if tccon['prior_ch4'].units=='ppb' and tccon['prior_xch4'].units=='ppm' :
+        tccon['prior_ch4'] = tccon['prior_ch4']*1e-3
+        tccon['prior_ch4']['units']='ppm'
+
+    if method=="integration_operator":
+        if verbose:
+            print(f"Warning : method 'pressure_weight' should be use to process TCCON data. \
+                  Bugs have been affecting variable 'integration_operator' used in this method. \
+                  Please be sure that you know what you do.")
+            
+        # Select the levels
+        tccon = tccon.sel(ak_altitude=slice(0,20)).sel(prior_altitude=slice(0,20))
+        
+        # Derive obs vector, ak for the footprints and dry to wet conv factor
+        tccon['ak_footprint'] = tccon['ak_xch4'].interp(ak_altitude=tccon.prior_altitude)\
+            *tccon['integration_operator']
+        tccon['obs'] = tccon['xch4']-tccon['prior_xch4']\
+            +(tccon['ak_footprint']*tccon['prior_ch4']).sum(dim='prior_altitude')
+        tccon['dry_to_wet'] = 1/(1+tccon['prior_h2o'])
+
+        # Filter the data and resample to hourly
+        tmp = tccon[['obs','xch4','prior_xch4','ak_footprint','extrapolation_flags_ak_xch4','dry_to_wet','xch4_error']].copy()
+        tmp = tmp.where(abs(tmp['extrapolation_flags_ak_xch4'])!=2).dropna('time').sortby('time').resample(time='h').mean(dim='time')
+        tmp['xch4_uncertainty'] = tccon.where(abs(tccon['extrapolation_flags_ak_xch4'])!=2
+                                              ).dropna('time').sortby('time')['xch4_error'].resample(time='h').max(dim='time')
+        del tmp['extrapolation_flags_ak_xch4']
+        tccon.close()
+        tmp = tmp.dropna('time')
+
+        # Define attributes
+        tmp['xch4_uncertainty'].attrs={'long_name':'xch4_uncertainty',
+                                        'description':'max of xch4_error on resampling period',
+                                        'unit':'ppm',
+                                        'vmin':str(tmp.xch4_uncertainty.values.min()),
+                                        'vmax':str(tmp.xch4_uncertainty.values.max())}
+        tmp['obs'].attrs={'long_name':'perturbed observation',
+                            'description':'xch4-prior_xch4-sum(ak_footprint*prior_ch4,dim="ak_altitude")',
+                            'unit':'ppm',
+                            'vmin':str(tmp.obs.values.min()),
+                            'vmax':str(tmp.obs.values.max())}
+        tmp['ak_footprint'].attrs={'long_name':'transformed ak using integration operator method',
+                                    'description':'ak_xch4*integration_operator',
+                                    'vmin':str(tmp.ak_footprint.values.min()),
+                                    'vmax':str(tmp.ak_footprint.values.max())}
+        tmp['dry_to_wet'].attrs={'long_name':'dry_to_wet',
+                            'description':'ratio to use to convert from dry to wet mole fraction. Derived as 1/(1+prior_h2o)',
+                            'unit':1,
+                            'vmin':str(tmp.dry_to_wet.values.min()),
+                            'vmax':str(tmp.dry_to_wet.values.max())}
+        tmp.attrs['derivation_method'] = 'Integration operator'
+        tccon = tmp.copy()
+        del tmp
+        print("\n############################################################")
+        print("WARNING : are footprint*flux_prior dry or wet mole fractions? Assumed as wet here.")
+        print("############################################################\n")
+    
+    elif method=="pressure_weight":
+        # Derive pressure thickness
+        press = tccon.ak_pressure.values[:-1]- tccon.ak_pressure.values[1:]
+        press = np.concatenate([press,[tccon.ak_pressure.values[-1]]])/tccon.ak_pressure.values[0]
+        tccon = tccon.assign({'dpj':(('prior_altitude'),press)})
+
+        # Derive pressure weight (hj), wet to dry conversion factor,
+        # dry mole fraction of water (fdry_h2o) and prior dry xch4
+        M_dryH2O,M_dryAir = 18.0153,28.9647
+        tccon['wet_to_dry'] = 1/(1-tccon['prior_h2o'])
+        tccon['fdry_h2o'] = tccon['prior_h2o']*tccon['wet_to_dry']
+        tccon['hj'] = tccon['dpj']/(tccon['prior_gravity']
+                                    *M_dryAir
+                                    *(1+(tccon['fdry_h2o']
+                                         *M_dryH2O/M_dryAir)))
+        tccon['prior_xch4_from_dry'] = (tccon['hj']*tccon['wet_to_dry']*tccon['prior_ch4']
+                                        ).sum(dim='prior_altitude') \
+                                        /tccon['hj'].sum(dim='prior_altitude')
+        
+        # Select the levels
+        tccon = tccon.sel(ak_altitude=slice(0,20)).sel(prior_altitude=slice(0,20))
+
+        # Derive obs vector, ak for the footprints
+        tccon['ak_footprint'] = tccon['ak_xch4'].interp(ak_altitude=tccon.prior_altitude)\
+            *tccon['hj']/tccon['hj'].sum(dim='prior_altitude')
+        tccon['obs'] = tccon['xch4']-tccon['prior_xch4_from_dry']\
+            +(tccon['ak_footprint']*tccon['prior_ch4']).sum(dim='prior_altitude')
+        
+        # Filter the data and resample to hourly
+        tmp = tccon[['obs','xch4','prior_xch4_from_dry','ak_footprint','extrapolation_flags_ak_xch4','wet_to_dry','xch4_error']].copy()
+        tmp = tmp.where(abs(tmp['extrapolation_flags_ak_xch4'])!=2).dropna('time').sortby('time').resample(time='h').mean(dim='time')
+        tmp['xch4_uncertainty'] = tccon.where(abs(tccon['extrapolation_flags_ak_xch4'])!=2).dropna('time').sortby('time')['xch4_error'].resample(time='h').max(dim='time')
+        del tmp['extrapolation_flags_ak_xch4']
+        tccon.close()
+        tmp = tmp.dropna('time')
+
+        # Define attributes
+        tmp['xch4_uncertainty'].attrs={'long_name':'xch4_uncertainty',
+                                        'description':'max of xch4_error on resampling period',
+                                        'unit':'ppm',
+                                        'vmin':str(tmp.xch4_uncertainty.values.min()),
+                                        'vmax':str(tmp.xch4_uncertainty.values.max())}
+        tmp['obs'].attrs={'long_name':'perturbed observation',
+                            'description':'xch4-prior_xch4_from_dry-sum(ak_xch4*hj*prior_ch4,dim="ak_altitude")',
+                            'unit':'ppm',
+                            'vmin':str(tmp.obs.values.min()),
+                            'vmax':str(tmp.obs.values.max())}
+        tmp['ak_footprint'].attrs={'long_name':'ak derived using pressure weight method',
+                                    'description':'see doc xxx',
+                                    'vmin':str(tmp.ak_footprint.values.min()),
+                                    'vmax':str(tmp.ak_footprint.values.max())}
+        tmp['wet_to_dry'].attrs={'long_name':'wet_to_dry',
+                            'description':'ratio to use to convert from wet to wet dry fraction. Derived as 1/(1-prior_h2o)',
+                            'unit':1,
+                            'vmin':str(tmp.wet_to_dry.values.min()),
+                            'vmax':str(tmp.wet_to_dry.values.max())}
+        tmp.attrs['derivation_method'] = 'Pressure weight'
+
+        del tmp
+        print("\n############################################################")
+        print("WARNING : are footprint*flux_prior dry or wet mole fractions? Assumed as dry here.")
+        print("############################################################\n")
+         
     tccon = tccon.rename({'long':'longitude','lat':'latitude',
-                          'ak_xch4':"xch4_averaging_kernel",
+                          'ak_footprint':"xch4_averaging_kernel",
                           "prior_ch4":"ch4_profile_apriori",
+                          "prior_xch4":"xch4_apriori",
                           "xch4_error":"xch4_uncertainty"})
     tccon = tccon.assign(exposure_id=lambda x: x.time.astype(int).astype(str))
     tccon = tccon.assign(retr_flag=lambda x: x.time.astype(bool))
@@ -356,7 +449,8 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
                          file_per_day=file_per_day,overwrite=overwrite)
         
         if write_name:
-            tccon_output_name(tccon,site=site,max_level=max_name_level,use_name_pressure=use_name_pressure,
+            print("Warning units inconsistency between max_level (level) and max_name_height (km)")
+            tccon_output_name(tccon,site=site,max_level=max_name_height,use_name_pressure=use_name_pressure,
                               pressure_domain=pressure_domain,pressure_base_dir=pressure_base_dir,
                               pressure_max_days=pressure_max_days,pressure_day_template=pressure_day_template,
                               name_directory=name_directory,file_per_day=file_per_day,
@@ -376,7 +470,7 @@ def tccon_process(site,species="ch4",start=None,end=None,
                   pressure_domain=None,pressure_max_days=31,pressure_day_template=True,
                   write_nc=False,output_directory=obs_directory,
                   write_name=False,name_directory=name_csv_directory,file_per_day=False,
-                  max_name_level=17,max_name_points=None,overwrite=False):
+                  max_name_height=17,max_name_points=None,overwrite=False):
     '''
     '''
 
@@ -417,7 +511,7 @@ def tccon_process(site,species="ch4",start=None,end=None,
                                     coord_bin=coord_bin,
                                     quality_filt=quality_filt,
                                     bad_pressure_filt=bad_pressure_filt,
-                                    max_name_level=max_name_level,
+                                    max_name_height=max_name_height,
                                     name_sp_filt=name_sp_filt,
                                     name_filters=name_filters,
                                     cutoff=cutoff,
@@ -428,7 +522,7 @@ def tccon_process(site,species="ch4",start=None,end=None,
                                     pressure_domain=pressure_domain,
                                     pressure_max_days=pressure_max_days,
                                     pressure_day_template=pressure_day_template,
-                                    write_nc=write_nc,
+                                    write_nc=write_nc,eF56
                                     output_directory=output_directory,
                                     write_name=write_name,
                                     name_directory=name_directory,
