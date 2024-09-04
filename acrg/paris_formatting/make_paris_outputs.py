@@ -115,18 +115,22 @@ def make_country_output(
         "NW_EU_CONTINENT": "BEL-DEU-FRA-LUX-NLD",
     }
 
-    region_traces = []
-    for region, countries_str in regions_dict.items():
-        region_countries = countries_str.split("-")
-        region_ds = (
-            country_traces_merged.sel(country=region_countries).sum("country").expand_dims({"country": [region]})
-        )
-        region_traces.append(region_ds)
-
-    region_traces_merged = xr.concat(region_traces, dim="country")
-
-    # combine country and region traces
-    all_traces_merged = xr.merge([country_traces_merged, region_traces_merged])
+    try:
+        region_traces = []
+        for region, countries_str in regions_dict.items():
+            region_countries = countries_str.split("-")
+            region_ds = (
+                country_traces_merged.sel(country=region_countries).sum("country").expand_dims({"country": [region]})
+            )
+            region_traces.append(region_ds)
+    except KeyError as e:
+        print(f"A KeyError occurred: {e}")
+        print(f"Warning: Country regions ({', '.join(regions_dict.keys())}) were not added.")
+        all_traces_merged = country_traces_merged
+    else:
+        region_traces_merged = xr.concat(region_traces, dim="country")
+        # combine country and region traces
+        all_traces_merged = xr.merge([country_traces_merged, region_traces_merged])
 
     country_output = xr.merge(
         calculate_stats(
