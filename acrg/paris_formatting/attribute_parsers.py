@@ -118,9 +118,9 @@ def get_country_code(
     if iso3166 is None:
         iso3166 = get_iso3166_codes()
 
-    # first try to match long names
+    # first try to match long names, ignoring "The " at the beginning of a name
     for v in iso3166.values():  # type: ignore
-        if x.lower() == v["iso_long_name"].lower():
+        if x.lower().lstrip("the ") == v["iso_long_name"].lower().lstrip("the "):
             return v[code]
 
     # next try to match unofficial names
