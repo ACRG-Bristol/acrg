@@ -64,9 +64,6 @@ data_path = Paths.data
 
 cams_directory_default = os.path.join(data_path, 'ECMWF_CAMS', 'CAMS_inversion/')
 
-# latest version is currently v19, update as necessary
-latest_version = 'v22r2'
-
 # default variable names in the CAMS files for each species and CAMS versions
 default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   'file_start_str': 'cams73',
@@ -116,14 +113,16 @@ default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   "lon": "longitude",
                                   "time": "time",
                                   "z": "z",
-                                 },
-
-                         }
+                                 },},
+                  "n2o": {"v21": {"file_start_str": "cams73",}}
                  }
 
-default_inputs['ch4']['latest'] = default_inputs['ch4'][latest_version]
+# Store the latest version for each gas type
+for gas_type in default_inputs.keys():
+    latest_version = max(default_inputs[gas_type].keys(), key=lambda x: int(x[1:3]))
+    default_inputs[gas_type]['latest'] = default_inputs[gas_type][latest_version]
 
-species_info= load_json(species_info_file)
+species_info = load_json(species_info_file)
 
 def readCAMSInversion(start,
                       end,
