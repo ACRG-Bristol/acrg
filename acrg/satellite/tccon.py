@@ -320,7 +320,7 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         tccon = tmp.copy()
         del tmp
         print("\n############################################################")
-        print("WARNING : are footprint*flux_prior dry or wet mole fractions? Assumed as wet here.")
+        print("WARNING : are footprint*flux_prior dry or wet mole fractions? Assumed as dry here.")
         print("############################################################\n")
     
     elif method=="pressure_weight":
@@ -522,7 +522,7 @@ def tccon_process(site,species="ch4",start=None,end=None,
                                     pressure_domain=pressure_domain,
                                     pressure_max_days=pressure_max_days,
                                     pressure_day_template=pressure_day_template,
-                                    write_nc=write_nc,eF56
+                                    write_nc=write_nc,
                                     output_directory=output_directory,
                                     write_name=write_name,
                                     name_directory=name_directory,
