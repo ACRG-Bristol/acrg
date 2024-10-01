@@ -28,15 +28,18 @@ Run as:
 import os
 import argparse
 
+import sys
+sys.path.insert(0,'/user/home/bq24992/acrg/')
+
 import acrg.satellite.gosat as gosat
-import acrg.satellite.gosat_config as gosat_config
+import acrg.satellite.config as config
 
 if __name__=="__main__":
 
     from acrg.config.paths import Paths
     acrg_path = Paths.acrg
 
-    config_file = os.path.join(acrg_path,"acrg_satellite/gosat_process.ini")
+    config_file = os.path.join(acrg_path,"acrg/satellite/templates/gosat_process.ini")
     
     parser = argparse.ArgumentParser(description='Running gosat process script')
     parser.add_argument("-c","--config",help="Configuration filename",default=config_file)
@@ -44,6 +47,6 @@ if __name__=="__main__":
     args = parser.parse_args()
     config_file = args.config or args.config_file
     
-    gosat_param = gosat_config.gosat_param(config_file)
+    gosat_param = config.param(config_file)
     #print("Input parameters for gosat function: ",gosat_param)
     gosat_ds = gosat.gosat_process(**gosat_param)

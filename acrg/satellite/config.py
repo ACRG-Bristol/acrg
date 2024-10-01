@@ -11,7 +11,7 @@ Please refer to this module for further details.
 gosat_process
 +++++++++++++
 
-For the gosat_process() inputs an input parameter dictionary is pre-defined (gosat_param_dict()) 
+For the gosat_process() inputs an input parameter dictionary is pre-defined (param_dict()) 
 and separates the parameters by section.
 This dictionary allows us to define which inputs we expect and the associated types.
 Unless specified as optional parameters an error is returned if those parameters aren't present.
@@ -28,7 +28,7 @@ If you wish to update the format of the gosat configuration input this can be do
 templates/gosat_process_template.ini file. However, ** this will impact all files of this type ** 
 and should only be done if this is the intended outcome.
 
-Note: you may also need to update the gosat_essential_param() or gosat_check() parameters to 
+Note: you may also need to update the essential_param() or check() parameters to 
 change or add additional checks where necessary.
 
 How to run
@@ -36,7 +36,7 @@ How to run
 
 The main function to use for reading in parameters from a config file are:
     
-    * gosat_param(config_file) - Extract parameters for input into gosat_process() based on a pre-defined 
+    * param(config_file) - Extract parameters for input into gosat_process()/tccon_process() based on a pre-defined 
     param_type dictionary (see above)
 
 @author: rt17603
@@ -50,9 +50,9 @@ from acrg.config.paths import Paths
 
 acrg_path = Paths.acrg
 
-def gosat_param_dict():
+def param_dict():
     '''
-    The gosat_param_dict function defines the nested dictionary for the GOSAT process input parameters to be passed to
+    The param_dict function defines the nested dictionary for the GOSAT process input parameters to be passed to
     the gosat_process function.
     Currently this format is based on "gosat_process_template.ini" and this file should not be altered unless you wish to
     change the expected parameters and types for all parameter files of this type.
@@ -100,9 +100,9 @@ def gosat_param_dict():
     
     return param_dict  
 
-def gosat_essential_param():
+def essential_param():
     '''
-    The gosat_essential_param function defines the parameters which *must* be specified in the 
+    The essential_param function defines the parameters which *must* be specified in the 
     gosat input parameter file.
     
     All other parameters will be set as optional.
@@ -113,9 +113,9 @@ def gosat_essential_param():
     essential_param = ["site"]
     return essential_param
 
-def gosat_check(param):
+def check(param):
     '''
-    The gosat_check function applies additional checks on parameters within the param dictionary (extracted from a 
+    The check function applies additional checks on parameters within the param dictionary (extracted from a 
     configuration file) to ensure they are of the correct format.
     
     This includes:
@@ -124,7 +124,7 @@ def gosat_check(param):
             If 'write_nc' is specified, ensure 'output_directory' is not set to "/path/to/output/directory/"
     
     Args:
-        param (dict) : output of gosat_param function. Dictionary containing parameter and value details.
+        param (dict) : output of param function. Dictionary containing parameter and value details.
     
     Returns:
         None
@@ -156,14 +156,14 @@ def gosat_check(param):
 #            elif not param['output_directory']:
 #                raise Exception('Output directory for netCDF files must contain a value when write_nc=True')
     
-def gosat_param(config_file):
+def param(config_file):
     '''
-    The gosat_param function reads the parameters for input into the acrg_gosat.gosat_process(...) function.
-    If param = gosat_param(config_file), the acrg_gosat.gosat_process function can be called as:
+    The param function reads the parameters for input into the acrg_gosat.gosat_process(...) function.
+    If param = param(config_file), the acrg_gosat.gosat_process function can be called as:
         acrg_gosat.gosat_process(**param)
     
     Note: Parameters which must always be specified in the input configuration file are defined by 
-    gosat_essential_param() function.
+    essential_param() function.
     Note: Additional checks on the format and inclusion of some parameters will be performed by the gosat_check() 
     function.
     
@@ -174,19 +174,16 @@ def gosat_param(config_file):
         collections.OreredDict : dictionary of parameters from config file.
     '''
     
-    param_dict = gosat_param_dict()
-    
     #all_params = config.all_parameters_in_param_type(param_dict)
-    essential_param = gosat_essential_param()
     #optional_param = all_params[:]
     #for p in essential_param:
     #    optional_param.remove(p)
     
     param = config.all_param(config_file,
                              #optional_param=optional_param,
-                             expected_param=essential_param,
-                             param_type=param_dict,
+                             expected_param=essential_param(),
+                             param_type=param_dict(),
                              exclude_not_found=True)
-    gosat_check(param)
+    check(param)
     
     return param

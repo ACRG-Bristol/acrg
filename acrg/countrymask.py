@@ -64,8 +64,7 @@ def domain_volume(domain,fp_directory=fp_directory):
             Latitude, longitude, height
     '''
     directory = os.path.join(fp_directory,domain)
-    # listoffiles = glob.glob(os.path.join(directory,"/**/**/*.nc"))
-    listoffiles = glob.glob(directory+"/**/**/*.nc") # WARNING
+    listoffiles = glob.glob(directory+"/**/**/*.nc")
     if listoffiles:
         filename = listoffiles[0]
         print('Using footprint file: {0} to extract domain'.format(filename))
