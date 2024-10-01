@@ -70,7 +70,7 @@ def filter_and_resample(ds,var_to_keep,quality_filt):
     ds = ds[var_to_keep]
     if quality_filt:
         logger.info("Applying filter based on variable'extrapolation_flags_ak_xch4'.")
-        ds = ds.where(abs(tmp['extrapolation_flags_ak_xch4'])!=2)
+        ds = ds.where(abs(ds['extrapolation_flags_ak_xch4'])!=2)
     ds.dropna('time').sortby('time')
     tmp = ds.resample(time='h').mean(dim='time')
     tmp['xch4_maxError'] = ds['xch4_error'].resample(time='h').max(dim='time')
@@ -121,9 +121,9 @@ def define_var_attrs(ds,method):
 def tccon_process_file(filename,site,network,species="ch4",
                        start=None,end=None,lat_bounds=[],lon_bounds=[],domain=None,
                        coord_bin=None,method='pressure_weight',
-                       quality_filt=True,bad_pressure_filt=True,
-                       name_sp_filt=False,name_filters=[],cutoff=5.,layer_range=[50.,500.],                       
-                       mode=None,use_name_pressure=False,pressure_base_dir=name_pressure_directory,
+                       quality_filt=True,
+                       name_sp_filt=False,
+                       use_name_pressure=False,pressure_base_dir=name_pressure_directory,
                        pressure_domain=None,pressure_max_days=31.,pressure_day_template=True,
                        write_nc=False,output_directory=obs_directory,
                        write_name=False,name_directory=name_csv_directory,
@@ -308,9 +308,9 @@ def tccon_process_file(filename,site,network,species="ch4",
 def tccon_process(site,network='TCCON',species="ch4",start=None,end=None,
                   input_directory=input_directory,
                   lat_bounds=[],lon_bounds=[],domain=None,coord_bin=None,
-                  quality_filt=True,bad_pressure_filt=True,
-                  name_sp_filt=False,name_filters=[],cutoff=5.,layer_range=[50.,500.],
-                  mode=None,use_name_pressure=False,pressure_base_dir=name_pressure_directory,
+                  quality_filt=True,
+                  name_sp_filt=False,
+                  use_name_pressure=False,pressure_base_dir=name_pressure_directory,
                   pressure_domain=None,pressure_max_days=31,pressure_day_template=True,
                   write_nc=False,output_directory=obs_directory,
                   write_name=False,name_directory=name_csv_directory,file_per_day=False,
@@ -370,13 +370,8 @@ def tccon_process(site,network='TCCON',species="ch4",start=None,end=None,
                             lon_bounds=lon_bounds,
                             coord_bin=coord_bin,
                             quality_filt=quality_filt,
-                            bad_pressure_filt=bad_pressure_filt,
                             max_name_height=max_name_height,
                             name_sp_filt=name_sp_filt,
-                            name_filters=name_filters,
-                            cutoff=cutoff,
-                            layer_range=layer_range,
-                            mode=mode,
                             use_name_pressure=use_name_pressure,
                             pressure_base_dir=pressure_base_dir,
                             pressure_domain=pressure_domain,
