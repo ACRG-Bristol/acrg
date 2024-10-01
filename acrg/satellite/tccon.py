@@ -9,22 +9,18 @@ This module provides a set of functions for processing TCCON data.
 
 import glob
 import os
-import re
-import random
-import math
 import numpy as np
 import pandas as pd
 import xarray as xray
-import datetime as dt
 from collections import OrderedDict
-import itertools
 
-import acrg.obs as acrg_obs
-from .barometric import pressure_at_height
 from acrg.countrymask import domain_volume
 from acrg.config.paths import Paths
-from acrg.satellite.gosat import gosat_output,add_history_attr,ds_check_internal_unique,extract_dates,define_pressure_levels
+from acrg.satellite.common import output_name,output,add_coords,ds_check_internal_unique
 
+import logging
+
+logger = logging.getLogger("acrg.satellite.tccon")
 
 data_path = Paths.data
 
@@ -35,198 +31,96 @@ obs_directory = os.path.join(data_path,'obs_test/') # Where to write output nc f
 name_csv_directory = os.path.join(home,"NAME_files_test") # Where to write output NAME csv files
 name_pressure_directory = os.path.join(data_path,"LPDM/surface_pressure_test/")
 
+siteList = ["BI, Bialystok, Poland",
+            "BR, Bremen, Germany",
+            "BU, Burgos, Philippines",
+            "CI, California Institute of Technology, Pasadena, California, USA",
+            "DB, Darwin, Australia",
+            "DF, Armstrong Flight Research Center, Edwards, CA, USA",
+            "ET, East Trout Lake, Canada",
+            "EU, Eureka, Canada",
+            "FC, Four Corners, NM, USA",
+            "GM, Garmisch, Germany",
+            "HF, Hefei, China",
+            "HW, Harwell, UK",
+            "IF, Indianapolis, Indiana, USA",
+            "IZ, Izana, Tenerife, Spain",
+            "JC, Jet Propulsion Laboratory 1, Pasadena, California, USA",
+            "JF, Jet Propulsion Laboratory 2, Pasadena, California, USA",
+            "JS, Saga, Japan",
+            "KA, Karlsruhe, Germany",
+            "LH, Lauder 1, New Zealand",
+            "LL, Lauder 2, New Zealand",
+            "LR, Lauder 3, New Zealand",
+            "MA, Manaus, Brazil",
+            "NI, Nicosia, Cyprus",
+            "NY, Ny-Ålesund, Svalbard, Norway",
+            "OC, Lamont, Oklahoma, USA",
+            "OR, Orleans, France",
+            "PA, Park Falls, Wisconsin, USA",
+            "PR, LERMA, Sorbonne Unversite, Paris, France",
+            "RA, Reunion Island, France",
+            "RJ, Rikubetsu, Hokkaido, Japan",
+            "SO, Sodankylä, Finland",
+            "TK, Tsukuba, Ibaraki, Japan",
+            "WG, Wollongong, Australia",
+            "XH, Xianghe, China"]
 
-def tccon_output_name(ds,site,max_level=17,use_name_pressure=False,pressure_domain=None,
-                      pressure_base_dir=name_pressure_directory,
-                      pressure_max_days=31,pressure_day_template=True,name_directory=name_csv_directory,
-                      file_per_day=False,max_points=60,overwrite=False):
-    '''
-    '''
-    # Note column mapping here is out:in values rather than in:out because some columns in output do not map to input data variables.
-    col_mapping = OrderedDict([('ID_Level','lev'),
-                               ('Time','time'),
-                               ('x','longitude'),
-                               ('dx','dlon'),
-                               ('y','latitude'),
-                               ('dy','dlat'),
-                               ('z','pressure_levels'),
-                               ('dz',None)])
-    
-    try:
-        ds[col_mapping['dx']]
-        ds[col_mapping['dy']]
-    except KeyError:
-        sounding = 10.5
-        dlat = np.zeros(len(ds[col_mapping['y']]))+distance_lat(sounding)
-        dlon = np.array([distance_lon(sounding,lat) for lat in ds[col_mapping['y']]])
-        axis1 = col_mapping['Time']
-        dlat_da = xray.DataArray(dlat,coords={axis1:ds[axis1]},dims={axis1:len(ds[axis1])})
-        dlon_da = xray.DataArray(dlon,coords={axis1:ds[axis1]},dims={axis1:len(ds[axis1])})
-        ds = ds.assign(**{col_mapping['dx']:dlon_da,col_mapping['dy']:dlat_da})
-    
-    columns=list(col_mapping.keys())
-    
-    if site is None:
-        site = 'global'
-    
-    split_dim = "time"
-    out_index = "ID_Level"
-    
-    name_pressure_convert = 100. # Input from GOSAT is in hPa and need to convert to Pa for NAME
-    
-    all_dates = extract_dates(ds,dim=split_dim)
-    dates = np.unique(all_dates)
-    
-    pressure_levels,dpressure = define_pressure_levels(ds,pressure_domain=pressure_domain,
-                                                       use_name_pressure=use_name_pressure,
-                                                       pressure_base_dir=pressure_base_dir,
-                                                       max_days=pressure_max_days,
-                                                       day_template=pressure_day_template)
-    
-    network = "tccon"#find_network(site)[0] # Using first site as default
-    
-    name_directory = os.path.join(name_directory,network)
-    if not os.path.isdir(name_directory):
-        os.makedirs(name_directory)
-    
-    for date in dates:
-        wh_date = np.where(all_dates == date)[0] # Find indices for each different date
-        for ID,index in enumerate(wh_date):
-            data = OrderedDict()
-            ID_str = '{num:03d}'.format(num=ID+1) # Number for each point in a day
-            
-            for col in columns:
-                name = col_mapping[col]
-                if name:
-                    ds_column = ds[name]
-                    if name == "pressure_levels":
-                        data[col] = pressure_levels[index][:max_level]*name_pressure_convert
-                    elif name == "lev":
-                        
-                        if file_per_day:
-                            # Write out ID as a str combination of the point number and level each with leading zeros
-                            data[col] = np.array([ID_str+value.zfill(2) for value in (ds_column[:max_level].values+1).astype("str")])
-                        else:
-                            # Write out ID (levels) as two digit numbers with a leading zero e.g. 01, 02, ... 21, 22
-                            data[col] = np.array([value.zfill(2) for value in (ds_column[:max_level].values+1).astype("str")])
-                    else:
-                        data[col] = np.array([ds_column[index].values]*max_level) # Populate each level with the same values e.g. lat,lon,dlat,dlon
-                else:
-                    if col == "dz":
-                        data[col] = dpressure[index][:max_level]*name_pressure_convert
+def filter_and_resample(ds,var_to_keep,quality_filt):
+    ds = ds[var_to_keep]
+    if quality_filt:
+        logger.info("Applying filter based on variable'extrapolation_flags_ak_xch4'.")
+        ds = ds.where(abs(tmp['extrapolation_flags_ak_xch4'])!=2)
+    ds.dropna('time').sortby('time')
+    tmp = ds.resample(time='h').mean(dim='time')
+    tmp['xch4_maxError'] = ds['xch4_error'].resample(time='h').max(dim='time')
+    del tmp['extrapolation_flags_ak_xch4']
+    tmp = tmp.dropna('time')
 
-            df_output = pd.DataFrame(data,columns=columns)
-            df_output.set_index(out_index,inplace=True)
-            
-            if file_per_day:
-                filename = site+"_"+date.replace('-','')
-                if max_points:
-                    if len(wh_date) > max_points:
-                        letter_split = chr(ord("A") + ID//max_points)
-                        filename = "{}-{}".format(filename,letter_split)
-                    ID_1 = ID%max_points
-                else:
-                    ID_1 = ID
-                filename += '.csv'
-                filename = os.path.join(name_directory,filename)
-                
-                if not overwrite:
-                    if ID_1 == 0 and os.path.isfile(filename):
-                        print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename))
-                        break
-                    elif not os.path.isfile(filename):
-                        print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename,float_format='%f')
-                    else:
-                        #print('Appending to filename: {}'.format(filename))
-                        df_output.to_csv(filename,float_format='%f',mode='a',header=False)    
-                else:
-                    if (not os.path.isfile(filename)) or (os.path.isfile(filename) and ID_1 == 0):
-                        print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename,float_format='%f')
-                    else:
-                        #print('Appending to filename: {}'.format(filename))
-                        df_output.to_csv(filename,float_format='%f',mode='a',header=False)
-            else:
-                filename = "{site}_{date}-{ID}.csv".format(site=site,date=date.replace('-',''),ID=ID_str)
-                filename = os.path.join(name_directory,filename)
-                if not overwrite:
-                    if os.path.isfile(filename):
-                        print('\nERROR: {0} already exists. Data has not been written to file because overwrite=False.\n'.format(filename))
-                        break
-                    else:
-                        print('Writing to filename: {}'.format(filename))
-                        df_output.to_csv(filename,float_format='%f')
-                else:
-                        print('Writing to filename: {}'.format(filename))    
-                        df_output.to_csv(filename,float_format='%f')
-                
-    
+    return tmp
 
-def tccon_add_coords(ds,data_vars=[]):
-    dims_current = ['time', 'prior_altitude', 'ak_altitude']
-    dims = ['time','lev']
-    
-    if list(ds.dims.keys()) != dims_current and list(ds.dims.keys()) != dims_current[::-1]: # Check dimensions match what we expect (check forward and reverse list)
-        print('WARNING: Do not recognise dimensions of input tccon dataset. Unable to add new dimensions.')
-        return None
-    
-    # Define co-ordinate values. Extract from Dataset if already present (e.g. time), construct if not (e.g. lev)
-    coords = {}
-    for i,d in enumerate(dims):
-        try:
-            coords[d] = ds[d].values # Extract values for each coord from Dataset if present (e.g. time)
-        except (AttributeError,KeyError):
-            current_dim = dims_current[i]
-            dim_length = ds.dims[current_dim]
-            coords[d] = np.arange(dim_length) # If no values defined, create integer list based on dimension size
-    
-    if not data_vars:
-        data_vars = ds.data_vars
-    
-    data = OrderedDict()
-    for name in data_vars:
-        if name not in dims:
-            if len(ds[name].dims) == 1:
-                if ds[name].values.size == coords[dims[0]].size:
-                    data[name] = (dims[0],ds[name].values)
-                elif ds[name].values.size == coords[dims[1]].size:
-                    data[name] = (dims[1],ds[name].values)
-                else:
-                    raise ValueError("Cannot find a dimension of matching size.")
-            elif len(ds[name].dims) == 2:
-                data[name] = ([dims[0],dims[1]],ds[name].values)
+def define_var_attrs(ds,method):
+    ds['xch4_maxError'].attrs={'long_name':'xch4_maxError',
+                               'description':'max of xch4_error on resampling period',
+                               'unit':'ppm',
+                               'vmin':str(ds.xch4_maxError.values.min()),
+                               'vmax':str(ds.xch4_maxError.values.max())}
+    ds['obs'].attrs={'long_name':'perturbed observation',
+                     'unit':'ppm',
+                     'vmin':str(ds.obs.values.min()),
+                     'vmax':str(ds.obs.values.max())}
+    ds['ak_footprint'].attrs={'vmin':str(ds.ak_footprint.values.min()),
+                              'vmax':str(ds.ak_footprint.values.max())}
+    if method=='integration_operator':
+        ds['obs'].attrs['description']='xch4-prior_xch4-sum(ak_footprint*prior_ch4,dim="ak_altitude")'
 
-    for name in dims_current:
-        if name not in dims:
-            if ds[name].values.size == coords[dims[0]].size:
-                data[name] = (dims[0],ds[name].values)
-            elif ds[name].values.size == coords[dims[1]].size:
-                data[name] = (dims[1],ds[name].values)
+        ds['ak_footprint'].attrs['long_name']='transformed ak using integration operator method'
+        ds['ak_footprint'].attrs['description']='ak_xch4*integration_operator'
+        ds.attrs['derivation_method'] = 'Integration operator'
+        ds['dry_to_wet'].attrs={'long_name':'dry_to_wet',
+                                'description':'ratio to use to convert from dry to wet mole fraction. Derived as 1/(1+prior_h2o)',
+                                'unit':1,
+                                'vmin':str(ds.dry_to_wet.values.min()),
+                                'vmax':str(ds.dry_to_wet.values.max())}
 
+    elif method=='pressure_weights':
+        ds['obs'].attrs['description']='xch4-prior_xch4_from_dry-sum(ak_xch4*hj*prior_ch4,dim="ak_altitude")'
 
-    #coord_dict = {dims[0]:dim1,dims[1]:dim2}
-    
-    ds_new = xray.Dataset(data,coords=coords,attrs=ds.attrs)
-    for dv in ds_new.data_vars:
-        ds_new[dv].attrs = ds[dv].attrs
-    for coord in ds_new.coords:
-        try:
-            ds_new[coord].attrs = ds[coord].attrs
-        except (AttributeError,KeyError):
-            if coord == "lev" or coord == "level":
-                ds_new[coord].attrs["short_description"] = "Number for each level within the vertically resolved data."
-                ds_new[coord].attrs["long_name"] = "level"
-    
-    # Add attribute describing modification made to original data
-    mod_attr = "nc_restructure"
-    ds_new = add_history_attr(ds_new,mod_attr)
-    ds_new.attrs[mod_attr] = "Dataset rearranged to re-assign {} dimensions as {} coordinates, extracting values from dataset where present.".format(dims_current,dims).replace("'","")
-    
-    return ds_new
-    
-def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],domain=None,
-                       coord_bin=None,method='integration_operator',
+        ds['ak_footprint'].attrs['long_name']='ak derived using pressure weight method'
+        ds['ak_footprint'].attrs['description']='see doc xxx'  
+        ds.attrs['derivation_method'] = 'Pressure weight' 
+        
+        ds['wet_to_dry'].attrs={'long_name':'wet_to_dry',
+                                'description':'ratio to use to convert from wet to wet dry fraction. Derived as 1/(1-prior_h2o)',
+                                'unit':1,
+                                'vmin':str(ds.wet_to_dry.values.min()),
+                                'vmax':str(ds.wet_to_dry.values.max())}
+
+    return ds
+
+def tccon_process_file(filename,site,network,species="ch4",
+                       start=None,end=None,lat_bounds=[],lon_bounds=[],domain=None,
+                       coord_bin=None,method='pressure_weight',
                        quality_filt=True,bad_pressure_filt=True,
                        name_sp_filt=False,name_filters=[],cutoff=5.,layer_range=[50.,500.],                       
                        mode=None,use_name_pressure=False,pressure_base_dir=name_pressure_directory,
@@ -263,20 +157,28 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         print("========================")
         print('\nProcessing file: {0}\n'.format(filename))
     tccon = xray.open_dataset(filename)
-    
-    tccon = tccon_add_coords(tccon)
 
-    # Align the units
+    if start or end : 
+        tccon = tccon.sel(time=slice(np.datetime64(start),
+                                     np.datetime64(end)))
+        if tccon.time.size==0:
+            raise ValueError(f'No data found for {site} between {start} and {end}.')
+    
+    # Align units
     if tccon['prior_ch4'].units=='ppb' and tccon['prior_xch4'].units=='ppm' :
         tccon['prior_ch4'] = tccon['prior_ch4']*1e-3
         tccon['prior_ch4']['units']='ppm'
 
+    var_to_keep = ['lat','long','obs','xch4','prior_xch4','prior_ch4','ak_footprint',
+                   'extrapolation_flags_ak_xch4','xch4_error',
+                   'ak_pressure','pressure_weight']
+    
     if method=="integration_operator":
-        if verbose:
-            print(f"Warning : method 'pressure_weight' should be use to process TCCON data. \
-                  Bugs have been affecting variable 'integration_operator' used in this method. \
-                  Please be sure that you know what you do.")
-            
+        logger.warning("Method 'pressure_weight' should be use to process TCCON data. "
+                       "Bugs have been affecting variable 'integration_operator' used in this method. \n"
+                       "Please be sure that you know what you do.")
+        
+        var_to_keep.append('dry_to_wet')
         # Select the levels
         tccon = tccon.sel(ak_altitude=slice(0,20)).sel(prior_altitude=slice(0,20))
         
@@ -287,43 +189,24 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
             +(tccon['ak_footprint']*tccon['prior_ch4']).sum(dim='prior_altitude')
         tccon['dry_to_wet'] = 1/(1+tccon['prior_h2o'])
 
-        # Filter the data and resample to hourly
-        tmp = tccon[['obs','xch4','prior_xch4','ak_footprint','extrapolation_flags_ak_xch4','dry_to_wet','xch4_error']].copy()
-        tmp = tmp.where(abs(tmp['extrapolation_flags_ak_xch4'])!=2).dropna('time').sortby('time').resample(time='h').mean(dim='time')
-        tmp['xch4_uncertainty'] = tccon.where(abs(tccon['extrapolation_flags_ak_xch4'])!=2
-                                              ).dropna('time').sortby('time')['xch4_error'].resample(time='h').max(dim='time')
-        del tmp['extrapolation_flags_ak_xch4']
-        tccon.close()
-        tmp = tmp.dropna('time')
+        # Define pressure_weights
+        tccon['pressure_weight'] = tccon['integration_operator']
+        tccon['pressure_weight'].attrs={'long_name':'pressure_weight',
+                                       'description':'pressure weight (not sure that what is inside is what we expect, equal to integration_operator)',
+                                       'unit':'1',
+                                       'vmin':str(tccon.pressure_weight.values.min()),
+                                       'vmax':str(tccon.pressure_weight.values.max())}
 
+        # Filter the data and resample to hourly
+        tccon = filter_and_resample(tccon,var_to_keep,quality_filt)
         # Define attributes
-        tmp['xch4_uncertainty'].attrs={'long_name':'xch4_uncertainty',
-                                        'description':'max of xch4_error on resampling period',
-                                        'unit':'ppm',
-                                        'vmin':str(tmp.xch4_uncertainty.values.min()),
-                                        'vmax':str(tmp.xch4_uncertainty.values.max())}
-        tmp['obs'].attrs={'long_name':'perturbed observation',
-                            'description':'xch4-prior_xch4-sum(ak_footprint*prior_ch4,dim="ak_altitude")',
-                            'unit':'ppm',
-                            'vmin':str(tmp.obs.values.min()),
-                            'vmax':str(tmp.obs.values.max())}
-        tmp['ak_footprint'].attrs={'long_name':'transformed ak using integration operator method',
-                                    'description':'ak_xch4*integration_operator',
-                                    'vmin':str(tmp.ak_footprint.values.min()),
-                                    'vmax':str(tmp.ak_footprint.values.max())}
-        tmp['dry_to_wet'].attrs={'long_name':'dry_to_wet',
-                            'description':'ratio to use to convert from dry to wet mole fraction. Derived as 1/(1+prior_h2o)',
-                            'unit':1,
-                            'vmin':str(tmp.dry_to_wet.values.min()),
-                            'vmax':str(tmp.dry_to_wet.values.max())}
-        tmp.attrs['derivation_method'] = 'Integration operator'
-        tccon = tmp.copy()
-        del tmp
-        print("\n############################################################")
-        print("WARNING : are footprint*flux_prior dry or wet mole fractions? Assumed as dry here.")
-        print("############################################################\n")
+        tccon = define_var_attrs(tccon,method)
+
+        logger.warning("Are footprint*flux_prior dry or wet mole fractions? Assumed as dry here.")
     
     elif method=="pressure_weight":
+        
+        var_to_keep.append('wet_to_dry')
         # Derive pressure thickness
         press = tccon.ak_pressure.values[:-1]- tccon.ak_pressure.values[1:]
         press = np.concatenate([press,[tccon.ak_pressure.values[-1]]])/tccon.ak_pressure.values[0]
@@ -350,76 +233,41 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
             *tccon['hj']/tccon['hj'].sum(dim='prior_altitude')
         tccon['obs'] = tccon['xch4']-tccon['prior_xch4_from_dry']\
             +(tccon['ak_footprint']*tccon['prior_ch4']).sum(dim='prior_altitude')
+
+        # Define pressure_weights
+        tccon['pressure_weight'] = tccon['hj']/tccon['hj'].sum(dim='prior_altitude')
+        tccon['pressure_weight'].attrs={'long_name':'pressure_weight',
+                                       'description':'pressure weight (not sure that what is inside is what we expect)',
+                                       'unit':'1',
+                                       'vmin':str(tccon.pressure_weight.values.min()),
+                                       'vmax':str(tccon.pressure_weight.values.max())}
         
         # Filter the data and resample to hourly
-        tmp = tccon[['obs','xch4','prior_xch4_from_dry','ak_footprint','extrapolation_flags_ak_xch4','wet_to_dry','xch4_error']].copy()
-        tmp = tmp.where(abs(tmp['extrapolation_flags_ak_xch4'])!=2).dropna('time').sortby('time').resample(time='h').mean(dim='time')
-        tmp['xch4_uncertainty'] = tccon.where(abs(tccon['extrapolation_flags_ak_xch4'])!=2).dropna('time').sortby('time')['xch4_error'].resample(time='h').max(dim='time')
-        del tmp['extrapolation_flags_ak_xch4']
-        tccon.close()
-        tmp = tmp.dropna('time')
-
+        tccon = filter_and_resample(tccon,var_to_keep,quality_filt)
         # Define attributes
-        tmp['xch4_uncertainty'].attrs={'long_name':'xch4_uncertainty',
-                                        'description':'max of xch4_error on resampling period',
-                                        'unit':'ppm',
-                                        'vmin':str(tmp.xch4_uncertainty.values.min()),
-                                        'vmax':str(tmp.xch4_uncertainty.values.max())}
-        tmp['obs'].attrs={'long_name':'perturbed observation',
-                            'description':'xch4-prior_xch4_from_dry-sum(ak_xch4*hj*prior_ch4,dim="ak_altitude")',
-                            'unit':'ppm',
-                            'vmin':str(tmp.obs.values.min()),
-                            'vmax':str(tmp.obs.values.max())}
-        tmp['ak_footprint'].attrs={'long_name':'ak derived using pressure weight method',
-                                    'description':'see doc xxx',
-                                    'vmin':str(tmp.ak_footprint.values.min()),
-                                    'vmax':str(tmp.ak_footprint.values.max())}
-        tmp['wet_to_dry'].attrs={'long_name':'wet_to_dry',
-                            'description':'ratio to use to convert from wet to wet dry fraction. Derived as 1/(1-prior_h2o)',
-                            'unit':1,
-                            'vmin':str(tmp.wet_to_dry.values.min()),
-                            'vmax':str(tmp.wet_to_dry.values.max())}
-        tmp.attrs['derivation_method'] = 'Pressure weight'
-
-        del tmp
-        print("\n############################################################")
-        print("WARNING : are footprint*flux_prior dry or wet mole fractions? Assumed as dry here.")
-        print("############################################################\n")
-         
+        tccon = define_var_attrs(tccon,method)
+        
+        logger.warning("Are footprint*flux_prior dry or wet mole fractions? Assumed as dry here.")
+    
+    tccon['ak_pressure'] = tccon['ak_pressure'].interp(ak_altitude=tccon.prior_altitude)
+    del tccon['ak_altitude']
+    tccon = add_coords(tccon,network='TCCON')
+    
     tccon = tccon.rename({'long':'longitude','lat':'latitude',
+                          'xch4':'xch4_tccon',
+                          'obs':'xch4',
                           'ak_footprint':"xch4_averaging_kernel",
                           "prior_ch4":"ch4_profile_apriori",
                           "prior_xch4":"xch4_apriori",
-                          "xch4_error":"xch4_uncertainty"})
+                          "xch4_maxError":"xch4_uncertainty",
+                          'ak_pressure':'pressure_levels'})
+    
     tccon = tccon.assign(exposure_id=lambda x: x.time.astype(int).astype(str))
     tccon = tccon.assign(retr_flag=lambda x: x.time.astype(bool))
-    print("############################################################\n\n\n")  
 
     tccon = tccon.sortby(axis)
     tccon = ds_check_internal_unique(tccon,axis) # Check time values are unique and slightly modify if necessary
-    
-    # if quality_filt:
-    #     if verbose:
-    #         print('Applying filter based on quality flag')
-    #     tccon = gosat_quality_filter(tccon)
-    # if bad_pressure_filt:
-    #     if verbose:
-    #         print('Applying filter based on bad pressure flag')
-    #     tccon = gosat_pressure_filter(tccon) # Removes points with any pressure values of -9999.99
-
-    # if name_sp_filt:
-    #     if len(tccon[axis].values) > 0:
-    #         if not name_filters:
-    #             raise Exception("If name_sp_filt=True, name_filters must be specified.")
-    #         if verbose:
-    #             print('Applying filters based on NAME surface pressure.')
             
-    #         tccon = name_pressure_filter(tccon,filters=name_filters,pressure_domain=pressure_domain,
-    #                                      cutoff=cutoff,layer_range=layer_range,pressure_base_dir=pressure_base_dir,
-    #                                      max_days=pressure_max_days,day_template=pressure_day_template)
-        
-    columns=["latitude","longitude"]
-    
     if domain and not (lat_bounds and lon_bounds):
         if verbose:
             print("Extracting latitude and longitude bounds from footprints associated with domain: {}".format(domain))
@@ -433,24 +281,20 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
         lon_bounds = [min(tccon.longitude.values),max(tccon.longitude.values)]
     
     if coord_bin:
-        if verbose:
-            print('Add virtual {0} degree bins to make it same format as satellite data'.format(coord_bin))
+        logger.info(f'Add virtual {coord_bin} degree bins to make it same format as satellite data')
         tccon = tccon.assign({'dlat':(('time'), coord_bin[0]*np.ones(tccon.time.values.size)),
                               'dlon':(('time'), coord_bin[1]*np.ones(tccon.time.values.size))})
-        # if verbose:
-        #     print('Looking at area within latitude and longitude bounds: {0},{1}'.format(lat_bounds,lon_bounds))
-        # tccon = latlon_filter(tccon,lat_bounds,lon_bounds,columns=columns)
 
     tccon.attrs["input_file"] = os.path.split(filename)[1]
 
     if len(tccon[axis].values) > 0:
         if write_nc:
-            gosat_output(tccon,site=site,species=species,output_directory=output_directory,
-                         file_per_day=file_per_day,overwrite=overwrite)
+            output(tccon,site=site,network=network,species=species,output_directory=output_directory,
+                   file_per_day=file_per_day,overwrite=overwrite)
         
         if write_name:
-            print("Warning units inconsistency between max_level (level) and max_name_height (km)")
-            tccon_output_name(tccon,site=site,max_level=max_name_height,use_name_pressure=use_name_pressure,
+            logger.warning("Units inconsistency between max_level (level) and max_name_height (km). TO CHECK")
+            output_name(tccon,network=network,site=site,max_level=max_name_height,use_name_pressure=use_name_pressure,
                               pressure_domain=pressure_domain,pressure_base_dir=pressure_base_dir,
                               pressure_max_days=pressure_max_days,pressure_day_template=pressure_day_template,
                               name_directory=name_directory,file_per_day=file_per_day,
@@ -461,7 +305,7 @@ def tccon_process_file(filename,site,species="ch4",lat_bounds=[],lon_bounds=[],d
     return tccon
 
 
-def tccon_process(site,species="ch4",start=None,end=None,
+def tccon_process(site,network='TCCON',species="ch4",start=None,end=None,
                   input_directory=input_directory,
                   lat_bounds=[],lon_bounds=[],domain=None,coord_bin=None,
                   quality_filt=True,bad_pressure_filt=True,
@@ -474,13 +318,30 @@ def tccon_process(site,species="ch4",start=None,end=None,
     '''
     '''
 
+    if network.upper()!='TCCON':
+        raise ValueError('This function should be used only for TCCON data.')
+    network = network.upper()
     
     if input_directory.find("$DATA_PATH"):
         input_directory = input_directory.replace("$DATA_PATH",str(data_path))
     
-    search_str = os.path.join(input_directory,"*.nc")
+    if len(site)==2:
+        site_long_name = np.array(siteList)[[x.split(',')[0].lower()==site.lower() for x in siteList]][0]
+        site_short_name = site_long_name.split(',')[0].upper()
+    else : 
+        idx = [(site.lower() in x.lower()) for x in siteList]
+        if sum(idx)!=1:
+            raise ValueError(f'Please check site name. {sum(idx)} site(s) found {np.array(siteList)[idx]}.')
+        site_long_name = np.array(siteList)[idx][0]
+        site_short_name = site_long_name.split(',')[0].upper()
+            
+    
+    search_str = os.path.join(input_directory,f"{site_short_name.lower()}*.nc")
     files = glob.glob(search_str)
-    files.sort()
+    if len(files)!=1:
+        raise ValueError(f'{len(files)} files found for site {site} ({site_long_name}). \n'
+                         f'Please check input directory {input_directory} and be sure that data are downloaded from https://tccondata.org/ .')
+    filename = files[0]
 
     if domain and not (lat_bounds and lon_bounds):
         lat,lon,height = domain_volume(domain)
@@ -496,52 +357,39 @@ def tccon_process(site,species="ch4",start=None,end=None,
         print("parameters set to True if you want to write the processed output to disk.")
         print("*************************************************************************")
     
-    if len(files) > 0:
-        for i,filename in enumerate(files):
-            if i == 0:
-                verbose = True
-            else:
-                verbose = False
+    if site!=site_short_name:
+        site = site_short_name
+        logger.info(f'Name of input site changed to "{site}".')
 
-            ds = tccon_process_file(filename,
-                                    site=site,
-                                    species=species,
-                                    lat_bounds=lat_bounds,
-                                    lon_bounds=lon_bounds,
-                                    coord_bin=coord_bin,
-                                    quality_filt=quality_filt,
-                                    bad_pressure_filt=bad_pressure_filt,
-                                    max_name_height=max_name_height,
-                                    name_sp_filt=name_sp_filt,
-                                    name_filters=name_filters,
-                                    cutoff=cutoff,
-                                    layer_range=layer_range,
-                                    mode=mode,
-                                    use_name_pressure=use_name_pressure,
-                                    pressure_base_dir=pressure_base_dir,
-                                    pressure_domain=pressure_domain,
-                                    pressure_max_days=pressure_max_days,
-                                    pressure_day_template=pressure_day_template,
-                                    write_nc=write_nc,
-                                    output_directory=output_directory,
-                                    write_name=write_name,
-                                    name_directory=name_directory,
-                                    file_per_day=file_per_day,
-                                    max_name_points=max_name_points,
-                                    overwrite=overwrite,
-                                    verbose=verbose)
-            
-            if i == 0:
-                tccon = ds
-            else:
-                tccon = gosat.merge(ds)
-                
-    else:
-        print("No gosat files found within directory: {0} using search_str: {1} for dates {2} - {3}".format(input_directory,search_str,start,end))
-        tccon = None
+    ds = tccon_process_file(filename,
+                            site=site,
+                            network=network,
+                            start=start,end=end,
+                            species=species,
+                            lat_bounds=lat_bounds,
+                            lon_bounds=lon_bounds,
+                            coord_bin=coord_bin,
+                            quality_filt=quality_filt,
+                            bad_pressure_filt=bad_pressure_filt,
+                            max_name_height=max_name_height,
+                            name_sp_filt=name_sp_filt,
+                            name_filters=name_filters,
+                            cutoff=cutoff,
+                            layer_range=layer_range,
+                            mode=mode,
+                            use_name_pressure=use_name_pressure,
+                            pressure_base_dir=pressure_base_dir,
+                            pressure_domain=pressure_domain,
+                            pressure_max_days=pressure_max_days,
+                            pressure_day_template=pressure_day_template,
+                            write_nc=write_nc,
+                            output_directory=output_directory,
+                            write_name=write_name,
+                            name_directory=name_directory,
+                            file_per_day=file_per_day,
+                            max_name_points=max_name_points,
+                            overwrite=overwrite,
+                            verbose=True)
     
-    return tccon       
+    return ds       
     
-
-                 
-        
