@@ -94,7 +94,7 @@ def mean_month(ds,time_col="time",):
                     ds[dv] = ds[dv].mean(dim="month",keep_attrs=True)
         ds[time_col] = ds[time_col].swap_dims({"month":time_col})
             
-        ds["month"]  = ds["month"].mean(dim="month", dtype=np.int)
+        ds["month"] = ds["month"].mean(dim="month").astype(int)
 
     else:
         if "month" not in ds.dims:

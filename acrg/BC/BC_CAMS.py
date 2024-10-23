@@ -114,7 +114,6 @@ default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   "time": "time",
                                   "z": "z",
                                  },},
-                  "n2o": {"v21": {"file_start_str": "cams73",}}
                  }
 
 # Store the latest version for each gas type
@@ -189,6 +188,7 @@ def readCAMSInversion(start,
         ds  = ds.rename({species.upper(): species})
 
     return ds
+
 def convertCAMSaltitude(ds, species='ch4', version='latest'):
     '''
     Convert altitude coordinate to level
@@ -593,7 +593,7 @@ def create_CAMS_BC(ds,
 def makeCAMSBC(domain,
                start,
                end,
-               species="c4",
+               species="ch4",
                cams_version="latest",
                time_res="monthly",
                outdir=None,
