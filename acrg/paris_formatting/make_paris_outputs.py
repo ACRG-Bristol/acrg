@@ -268,7 +268,7 @@ def main(
     # add flux on inversion grid
     flux_output_inversion_grid = make_flux_outputs(inv_outs, report_mode=report_em_mode, inversion_grid=True)
     rename_dict_flux_inversion_grid, vars_to_drop_flux_inversion_grid = rename_drop_dvs_for_template(flux_output_inversion_grid, "flux")
-    rename_dict_flux_inversion_grid2 = {k: f"{v}_inversion_grid" for k, v in rename_dict_flux_inversion_grid.items()}
+    rename_dict_flux_inversion_grid2 = {v: f"{v}_inversion_grid" for v in rename_dict_flux_inversion_grid.values()}
 
     emissions_inversion_grid = (
         flux_output_inversion_grid
