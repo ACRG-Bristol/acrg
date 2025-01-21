@@ -365,12 +365,13 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         nBC = np.arange(nbc)
         #YBCtrace = np.dot(Hbc.T,bcouts.T)
         YmodBC = np.mean(YBCtrace, axis=1)
-        Ymod95BC = pm.stats.hdi(YBCtrace.T, 0.95)
-        Ymod68BC = pm.stats.hdi(YBCtrace.T, 0.68)
+        # changed all hdi to hpd!!
+        Ymod95BC = pm.stats.hpd(YBCtrace.T, 0.95)
+        Ymod68BC = pm.stats.hpd(YBCtrace.T, 0.68)
         YaprioriBC = np.sum(Hbc, axis=0)
         Ymod = np.mean(Ytrace, axis=1)
-        Ymod95 = pm.stats.hdi(Ytrace.T, 0.95)
-        Ymod68 = pm.stats.hdi(Ytrace.T, 0.68)
+        Ymod95 = pm.stats.hpd(Ytrace.T, 0.95)
+        Ymod68 = pm.stats.hpd(Ytrace.T, 0.68)
         Yapriori = np.sum(Hx.T, axis=1) + np.sum(Hbc.T, axis=1)
         sitenum = np.arange(len(sites))
         
@@ -410,7 +411,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         
         #Basis functions to save
         bfarray = bfds.values-1
-    
+
+        print("country!", country_file)
+
         #Calculate country totals   
         area = areagrid(lat, lon)
         if not rerun_file:
@@ -424,6 +427,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         else:
             cntrynames = rerun_file.countrynames.values
             cntrygrid = rerun_file.countrydefinition.values
+        cntryvals = list(range(len(cntrynames)))
         cntrymean = np.zeros((len(cntrynames)))
         cntry68 = np.zeros((len(cntrynames), len(nui)))
         cntry95 = np.zeros((len(cntrynames), len(nui)))
@@ -464,13 +468,60 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                3600*24*365*molarmass)/unit_factor
             cntrymean[ci] = np.mean(cntrytottrace)
             cntrysd[ci] = np.std(cntrytottrace)
-            cntry68[ci, :] = pm.stats.hdi(cntrytottrace, 0.68)
-            cntry95[ci, :] = pm.stats.hdi(cntrytottrace, 0.95)
+            # changed all hdi for hpd!!
+            cntry68[ci, :] = pm.stats.hpd(cntrytottrace, 0.68)
+            cntry95[ci, :] = pm.stats.hpd(cntrytottrace, 0.95)
             cntryprior[ci] = cntrytotprior
-            
-    
+
+        """         
         #Make output netcdf file
         outds = xr.Dataset({'Yobs':(['nmeasure'], Y),
+                            'Yerror' :(['nmeasure'], error),                          
+                            'Ytime':(['nmeasure'],Ytime),
+                            'Yapriori':(['nmeasure'],Yapriori),
+                            'Ymodmean':(['nmeasure'], Ymod), 
+                            'Ymod95':(['nmeasure','nUI'], Ymod95),
+                            'Ymod68':(['nmeasure','nUI'], Ymod68),
+                            'YaprioriBC':(['nmeasure'],YaprioriBC),                            
+                            'YmodmeanBC':(['nmeasure'], YmodBC),
+                            'Ymod95BC':(['nmeasure','nUI'], Ymod95BC),
+                            'Ymod68BC':(['nmeasure','nUI'], Ymod68BC),                        
+                            'xtrace':(['steps','nparam'], xouts),
+                            'bctrace':(['steps','nBC'],bcouts),
+                            'sigtrace':(['steps', 'nsigma_site', 'nsigma_time'], sigouts),
+                            'siteindicator':(['nmeasure'],siteindicator),
+                            'sigmafreqindex':(['nmeasure'],sigma_freq_index),
+                            'sitenames':(['nsite'],sites),
+                            'sitelons':(['nsite'],site_lon),
+                            'sitelats':(['nsite'],site_lat),
+                            'fluxapriori':(['lat','lon'], aprioriflux), #NOTE this is the mean a priori flux over the inversion period
+                            'fluxmean':(['lat','lon'], flux),                            
+                            'scalingmean':(['lat','lon'],scalemap),
+                            'basisfunctions':(['lat','lon'],bfarray),
+                            'countrymean':(['countryvals'], cntrymean),
+                            'countrysd':(['countryvals'], cntrysd),
+                            'country68':(['countryvals', 'nUI'],cntry68),
+                            'country95':(['countryvals', 'nUI'],cntry95),
+                            'countryapriori':(['countryvals'],cntryprior),
+                            'countrydefinition':(['lat','lon'], cntrygrid),
+                            'xsensitivity':(['nmeasure','nparam'], Hx.T),
+                            'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
+                        coords={'stepnum' : (['steps'], steps), 
+                                   'paramnum' : (['nlatent'], nparam),
+                                   'numBC' : (['nBC'], nBC),
+                                   'measurenum' : (['nmeasure'], nmeasure), 
+                                   'UInum' : (['nUI'], nui),
+                                   'nsites': (['nsite'], sitenum),
+                                   'nsigma_time': (['nsigma_time'], np.unique(sigma_freq_index)),
+                                   'nsigma_site': (['nsigma_site'], np.arange(sigouts.shape[1]).astype(int)),
+                                   'lat':(['lat'],lat),
+                                   'lon':(['lon'],lon),
+                                   'countryvals' : (['countryvals'], cntryvals)
+                                   }) # 'countrynames':(['countryvals'],cntrynames)
+        """  
+
+        #Make output netcdf file
+        variables = {'Yobs':(['nmeasure'], Y),
                             'Yerror' :(['nmeasure'], error),                          
                             'Ytime':(['nmeasure'],Ytime),
                             'Yapriori':(['nmeasure'],Yapriori),
@@ -500,8 +551,9 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                             'countryapriori':(['countrynames'],cntryprior),
                             'countrydefinition':(['lat','lon'], cntrygrid),
                             'xsensitivity':(['nmeasure','nparam'], Hx.T),
-                            'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)},
-                        coords={'stepnum' : (['steps'], steps), 
+                            'bcsensitivity':(['nmeasure', 'nBC'],Hbc.T)}
+
+        coords = {'stepnum' : (['steps'], steps), 
                                    'paramnum' : (['nlatent'], nparam),
                                    'numBC' : (['nBC'], nBC),
                                    'measurenum' : (['nmeasure'], nmeasure), 
@@ -511,8 +563,11 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                                    'nsigma_site': (['nsigma_site'], np.arange(sigouts.shape[1]).astype(int)),
                                    'lat':(['lat'],lat),
                                    'lon':(['lon'],lon),
-                                   'countrynames':(['countrynames'],cntrynames)})
-        
+                                   'countrynames' : (['countrynames'], cntrynames)
+                                   }
+        outds = xr.Dataset(variables,
+                        coords=coords) # 'countrynames':(['countryvals'],cntrynames)
+
         outds.fluxmean.attrs["units"] = "mol/m2/s"
         outds.fluxapriori.attrs["units"] = "mol/m2/s"
         outds.Yobs.attrs["units"] = obs_units+" "+"mol/mol"
@@ -565,6 +620,8 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.countrydefinition.attrs["longname"] = "grid definition of countries"
         outds.xsensitivity.attrs["longname"] = "emissions sensitivity timeseries"   
         outds.bcsensitivity.attrs["longname"] = "boundary conditions sensitivity timeseries"  
+
+        #outds["country_names"] = str(dict([(n,l) for n, l in zip(cntrynames, cntryvals)]))
         
         outds.attrs['Start date'] = start_date
         outds.attrs['End date'] = end_date
@@ -583,9 +640,11 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
         outds.attrs['Date created'] = str(pd.Timestamp('today'))
         outds.attrs['Convergence'] = convergence
         outds.attrs['Repository version'] = code_version()
-        
-        comp = dict(zlib=True, complevel=5)
-        encoding = {var: comp for var in outds.data_vars}
+
+        #comp = dict(zlib=True, complevel=5)
+        #encoding = {var: comp for var in outds.data_vars}
         output_filename = define_output_filename(outputpath,species,domain,outputname,start_date,ext=".nc")
         Path(outputpath).mkdir(parents=True, exist_ok=True)
-        outds.to_netcdf(output_filename, encoding=encoding, mode="w")
+        print(output_filename)
+        print(outds)
+        outds.to_netcdf(output_filename, mode="w") # encoding=encoding, 
