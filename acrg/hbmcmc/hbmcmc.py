@@ -36,6 +36,8 @@ data_path = Paths.data
 def fixedbasisMCMC(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname,
                    met_model = None,
+                   species_footprint = None,
+                   HiTRes = False,
                    xprior={"pdf":"lognormal", "mu":1, "sd":1},
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
