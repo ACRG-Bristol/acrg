@@ -51,7 +51,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    quadtree_basis=True,nbasis=100,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
-                   country_unit_prefix=None, add_offset = False,
+                   country_unit_prefix=None, add_offset = False, site_modifier = {},
                    verbose = False):
 
     """
@@ -197,7 +197,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                                         bc_directory = bc_directory,
                                         flux_directory = flux_directory,
                                         emissions_name = emissions_name,
-                                        species_footprint = species_footprint)
+                                        species_footprint = species_footprint, site_modifier=site_modifier)
     
     for site in sites:
         for j in range(len(data[site])):
