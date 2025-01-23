@@ -218,6 +218,114 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
         
         return outs, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2
 
+def inferpymc3_MAP(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+               xprior={"pdf":"lognormal", "mu":1, "sd":1},
+               bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
+               sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+               sigma_per_site = True, 
+               offsetprior={"pdf":"normal", "mu":0, "sd":1},
+               add_offset = False, verbose=False):       
+    """
+    Uses pym3 module for Maximum a Posteriori inference for emissions field, boundary 
+    conditions and (currently) a single model error value.
+    This uses a Normal likelihood but the (hyper)prior PDFs can selected by user.
+    
+    Args:
+        Hx (array):
+            Transpose of the sensitivity matrix to map emissions to measurement.
+            This is the same as what is given from fp_data[site].H.values, where
+            fp_data is the output from e.g. footprint_data_merge, but where it
+            has been stacked for all sites.
+        Hbc (array):
+            Same as above but for boundary conditions
+        Y (array):
+            Measurement vector containing all measurements
+        error (arrray):
+            Measurement error vector, containg a value for each element of Y.
+        siteindicator (array):
+            Array of indexing integers that relate each measurement to a site
+        sigma_freq_index (array):
+            Array of integer indexes that converts time into periods
+        xprior (dict):
+            Dictionary containing information about the prior PDF for emissions.
+            The entry "pdf" is the name of the analytical PDF used, see
+            https://docs.pymc.io/api/distributions/continuous.html for PDFs
+            built into pymc3, although they may have to be coded into the script.
+            The other entries in the dictionary should correspond to the shape
+            parameters describing that PDF as the online documentation,
+            e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
+            Note that the standard deviation should be used rather than the 
+            precision. Currently all variables are considered iid.
+        bcprior (dict):
+            Same as above but for boundary conditions.
+        sigprior (dict):
+            Same as above but for model error.
+        offsetprior (dict):
+            Same as above but for bias offset. Only used is addoffset=True.
+        sigma_per_site (bool):
+            Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
+            Default: True
+        add_offset (bool):
+            Add an offset (intercept) to all sites but the first in the site list. Default False.
+        verbose:
+            When True, prints progress bar
+
+            
+    Returns:
+        MAP estimates
+     
+    TO DO:
+       - Allow non-iid variables
+    """
+
+    print("using inferpymc3 MAP!!!")
+     
+    
+    hx = Hx.T 
+    hbc = Hbc.T
+    nx = hx.shape[1]
+    nbc = hbc.shape[1]
+    ny = len(Y)
+    
+    #convert siteindicator into a site indexer
+    if sigma_per_site:
+        sites = siteindicator.astype(int)
+        nsites = np.amax(sites)+1
+    else:
+        sites = np.zeros_like(siteindicator).astype(int)
+        nsites = 1
+    nsigmas = np.amax(sigma_freq_index)+1
+
+    #print(f"in inferpymc3_MAP, nsites {nsites}, siteindicator {siteindicator}")
+    
+    if add_offset:
+        B = offset_matrix(siteindicator)
+
+    with pm.Model() as model:
+        x = parsePrior("x", xprior, shape=nx)
+        xbc = parsePrior("xbc", bcprior, shape=nbc)
+        sig = parsePrior("sig", sigprior, shape=(nsites, nsigmas))
+        if add_offset:
+            offset = parsePrior("offset", offsetprior, shape=nsites-1) 
+            offset_vec = pm.math.concatenate( (np.array([0]), offset), axis=0)
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc) + pm.math.dot(B, offset_vec)
+        else:
+            mu = pm.math.dot(hx,x) + pm.math.dot(hbc,xbc)       
+        epsilon = pm.math.sqrt(error**2 + sig[sites, sigma_freq_index]**2)
+        y = pm.Normal('y', mu = mu, sd=epsilon, observed=Y, shape = ny)
+
+        MAP_estimate = pm.find_MAP(model=model)
+        
+        x = MAP_estimate["x"]
+        xbc = MAP_estimate["xbc"]
+        sig = MAP_estimate["sig"]
+
+        Ybc = np.dot(Hbc.T, xbc)
+        Ymod = np.dot(Hx.T,x) + Ybc
+
+
+        return x, xbc, sig, Ybc, Ymod
+    
 def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
                                Hx, Hbc, Y, error, Ytrace, YBCtrace,
                                step1, step2, 
