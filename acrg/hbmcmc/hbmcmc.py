@@ -20,11 +20,6 @@ being annoying it will also slow down your run due to unnecessary forking.
 
 """
 
-import sys
-sys.path.insert(0,"/user/work/ef17148/oldstuff/ef17148/.conda/envs/acrg_new/lib/python3.10/site-packages")
-sys.path.append("/user/work/ef17148/acrg/")
-
-print("HBMCMC elena:", sys.path)
 
 
 import numpy as np
