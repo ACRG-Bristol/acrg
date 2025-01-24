@@ -19,6 +19,14 @@ before launching Spyder, else you will use every available thread. Apart from
 being annoying it will also slow down your run due to unnecessary forking.
 
 """
+
+import sys
+sys.path.insert(0,"/user/work/ef17148/oldstuff/ef17148/.conda/envs/acrg_new/lib/python3.10/site-packages")
+sys.path.append("/user/work/ef17148/acrg/")
+
+print("HBMCMC elena:", sys.path)
+
+
 import numpy as np
 import shutil
 
@@ -327,6 +335,7 @@ def MAP(species, sites, domain, meas_period, start_date,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None, add_offset = False,
+                   site_modifier = {},
                    verbose = False):
 
     """
@@ -460,7 +469,8 @@ def MAP(species, sites, domain, meas_period, start_date,
                                         fp_directory = fp_directory,
                                         bc_directory = bc_directory,
                                         flux_directory = flux_directory,
-                                        emissions_name=emissions_name)
+                                        emissions_name=emissions_name,
+                                        site_modifier=site_modifier)
     
     for site in sites:
         for j in range(len(data[site])):
