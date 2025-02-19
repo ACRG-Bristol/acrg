@@ -33,6 +33,8 @@ def get_baseline(
     start_date: str,
     end_date: str,
     inlet: Optional[str] = None,
+    inlet_lower: Optional[str] = None,
+    inlet_upper: Optional[str] = None,
     fp_species: Optional[str] = "inert",
     met_model: Optional[str] = "ukv",
     obs_store: Optional[str] = None,
@@ -41,16 +43,30 @@ def get_baseline(
 
     """Calculate baseline mole fraction using MHD observations when the wind direction is 180 to 300 degrees."""
     if inlet is None:
-        obs = get_obs_surface(species=species, site="mhd", start_date=start_date, end_date=end_date, store=obs_store).data
-        wind = get_footprint(
-            site="mhd",
-            domain="europe",
-            species=fp_species,
-            met_model=met_model,
-            start_date=start_date,
-            end_date=end_date,
-            store=fp_store
-        ).data.wind_from_direction
+        if inlet_lower is None:
+            obs = get_obs_surface(species=species, site="mhd", start_date=start_date, end_date=end_date, store=obs_store).data
+            wind = get_footprint(
+                site="mhd",
+                domain="europe",
+                species=fp_species,
+                met_model=met_model,
+                start_date=start_date,
+                end_date=end_date,
+                store=fp_store
+            ).data.wind_from_direction
+        else:
+            obs = get_obs_surface(
+                species=species, site="mhd", start_date=start_date, end_date=end_date, inlet=slice(inlet_lower, inlet_upper), store=obs_store
+            ).data
+            wind = get_footprint(
+                site="mhd",
+                domain="europe",
+                species=fp_species,
+                met_model=met_model,
+                start_date=start_date,
+                end_date=end_date,
+                store=fp_store
+            ).data.wind_from_direction
     else:
         obs = get_obs_surface(
             species=species, site="mhd", start_date=start_date, end_date=end_date, inlet=inlet, store=obs_store
@@ -62,7 +78,6 @@ def get_baseline(
             met_model=met_model,
             start_date=start_date,
             end_date=end_date,
-            inlet=inlet,
             store=fp_store
         ).data.wind_from_direction
 
@@ -87,6 +102,8 @@ def make_baseline_df(
     initial_year: int,
     n_years: int,
     inlet: Optional[str] = None,
+    inlet_lower: Optional[str] = None,
+    inlet_upper: Optional[str] = None,
     fp_species: Optional[str] = "inert",
     met_model: Optional[str] = "ukv",
     freq: Optional[str] = None,
@@ -104,7 +121,7 @@ def make_baseline_df(
     results = []
     for start, end in dates:
         try:
-            baseline = get_baseline(species, start, end, inlet, fp_species, met_model, obs_store, fp_store)
+            baseline = get_baseline(species, start, end, inlet, inlet_lower, inlet_upper, fp_species, met_model, obs_store, fp_store)
         except (SearchError, AttributeError) as e:
             print(f"Error for start {start}: {e}")
             baseline = {"baseline": np.NaN, "baseline_std": np.NaN, "percent_baseline": np.NaN}
@@ -162,6 +179,8 @@ def main(
     creation_method: str = "MHD obs when wind direction between 180 and 300 degrees",
     freq: str = "MS",
     inlet: Optional[str] = None,
+    inlet_lower: Optional[str] = None,
+    inlet_upper: Optional[str] = None,
     fp_species: Optional[str] = "inert",
     met_model: Optional[str] = "ukv",
     output_dir: str = "/group/chem/acrg/LPDM/bc/EUROPE/paris_flat",
@@ -178,6 +197,8 @@ def main(
         n_years,
         freq=freq,
         inlet=inlet,
+        inlet_lower=inlet_lower,
+        inlet_upper=inlet_upper,
         fp_species=fp_species,
         met_model=met_model,
         obs_store=obs_store,
@@ -216,6 +237,8 @@ if __name__ == "__main__":
     parser.add_argument("--creation-method", type=str)
     parser.add_argument("--freq", type=str)
     parser.add_argument("--inlet", type=str)
+    parser.add_argument("--inlet_lower", type=str)
+    parser.add_argument("--inlet_upper", type=str)
     parser.add_argument("--fp_species", type=str)
     parser.add_argument("--met_model", type=str)
     parser.add_argument("-o", "--output-dir", type=str)
