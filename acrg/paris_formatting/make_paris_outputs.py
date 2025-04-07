@@ -56,6 +56,7 @@ def get_inversion_outputs_with_samples(
     if n_files is not None:
         files = files[:n_files]
 
+    print(files)
     inv_outs = [
         InversionOutput.from_rhime(
             xr.open_dataset(file), pol_from_obs=pol_from_obs, no_model_error=no_model_error, ndraw=ndraw
@@ -119,6 +120,8 @@ def make_country_output(
         region_traces = []
         for region, countries_str in regions_dict.items():
             region_countries = countries_str.split("-")
+            print(region, countries_str, region_countries)
+            print(country_traces_merged)
             region_ds = (
                 country_traces_merged.sel(country=region_countries).sum("country").expand_dims({"country": [region]})
             )
@@ -224,6 +227,7 @@ def main(
     )
 
     # make country and flux output
+    print(country_file_path)
     countries = Countries(xr.open_dataset(country_file_path))
 
     country_output = make_country_output(species, inv_outs, countries, report_mode=report_em_mode)

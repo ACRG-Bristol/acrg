@@ -118,10 +118,20 @@ default_inputs = {'ch4': {'v19': {'altitude': 'altitude',
                                   "z": "z",
                                  },
 
-                         }
+                         },
+                'n2o': {'v22r1': {'altitude': 'altitude',
+                                  'file_start_str': 'cams73',
+                                  'height': 'height',
+                                  'lat': 'latitude',
+                                  'level': 'level',
+                                  'hlevel': 'hlevel',
+                                  'lon': 'longitude',
+                                  'time': 'time',
+                                  'z': 'z'}}
                  }
 
 default_inputs['ch4']['latest'] = default_inputs['ch4'][latest_version]
+default_inputs['n2o']['latest'] = default_inputs['n2o']['v22r1']
 
 species_info= load_json(species_info_file)
 
@@ -179,17 +189,27 @@ def readCAMSInversion(start,
                           end=end,
                           day=False
                          )
-    ds_list = [open_ds(file) for file in files]
-    
+    ds_list = [open_ds(file,chunks={'time':'M'}) for file in files]
+
     if len(ds_list)==1:
         ds = ds_list[0]
     else:
         ds = xr.concat(ds_list, dim=variables['time'])
+    
+    if species == "n2o":
+        n2o_bc_daily = ds.resample(time='D',closed='right',label='left').mean()
+        n2o_bc_daily['pressure'] = n2o_bc_daily['ap'] + n2o_bc_daily['bp']*n2o_bc_daily['Psurf']
+        n2o_bc_daily['altitude'] = -7.64e3 * np.log(n2o_bc_daily['pressure']/n2o_bc_daily['Psurf'])
+        last_level = n2o_bc_daily['altitude'].isel(hlevel=-2) + (n2o_bc_daily['altitude'].isel(hlevel=-2)-n2o_bc_daily['altitude'].isel(hlevel=-3))
+        n2o_bc_daily['altitude'] = n2o_bc_daily['altitude'].where(~np.isinf(n2o_bc_daily['altitude']),last_level)
+
+        ds = n2o_bc_daily
 
     if species.upper() in ds:
         ds  = ds.rename({species.upper(): species})
 
     return ds
+
 def convertCAMSaltitude(ds, species='ch4', version='latest'):
     '''
     Convert altitude coordinate to level
@@ -214,7 +234,8 @@ def convertCAMSaltitude(ds, species='ch4', version='latest'):
 
     hlevels = ds[variables['hlevel']].values
     h_min = hlevels[0]
-    if species=='co2':
+    print(species)
+    if species in ['co2','n2o']:
         h_max = int(hlevels[-1])+1
     else:
         h_max = int(hlevels[-1])
@@ -533,7 +554,7 @@ def create_CAMS_BC(ds,
     lon_grid = np.mean(ds[variables['lon']][1:] - ds[variables['lon']][:-1])
     gridsize = f"{lat_grid} x {lon_grid}"
     
-    ds = convertCAMSaltitude(ds)
+    ds = convertCAMSaltitude(ds, species=species, version=version)
     ds = ds.mean(variables['time'])
     
     # find the correct unit conversion between mol/mol and species specific parts-per- units
@@ -543,7 +564,7 @@ def create_CAMS_BC(ds,
     else:
         if verbose: print('Warning: testing, units will not be converted')
     
-    #Select the gridcells closest to the edges of the  domain and make sure outside of fp
+    # select the gridcells closest to the edges of the  domain and make sure outside of fp
     lat_n = (np.abs(ds.coords[variables['lat']].values - max(fp_lat))).argmin()
     if ds.coords[variables['lat']].values[lat_n] < np.max(fp_lat) and lat_n != 0:
         lat_n -= 1
@@ -594,7 +615,7 @@ def create_CAMS_BC(ds,
 def makeCAMSBC(domain,
                start,
                end,
-               species="c4",
+               species="ch4",
                cams_version="latest",
                time_res="monthly",
                outdir=None,
@@ -734,11 +755,11 @@ def makeCAMSBC(domain,
         date_range = [np.datetime_as_string(date) for date in date_range]
         date_range += [end]
 
-    for start, end in zip(date_range[:-1], date_range[1:]):
+    for start_p, end_p in zip(date_range[:-1], date_range[1:]):
 
         # Check if file exists so a current file doesn't get overwritten
         out_filename = bc_filename(domain=domain, 
-                                   start_date=start,
+                                   start_date=start_p,
                                    time_res=time_res, 
                                    species=species, 
                                    from_climatology=make_climatology)
@@ -747,20 +768,21 @@ def makeCAMSBC(domain,
             print(f'Boundary condition file {os.path.join(outdir, out_filename)} already exists and is being overwritten.')
         if os.path.isfile(os.path.join(outdir, out_filename)) and not overwrite:
             print(f'Boundary condition file {os.path.join(outdir, out_filename)} already exists.')
-            answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
-            if answer.upper() == 'N':
-                continue
-            elif answer.upper() == 'Y':
-                pass
+            continue
+            # answer = input("You are about to overwrite an existing file, do you want to continue? Y/N ")
+            # if answer.upper() == 'N':
+            #     continue
+            # elif answer.upper() == 'Y':
+            #     pass
         
         # select the data for the correct date range
-        ds = cams_ds.sel(**{variables['time'] : slice(start, end)}) 
-
+        ds = cams_ds.sel(**{variables['time'] : slice(start_p, end_p)}) 
+        
         create_CAMS_BC(ds               = ds,
                        fp_lat           = fp_lat,
                        fp_lon           = fp_lon,
                        fp_height        = fp_height,
-                       date             = start,
+                       date             = start_p,
                        species          = species,
                        time_res         = time_res,
                        version          = cams_version,

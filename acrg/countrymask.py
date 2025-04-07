@@ -71,8 +71,8 @@ def domain_volume(domain,fp_directory=fp_directory):
         with xr.open_dataset(filename) as temp:
             fields_ds = temp.load()
         
-        fp_lat = fields_ds["lat"].values
-        fp_lon = fields_ds["lon"].values
+        fp_lat = fields_ds["latitude"].values
+        fp_lon = fields_ds["longitude"].values
         fp_height = fields_ds["height"].values
     
         return fp_lat,fp_lon,fp_height     
