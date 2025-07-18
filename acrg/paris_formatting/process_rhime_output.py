@@ -300,7 +300,7 @@ class InversionOutput:
         if unstack_nmeasure:
             result = result.unstack("nmeasure")
 
-        return xr.zeros_like(result).rename("obs_variability")
+        return result.rename("obs_variability")
 
 
     def get_total_err(self, unstack_nmeasure: bool = True, take_mean: bool = True) -> xr.DataArray:

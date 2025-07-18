@@ -106,13 +106,28 @@ def make_country_output(
 
     # add country regions
     regions_dict = {
-        "BELUX": "BEL-LUX",
-        "BENELUX": "BEL-LUX-NLD",
-        "CW_EU": "AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVN",
-        "EU_GRP2": "AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD",
-        "NW_EU": "BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD",
-        "NW_EU2": "BEL-DEU-FRA-GBR-IRL-LUX-NLD",
-        "NW_EU_CONTINENT": "BEL-DEU-FRA-LUX-NLD",
+        #"BELUX": "BEL-LUX",
+        #"BENELUX": "BEL-LUX-NLD",
+        #"CW_EU": "AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVN",
+        #"EU_GRP2": "AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD",
+        #"NW_EU": "BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD",
+        #"NW_EU2": "BEL-DEU-FRA-GBR-IRL-LUX-NLD",
+        #"NW_EU_CONTINENT": "BEL-DEU-FRA-LUX-NLD",
+        "SouthK": "Jeju-S.Kor",
+        "KorPen": "Jeju-S.Kor-N.Kor",
+        "EChina": "EChi1-EChi2",
+        "CHINA": "WChina-NChina-EChi1-EChi2",
+        "KoreaPeninsula": "Jeju-S.Kor-N.Kor",
+        "East1_China": "EChi1",
+        "Japan": "JPN",
+        "Taiwan": "TWN",
+        "NorthChina": "NChina",
+        "EastChina": "EChi1-EChi2",
+        "East2China": "EChi2",
+        "NorthKorea": "N.Kor",
+        "Mongolia": "Mongol",
+        "WestChina": "WChina"
+
     }
 
     try:

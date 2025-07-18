@@ -117,6 +117,10 @@ def get_country_code(
     """Get alpha-2 or alpha-3 (default) country code given the name of a country."""
     if iso3166 is None:
         iso3166 = get_iso3166_codes()
+    
+    # hard-code a few exceptions for the EASTASIA names in UKMO files
+    if x in ['NE', 'NW', 'SE', 'SW']:
+        return x
 
     # first try to match long names, ignoring "The " at the beginning of a name
     for v in iso3166.values():  # type: ignore

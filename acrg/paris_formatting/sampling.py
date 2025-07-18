@@ -14,7 +14,7 @@ import pymc as pm
 import pytensor.tensor as pt
 import xarray as xr
 from pymc.distributions import continuous
-from pytensor.tensor.variable import TensorVariable
+from pytensor.tensor import TensorVariable
 from xarray.core.common import DataWithCoords
 
 
