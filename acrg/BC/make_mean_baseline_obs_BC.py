@@ -163,7 +163,12 @@ def create_flat_bc_prior(
     bc = bc_template * baseline_da * units
     bc.attrs["title"] = title
     bc.attrs["species"] = species
-    bc.attrs["units"] = f"{units} mol / mol"
+    bc.attrs["units"] = "mol / mol"
+
+    # add units to data vars
+    for dv in bc.data_vars:
+        bc[dv].attrs["units"] = "mol/mol"
+
     bc.attrs["author"] = author
     bc.attrs["date_created"] = str(np.datetime64("now"))
 
