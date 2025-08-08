@@ -2,6 +2,11 @@ import xarray as xr
 import numpy as np
 import getpass
 from datetime import datetime as dt
+from acrg.config.paths import Paths
+import os
+
+data_path = Paths.data
+country_path = os.path.join(data_path,'LPDM/countries/')
 
 def create_land_sea_file(domain):
 
@@ -16,13 +21,17 @@ def create_land_sea_file(domain):
     None: The function saves the land-sea mask as a NetCDF file named 'country-land-sea_{domain}.nc' in the LPDM/countries directory.
     """
     
+    source_path = os.path.join(country_path, f'country_{domain}.nc')
 
-    ds = xr.open_dataset(f'/group/chem/acrg/LPDM/countries/country_{domain}.nc')
+    ds = xr.open_dataset(source_path)
     mask = np.where(ds.country.values == 0, 0, 1)
     ds_out = ds.copy()
     ds_out.country.values = mask
     ds_out.attrs['title'] = f'grid of land-sea split across {domain} domain'
-    ds_out.attrs['created from'] = f'/group/chem/acrg/LPDM/countries/country_{domain}.nc'
+    ds_out.attrs['created from'] = source_path
     ds_out.attrs['created_by'] = f'{getpass.getuser()}@bristol.ac.uk'
     ds_out.attrs['created'] = dt.today().strftime("%D")
-    ds_out.to_netcdf(f'/group/chem/acrg/LPDM/countries/country-land-sea_{domain}.nc')
+
+    outname = os.path.join(country_path,f"country-land-sea_{domain}.nc")
+
+    ds_out.to_netcdf(outname)

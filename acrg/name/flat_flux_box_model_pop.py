@@ -6,6 +6,12 @@ from openghg_defs import species_info_file, domain_info_file
 import json
 from datetime import datetime
 import getpass
+from acrg.config.paths import Paths
+import os
+
+data_path = Paths.data
+LPDM_path = Paths.lpdm
+country_path = os.path.join(data_path,'LPDM/countries/')
 
 def population_scaling(domain):
     """
@@ -29,7 +35,7 @@ def population_scaling(domain):
 
 
     # find the fraction of the global population in the EASTASIA domain
-    population_filepath = '/group/chem/acrg/LPDM/world_population_density.nc'  # this is a gridded file of population density. Raster layer 5 has values for 2020.
+    population_filepath = os.path.join(LPDM_path, 'world_population_density.nc')  # this is a gridded file of population density. Raster layer 5 has values for 2020.
     ds_population = xr.open_dataset(population_filepath).sel(raster=5)
     total_population = ds_population.sum(dim=['longitude', 'latitude'])['UN WPP-Adjusted Population Density, v4.11 (2000, 2005, 2010, 2015, 2020): 30 arc-minutes'].values
 
@@ -76,7 +82,7 @@ def create_flat_flux_box_model_pop(domain, species, pathtobm, year_to_scale, yea
 
     # open a sample dataset to copy
 
-    pathtocopy = f'/group/chem/acrg/LPDM/countries/country_{domain}.nc' # just a sample dataset to copy the grid from
+    pathtocopy = os.path.join(country_path, f'country_{domain}.nc') # just a sample dataset to copy the grid from
     ds = xr.open_dataset(pathtocopy).copy()
     ds = ds.rename({'country': 'flux'})
     ds['flux'].values = 1 # set all fluxes to 1, we will scale them later  
@@ -125,6 +131,10 @@ def create_flat_flux_box_model_pop(domain, species, pathtobm, year_to_scale, yea
             'population_file_reference':'https://doi.org/10.7927/H4F47M65'}
     ds_out.attrs = attrs
 
-    # Write
+    if not os.path.exists(os.path.join(outdir,domain)):
+        print(f"Creating {domain} subdirectory in output directory: {outdir}")
+        os.makedirs(os.path.join(outdir,domain))
+    
+    outpath = os.path.join(outdir, domain, f"{species.lower()}_{domain}_{outname}.nc")
 
-    ds_out.to_netcdf(f'{outdir}/{domain}/{species.lower()}_{domain}_{outname}.nc', mode='w')
+    ds_out.to_netcdf(outpath, mode='w')

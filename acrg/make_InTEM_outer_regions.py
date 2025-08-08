@@ -3,14 +3,14 @@ import pandas as pd
 from datetime import datetime as dt
 import getpass
 
-def outer_regions_from_UKMO(filepath, domain, outdir='/user/home/qq23840/openghg_inversions/openghg_inversions/basis'):
+def outer_regions_from_UKMO(filepath, domain, outdir='~/openghg_inversions/openghg_inversions/basis'):
     """
     Reads outer region definitions from a UK Met Office file and converts it to an dataset for use in OpenGHG Inversions.
     
     Args:
         filepath (str): Path to the UK Met Office outer region definition file.
         domain (str): The domain for which the outer regions are defined (e.g., 'EASTASIA').
-        outdir (str): The output directory for the NetCDF file. Defaults to openghg_inversions.
+        outdir (str): The output directory for the NetCDF file. Defaults to openghg_inversions, installed in the user's home directory.
 
     """
 
