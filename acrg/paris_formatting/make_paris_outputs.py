@@ -145,6 +145,7 @@ def make_flux_outputs(
     inv_outs: list[InversionOutput],
     time_point: Literal["start", "midpoint"] = "midpoint",
     report_mode: bool = False,
+    inversion_grid: bool = False,
 ) -> xr.Dataset:
     """Make flux output dataset"""
 
@@ -155,6 +156,17 @@ def make_flux_outputs(
     ]
 
     time_func = partial(get_time_point, time_point=time_point)
+
+    if inversion_grid is True:
+        # sum prior flux over basis regions
+        agg_fluxes = [((inv_out.basis * inv_out.flux).sum(["lat", "lon"]) / inv_out.basis.sum(["lat", "lon"])).fillna(0.0) for inv_out in inv_outs]
+        print(agg_fluxes[0])
+        flux_stats = [
+            sparse_xr_dot(inv_out.basis, agg_flux * stats_ds).expand_dims({"time": [time_func(inv_out)]})
+            for inv_out, agg_flux, stats_ds in zip(inv_outs, agg_fluxes, stats)
+        ]
+        print(flux_stats[0])
+        return xr.concat(flux_stats, dim="time").as_numpy()
 
     # multiply stats by matrix mapping basis regions to lat/lon
     flux_stats = [
@@ -254,6 +266,29 @@ def main(
         .pipe(add_variable_attrs, emissions_attrs)
         .transpose("time", "latitude", "longitude", "percentile", "country")
     )
+
+    # add flux on inversion grid
+    #
+    flux_output_inversion_grid = make_flux_outputs(inv_outs, report_mode=report_em_mode, inversion_grid=True)
+    rename_dict_flux_inversion_grid, vars_to_drop_flux_inversion_grid = rename_drop_dvs_for_template(flux_output_inversion_grid, "flux")
+
+    # dict to add _inversion_grid at end
+    rename_dict_flux_inversion_grid2 = {v: f"{v}_inversion_grid" for v in rename_dict_flux_inversion_grid.values()}
+
+    # add in general renaming
+    rename_dict_flux_inversion_grid.update({"lat": "latitude", "lon": "longitude", "probs": "percentile"})
+
+    emissions_inversion_grid = (
+        flux_output_inversion_grid
+        .pipe(convert_time_to_unix_epoch, "1s")
+        .drop_vars(vars_to_drop_flux_inversion_grid)
+        .rename(rename_dict_flux_inversion_grid)
+        .pipe(add_variable_attrs, emissions_attrs)
+        .transpose("time", "latitude", "longitude", "percentile")
+        .rename(rename_dict_flux_inversion_grid2)  # update name to have _inversion_grid at the end; do this here to get attributes from old template
+    )
+
+    emissions = emissions.merge(emissions_inversion_grid)
 
     emissions.attrs = make_global_attrs("flux")
 
