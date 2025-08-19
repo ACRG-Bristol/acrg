@@ -28,10 +28,10 @@ def population_scaling(domain):
     with domain_info_file.open() as f:
         domain_info = json.load(f)
     
-    domain_lat_min = domain_info[domain]['latitude_range'][0]
-    domain_lat_max = domain_info[domain]['latitude_range'][1]
-    domain_lon_min = domain_info[domain]['longitude_range'][0]
-    domain_lon_max = domain_info[domain]['longitude_range'][1]
+    domain_lat_min = float(domain_info[domain]['latitude_range'][0])
+    domain_lat_max = float(domain_info[domain]['latitude_range'][1])
+    domain_lon_min = float(domain_info[domain]['longitude_range'][0])
+    domain_lon_max = float(domain_info[domain]['longitude_range'][1])
 
 
     # find the fraction of the global population in the EASTASIA domain
