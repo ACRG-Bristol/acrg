@@ -71,8 +71,8 @@ def domain_volume(domain,fp_directory=fp_directory):
         with xr.open_dataset(filename) as temp:
             fields_ds = temp.load()
         
-        fp_lat = fields_ds["lat"].values
-        fp_lon = fields_ds["lon"].values
+        fp_lat = fields_ds["latitude"].values
+        fp_lon = fields_ds["longitude"].values
         fp_height = fields_ds["height"].values
     
         return fp_lat,fp_lon,fp_height     
@@ -522,6 +522,7 @@ def mask_fill_gaps(mask_array):
                     
                 # find all surrounding grid cells
                 surrounding = np.delete(mask_array[i-1:i+2,j-1:j+2].flatten(),4)
+                print(surrounding)
 
                 # if all surrounding cells are identical, fill in the gap
                 if np.all(surrounding == surrounding[0]) and surrounding[0] != 0.:
@@ -530,9 +531,9 @@ def mask_fill_gaps(mask_array):
 
                 # if all but one of the surrounding cells are identical, fill in the gap
                 # (fills in gaps of two adjacent grid cells)
-                elif np.count_nonzero(surrounding == stats.mode(surrounding)[0][0]) == 7. and stats.mode(surrounding)[0] != 0.:
+                elif np.count_nonzero(surrounding == stats.mode(surrounding)[0]) == 7. and stats.mode(surrounding)[0] != 0.:
 
-                    mask_array[i,j] = stats.mode(surrounding)[0][0]
+                    mask_array[i,j] = stats.mode(surrounding)[0]
                     
     return mask_array
 

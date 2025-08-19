@@ -2015,8 +2015,8 @@ def plot_particle_location(fp_data, date, particle_direction = 'nw', out_filenam
 
     
     figure = plt.figure(figsize=figsize, facecolor='w')
-    ax = figure.gca(projection='3d')
-    
+    ax = figure.add_subplot(projection='3d')
+
     ax.set_ylim(lat_range)
     ax.set_xlim(lon_range)
     ax.set_zlim((min(fp_data.height), max(fp_data.height)))
