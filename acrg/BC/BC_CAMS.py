@@ -558,7 +558,7 @@ def create_CAMS_BC(ds,
 
     lon_w = (np.abs(ds.coords[variables['lon']].values - min(fp_lon))).argmin()
     if ds.coords[variables['lon']].values[lon_w] > min(fp_lon) and lon_w != 0:
-        lon_e -= 1
+        lon_w -= 1
 
     #Cut to these and then interpolate
     north = ds.sel(latitude  = ds.coords[variables['lat']][lat_n],
