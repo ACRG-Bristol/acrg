@@ -1,3 +1,43 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Dec  7 10:25:39 2017
+
+@author: rt17603
+
+This module provides a set of functions for processing OCO2 data.
+
+Within this module there are two main summary functions used for processing OCO2 CO2 Level 2 Data Product files:
+    * oco2_process(directory, ...) - process a directory of files (Require more work)
+    * oco2_process_file(filename, ...) - process an individual file
+
+Currently the file processinf can be done using oco2_process_file function only.
+The processing includes options for filtering based on quality flags, pressure levels, comparison with NAME surface pressure,
+binning based on latitude and longitude and writing output files in netCDF format and/or text format for input into NAME.
+
+To process multiple files the oco2_process_file function can be called within a loop over files in a directory.
+
+Below is the example showing processing of one file:
+
+STEP 1: 
+    from acrg.satellite.oco2 import oco2_process_file
+    
+STEP 2: 
+
+    NOTE: output_directory must be changed to a suitable path for writing output files.
+
+    ds = oco2_process_file("/group/chem/acrg/obs_raw/OCO2/oco2_LtCO2_150131_B11210Ar_240820000231s.nc4",
+                            quality_filt=False,
+                            bad_pressure_filt=False,
+                            site="oco2-CHINA",
+                            lat_bounds=[3.97,53.55],
+                            lon_bounds=[73.5,134.77],
+                            coord_bin=[0.234,0.352],
+                            pressure_domain="SOUTHASIA",
+                            write_nc=True,
+                            write_name=True,
+                            output_directory="/group/chem/acrg/prasad/acrg_oco2_processed") 
+
+   """
 import glob
 import os
 import re
