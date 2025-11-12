@@ -9,9 +9,9 @@ from .barometric import pressure_at_height
 from acrg.countrymask import domain_volume
 from acrg.config.paths import Paths
 
-from acrg.satellite.common import extract_files, name_pressure_file, name_pressure_match,apply_filter,coord_order,define_pressure_levels,distance_lat,distance_lon,output_name,output,add_coords,ds_check_internal_unique,add_history_attr
+from acrg.satellite.common import extract_files_oco2, name_pressure_file, name_pressure_match,apply_filter,coord_order,define_pressure_levels,distance_lat,distance_lon,output_name,output,add_coords,ds_check_internal_unique,add_history_attr
 
-from acrg.satellite.gosat import latlon_filter, binned_mean
+from acrg.satellite.gosat import latlon_filter, binned_mean, extract_files_dir_split
 
 data_path = Paths.data
 
@@ -23,13 +23,6 @@ name_csv_directory = os.path.join(home,"NAME_files/OCO2") # Where to write outpu
 name_pressure_directory = os.path.join(data_path,"LPDM/surface_pressure/")
 
 data_path = Paths.data
-
-home = os.getenv("HOME")
-input_directory=os.path.join(data_path,"obs_raw/GOSAT/CH4_GOS_OCPR_v7.2/")
-fp_directory = os.path.join(data_path,'LPDM/fp_NAME/')
-obs_directory = os.path.join(data_path,'obs/') # Where to write output nc files
-name_csv_directory = os.path.join(home,"NAME_files") # Where to write output NAME csv files
-name_pressure_directory = os.path.join(data_path,"LPDM/surface_pressure/")
 
 
 def oco2_quality_filter(ds):
@@ -421,7 +414,8 @@ def oco2_process_file(filename,site,species="co2",lat_bounds=[],lon_bounds=[],do
     # Rename 'sounding_id' to 'time' (optional, if needed)
     oco2 = oco2.rename({'sounding_id': 'time'})
     
-    # oco2 = add_coords(oco2,network='oco2')
+    # Rename levels to lev 
+    oco2 = oco2.rename({'levels': 'lev'})
     oco2 = oco2.sortby(axis)
     #oco2 = ds_check_internal_unique(oco2,axis) # Check time values are unique and slightly modify if necessary
 
@@ -475,7 +469,7 @@ def oco2_process_file(filename,site,species="co2",lat_bounds=[],lon_bounds=[],do
 
     if len(oco2[axis].values) > 0:
         if write_nc:
-            output(oco2,site=site,species=species,output_directory=output_directory,
+            output(oco2,site=site,species=species, network="oco2",output_directory=output_directory,
                    file_per_day=file_per_day,overwrite=overwrite)
         
         if write_name:
@@ -633,14 +627,9 @@ def oco2_process(site,species="co2",input_directory=input_directory,start=None,e
     if input_directory.find("$DATA_PATH"):
         input_directory = input_directory.replace("$DATA_PATH",str(data_path))
     
-    input_directory_format = "year_split" # "year_split" (subdirectories are split into years) or None
+    input_directory_format = "monthly" # "year_split" (subdirectories are split into years) or None
     search_str = "*.nc"
-    
-    if input_directory_format == "year_split":
-        files = extract_files_dir_split(input_directory,search_str=search_str,start=start,end=end,
-                                        date_separator='')
-    else:
-        files = extract_files(input_directory,search_str,start=start,end=end,date_separator='')
+    files = extract_files_oco2(input_directory,search_str,start=start,end=end,date_separator='')
     
     if domain and not (lat_bounds and lon_bounds):
         lat,lon,height = domain_volume(domain)
