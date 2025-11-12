@@ -23,13 +23,13 @@ jobs:
         shell: bash -l {0}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Set up conda for Python ${{ matrix.python-version }}
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: ${{ matrix.python-version }}
-        miniforge-variant: Miniforge  # This line and line below added based on discussion within: https://github.com/conda-incubator/setup-miniconda/issues/116
-        miniforge-version: latest
+        miniforge-version: "*"
+        channels: conda-forge,defaults
         environment-file: environment.yml
         activate-environment: acrg
         auto-activate-base: false
