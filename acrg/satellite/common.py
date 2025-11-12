@@ -6,6 +6,8 @@ import acrg.obs as acrg_obs
 import datetime as dt
 import pandas as pd
 
+import glob
+import numpy as np
 import re
 import random
 import logging
@@ -468,6 +470,8 @@ def output_filename(output_directory,network,instrument,date,species,inlet=None,
         satellite = 'gosat'
     elif 'tccon' in instrument.lower():
         satellite = 'tccon'
+    else:
+        satellite = 'oco2'
     
     date = date.replace('-','') # Turn date from e.g. 2012-09-20 to 20120920
     
@@ -493,7 +497,7 @@ def output_filename(output_directory,network,instrument,date,species,inlet=None,
 #    
     return filename
   
-def output(ds,site,network=None,species="ch4",
+def output(ds,site,network=None,species=None,
            file_per_day=False,output_directory=obs_directory,
            overwrite=False):
     '''
@@ -527,17 +531,39 @@ def output(ds,site,network=None,species="ch4",
         Writes output to multiple .nc files (split on time axis).
     
     '''
-    # Define data variables to be written to output
-    out_data_vars = ["xch4","xch4_uncertainty","lat","lon","pressure_levels","pressure_weights",
-                     "xch4_averaging_kernel","ch4_profile_apriori","exposure_id",
-                     "mode"]
+    if network == "oco2":
+        # Define data variables to be written to output
+        out_data_vars = [
+            f"x{species}",  # Main species variable
+            f"x{species}_uncertainty",  # Uncertainty for the species
+            "lat",
+            "lon",
+            "pressure_levels",
+            "pressure_weights",
+            f"x{species}_averaging_kernel",  # Averaging kernel for the species
+            f"{species.split('_')[0]}_profile_apriori",  # Apriori profile for the species
+            # "mode"
+        ]
+    else:
+        out_data_vars = [
+                f"x{species}",  # Main species variable
+                f"x{species}_uncertainty",  # Uncertainty for the species
+                "lat",
+                "lon",
+                "pressure_levels",
+                "pressure_weights",
+                f"x{species}_averaging_kernel",  # Averaging kernel for the species
+                f"{species.split('_')[0]}_profile_apriori",  # Apriori profile for the species
+                "mode"
+            ]
     
     # Map to input dataset (from GOSAT data)
     data_vars = ["latitude" if item=="lat" else item for item in out_data_vars]
     data_vars = ["longitude" if item=="lon" else item for item in data_vars]
     data_vars = ["pressure_weight" if item=="pressure_weights" else item for item in data_vars]
-    data_vars = ["retr_flag" if item=="mode" else item for item in data_vars]
-    
+    if network=="TCCON" or network=='GOSAT':
+        data_vars = ["retr_flag" if item=="mode" else item for item in data_vars]
+        
     data_var_mapping = OrderedDict([(name,new_name) for name,new_name in zip(data_vars,out_data_vars)])
     
     #if site == None:
@@ -548,11 +574,14 @@ def output(ds,site,network=None,species="ch4",
     
     # Set name of data variable which includes the data point identifiers
     ident = "exposure_id"    
-    if network!='TCCON':
+    if 'gosat' in network.lower():
         network = find_network(site)[0] # Using first site as default.
         instrument = 'gosat-fts'
-    else:
+    elif 'oco2' in network.lower():
+        instrument = 'oco2-spectrometer'
+    else:  
         instrument = f'tccon-{site}'
+        
     inlet = 'column'
     species = species.lower()
     
@@ -568,7 +597,7 @@ def output(ds,site,network=None,species="ch4",
         wh_date = np.where(all_dates == date)[0] # Find indices for each date
         if file_per_day:
             ds_output = split_output(ds,index=wh_date,mapping=data_var_mapping,split_dim=split_dim,ident=ident)
-            
+            print(instrument)
             # Create filename and write dataset to file
             filename = output_filename(output_directory,network,instrument,date,species,inlet=inlet)
             ds_output.attrs["id"] = os.path.split(filename)[1]
@@ -579,6 +608,7 @@ def output(ds,site,network=None,species="ch4",
 
                 # Create filename and write dataset to file
                 ID_str = str(ID+1).zfill(3) # Number to add to filename - three digit with leading zeros
+                print(instrument)
                 filename = output_filename(output_directory,network,instrument,date,species,num=ID_str,inlet=inlet)
                 ds_output.attrs["id"] = os.path.split(filename)[1]
                 write_netcdf(ds_output,filename,overwrite=overwrite)
@@ -1311,6 +1341,97 @@ def name_pressure_file(filename,name='surface_pressure',column_names=["latitude"
         return None
     
     return ds
+
+
+def extract_files_oco2(directory, search_str=None, start=None, end=None, date_separator='', day=True):
+    '''
+    Extract filenames from a directory based on a search string and/or a date range.
+
+    Args:
+        directory (str): Directory to search.
+        search_str (str/None, optional): Search string with wildcard(s) to filter files.
+        start (str/None, optional): Start date in "YY-MM-DD" format.
+        end (str/None, optional): End date in "YY-MM-DD" format (exclusive).
+        date_separator (str): Separator between year, month, and day in filenames.
+        day (bool): Whether to include day in the date format.
+
+    Returns:
+        list: List of filenames matching the criteria.
+    '''
+    # Validate directory
+    if not os.path.isdir(directory):
+        print(f"ERROR: Directory '{directory}' does not exist.")
+        return []
+
+    # Validate date formats
+    if start and start.find('-') == -1:
+        print('WARNING: Start date is not in the correct format (YY-MM-DD).')
+        return []
+    if end and end.find('-') == -1:
+        print('WARNING: End date is not in the correct format (YY-MM-DD).')
+        return []
+    if (start and not end) or (end and not start):
+        print('WARNING: Both start and end dates must be specified.')
+        return []
+
+    # Build search string
+    search_str_short = search_str
+    if search_str:
+        search_str = os.path.join(directory, search_str)
+    else:
+        search_str = os.path.join(directory, "*")
+
+    # Get all filenames matching the search string
+    filenames = glob.glob(search_str)
+    filenames.sort()
+
+    # Filter files by date range if start and end are provided
+    if start and end:
+        # Convert start and end to datetime64[D]
+        start_date = np.datetime64(f"20{start[:2]}-{start[3:5]}-{start[6:]}", "D")
+        end_date = np.datetime64(f"20{end[:2]}-{end[3:5]}-{end[6:]}", "D")
+
+        # Generate the date range
+        date_range = np.arange(start_date, end_date, dtype="datetime64[D]")
+        date_range = [str(date) for date in date_range]
+
+        # Adjust date range based on 'day' and 'date_separator'
+        if not day:
+            date_range = ['-'.join(date.split('-')[:2]) for date in date_range]
+        date_range = [date.replace('-', date_separator) for date in date_range]
+
+        print(f'Finding files in range: {start} - {end} in directory {directory} using search string {search_str_short}')
+
+        # Filter filenames based on the date range
+        files = []
+        for filename in filenames:
+            try:
+                # Build regex pattern for date extraction
+                if date_separator and day:
+                    d_sep = f"[{date_separator}]"
+                    re_str = r"\d{4}" + d_sep + r"\d{2}" + d_sep + r"\d{2}"  # e.g., 2012-01-01
+                elif date_separator and not day:
+                    d_sep = f"[{date_separator}]"
+                    re_str = r"\d{4}" + d_sep + r"\d{2}"  # e.g., 2012-01
+                elif day:
+                    re_str = r"\d{8}"  # e.g., 20120101
+                else:
+                    re_str = r"\d{6}"  # e.g., 201201
+
+                # Extract date from filename
+                match = re.search(re_str, filename)
+                if match:
+                    extracted_date = match.group()
+                    if extracted_date in date_range:
+                        files.append(filename)
+            except AttributeError:
+                pass
+    else:
+        print(f'Finding files in directory {directory} with search string {search_str_short}')
+        files = filenames
+
+    return files
+
 
 def extract_files(directory,search_str=None,start=None,end=None,date_separator='',day=True):
     '''
