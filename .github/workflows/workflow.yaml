@@ -25,14 +25,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
     - name: Set up conda for Python ${{ matrix.python-version }}
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-        miniforge-version: "*"
-        channels: conda-forge,defaults
-        environment-file: environment.yml
-        activate-environment: acrg
-        auto-activate-base: false
+      - uses: actions/checkout@v5
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yaml
+          cache-environment: true
+          post-cleanup: "all"
+          init-shell: bash
+          create-args: >-
+            -f environment-dev.yaml
+            python=${{ matrix.python-version }}
     - name: Test with pytest
       run: pytest --verbose
         
