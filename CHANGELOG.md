@@ -8,7 +8,7 @@ Use this section to keep track of any intermediate changes that can then be move
 
 ### Added
 
- - Added oco2.py script to process the raw oco2 satellite obs files.
+ - Added oco2.py script to process the raw OCO-2 satellite obs files.
  
 ### Changed
 

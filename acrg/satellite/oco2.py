@@ -37,7 +37,7 @@ STEP 2:
                             write_name=True,
                             output_directory="/group/chem/acrg/prasad/acrg_oco2_processed") 
 
-   """
+"""
 import glob
 import os
 import re
@@ -160,67 +160,60 @@ def name_pressure_filter(ds,filters,pressure_NAME=None,columns=["latitude","long
         - cutoff based on a percentage difference between NAME and first pressure level
         - check NAME surface pressure is greater than (i.e. below in height) the second pressure level
         - check rough extent of the surface layer based on NAME pressure and second pressure level is in a certain range
-    
-    Note:
-        Surface pressure level is (currently) defined as p0, where p0 is the first pressure level.
-        This is correct for the oco2 Level 2 Product based on the CCI GHG Documentation for level-based extraction: 
-            http://www.esa-ghg-cci.org/index.php?q=webfm_send/160
-    
     Args:
-        ds (xarray.Dataset) : 
+        ds (xarray.Dataset) :
             Dataset containing pressure values with multiple pressure_levels defined for each data point.
-        filters (list) : 
+        filters (list) :
             Which filters to apply based on NAME surface pressure
              - "cutoff": remove all points where surface pressure is outside a cutoff value compared to NAME
              - "level_order": remove all points where NAME surface pressure is less than pressure level 2
              - "dpressure_range": remove all points where NAME surface layer is outside a range of sizes.
-        pressure_NAME (np.array, optional) : 
-            If pressure from NAME run has already been extracted, this can be specified explicitly to save 
+        pressure_NAME (np.array, optional) :
+            If pressure from NAME run has already been extracted, this can be specified explicitly to save
             computing time.
             If not specified, columns from ds and pressure_dir will be used to extract matching pressure values.
-        columns (list, optional) : 
+        columns (list, optional) :
             Names of the latitude, longitude, time and pressure variables to extract from input Dataset.
             This should be a 4-item list. Default = ["latitude","longitude","time","pressure_levels"]
             Note: Latitude, Longitude and Time are used to match to NAME pressure values.
-        cutoff (float, optional) : 
-            Only used when "cutoff" is within filters. Percentage cutoff to apply from comparison between 
+        cutoff (float, optional) :
+            Only used when "cutoff" is within filters. Percentage cutoff to apply from comparison between
             input pressure data and NAME pressure. Default = 5.0
-        layer_range (list, optional) : 
-            Only used when "dpressure_range" is within filters. Range in metres the surface layer should have 
-            (will be converted to pressure units using barometric equation). (two-item list). 
+        layer_range (list, optional) :
+            Only used when "dpressure_range" is within filters. Range in metres the surface layer should have
+            (will be converted to pressure units using barometric equation). (two-item list).
             Default = [50.,500.]
-        pressure_dir (str, optional) : 
+        pressure_dir (str, optional) :
             Base directory containing the NAME output files for the SurfacePressure run.
             Filename is assumed to be of the form "Pressure_C1_*.txt"
             See name_pressure_file() function for more details.
         pressure_domain (str/None,optional) :
-            Domain over which surface pressure values have been extracted (can be distinct from 
+            Domain over which surface pressure values have been extracted (can be distinct from
             domain if pressure_domain contains area of domain).
             * Must be specified if pressure_NAME has not been specified *
             Check $DATA_PATH/LPDM/surface_pressure folder to see which domains currently exist.
-        max_days (int, optional) : 
-            Number of days tolerance to allow when using time stamp to find relevant NAME pressure values. 
+        max_days (int, optional) :
+            Number of days tolerance to allow when using time stamp to find relevant NAME pressure values.
             Default = 31 (days).
         day_template (bool, optional) :
             Use nearest day as a template for the change of pressure over the course of the day and match
             to the nearest time on that day.
-            E.g. if datetime is 2012-05-01 03:00:00, max_days is 31 and nearest day is 2012-01-01 then 
-            use entry from 2012-01-01 03:00:00 (rather than 2012-02-01 00:00:00, which would be the 
+            E.g. if datetime is 2012-05-01 03:00:00, max_days is 31 and nearest day is 2012-01-01 then
+            use entry from 2012-01-01 03:00:00 (rather than 2012-02-01 00:00:00, which would be the
             nearest entry).
             Default = True.
-        pressure_convert (float, optional) : 
+        pressure_convert (float, optional) :
             If pressure values extracted from NAME are not in the required units, pressure_convert
             should be set to the scaling factor to convert these units.
-            By default, we assume we want to convert to hPa from NAME input in Pa (pressure_covert=1/100.)
-        
+            By default, we assume we want to convert to hPa from NAME input in Pa (pressure_covert=1/100.)  
     Returns:
-        xarray.Dataset : 
-            Filtered Dataset with data points with pressure levels too different from the NAME values (based on 
-            the filters specified) removed. 
+        xarray.Dataset :
+            Filtered Dataset with data points with pressure levels too different from the NAME values (based on
+            the filters specified) removed.
     '''
-    
+   
     dim_apply = "time"
-    
+  
     if pressure_NAME is None:
         pressure_NAME = name_pressure_match(ds,columns=columns[:-1],pressure_domain=pressure_domain,
                                             pressure_base_dir=pressure_base_dir,
@@ -306,7 +299,7 @@ def oco2_process_file(filename,site,species="co2",lat_bounds=[],lon_bounds=[],do
         site (str) : 
             Specified sub-set defined for oco2 e.g. OCO2-INDIA. Should be defined within site_info.json
         species (str, optional) : 
-            Species of interest. Should be defined within species_info.json. Default = "ch4"
+            Species of interest. Should be defined within species_info.json. Default = "co2"
         lat_bounds (list, optional) : 
             Upper and lower bounds for latitude. (two-item list e.g. [6.0,36.5])
         lon_bounds (list, optional) : 
