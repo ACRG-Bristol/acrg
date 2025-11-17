@@ -2,7 +2,7 @@ name: acrg
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.10
   - pymc3=3.9
   - matplotlib-base=3.7
   - netcdf4=1.6
