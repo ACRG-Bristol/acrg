@@ -6,23 +6,23 @@
 
 **Type of Change:**
 
-[ ] Bug fix
+- [ ] Bug fix
 
-[ ] New feature
+- [ ] New feature
 
-[ ] Code-breaking change
+- [ ] Code-breaking change
 
 **Checklist:**
 
-[ ] Code documentation has been updated if needed
+- [ ] Code documentation has been updated if needed
 
-[ ] If new tests are needed, they have been added
+- [ ] If new tests are needed, they have been added
 
-[ ] All tests pass
+- [ ] All tests pass
 
-[ ] No merge conflicts
+- [ ] No merge conflicts
 
-[ ] /CHANGELOG.md has been updated if change is significant
+- [ ] /CHANGELOG.md has been updated if change is significant
 
 
 **Other Comments:**
