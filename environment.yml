@@ -1,28 +1,30 @@
-name: acrg
+name: acrg_dry
 channels:
   - conda-forge
+  - defaults
 dependencies:
-  - python=3.10
-  - pymc3=3.9
+  - python=3.11
+  - pymc
   - matplotlib-base=3.7
   - netcdf4=1.6
-  - numpy=1.22
+  - numpy>=1.26
   - regionmask=0.9
-  - xarray=2023.2
+  - xarray=2024.10
   - iso3166=2.1
-  - pandas=1.5
+  - pandas=2.0
   - numexpr=2.8
   - tqdm=4.64
   - xesmf=0.7
-  - geopandas=0.12
+  - geopandas=0.14
   - yaml=0.2
   - iris=3.4
-  - cartopy=0.21
+  - cartopy=0.22
   - h5py=3.8
-  - numba=0.56
+  - numba=0.57
   - scipy=1.10
-  - pytest=7.2
+  - pytest=9.0.1
   - pyfakefs=5.1
   - cachetools=5.3
+  - pip
   - pip:
     - openghg_defs @ git+https://github.com/openghg/openghg_defs

@@ -5,7 +5,7 @@ Created on Mon Mar 30 10:13:21 2020
 
 @author: lw13938
 
-Modules for running an MCMC inversion using PyMC3. There are also functions
+Modules for running an MCMC inversion using pymc. There are also functions
 to dynamically create a basis function grid based on the a priori sensitivity,
 and some other functionality for setting up the inputs to this (or any) inverse
 method.
@@ -56,7 +56,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
-    pymc3 to solve the inverse problem.
+    pymc to solve the inverse problem.
     
     Args:
         species (str):
@@ -84,7 +84,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Dictionary containing information about the prior PDF for emissions.
             The entry "pdf" is the name of the analytical PDF used, see
             https://docs.pymc.io/api/distributions/continuous.html for PDFs
-            built into pymc3, although they may have to be coded into the script.
+            built into pymc, although they may have to be coded into the script.
             The other entries in the dictionary should correspond to the shape
             parameters describing that PDF as the online documentation,
             e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
@@ -286,7 +286,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
-    #Run Pymc3 inversion
+    #Run pymc inversion
     xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
            xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
     #Process and save inversion output

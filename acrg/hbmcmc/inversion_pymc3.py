@@ -6,7 +6,7 @@ Created on Thu Apr  2 12:57:23 2020
 @author: lw13938
 """
 import numpy as np
-import pymc3 as pm
+import pymc as pm
 import pandas as pd
 import xarray as xr
 import getpass
@@ -35,7 +35,7 @@ def parsePrior(name, prior_params, shape = ()):
         prior_params (dict):
             dict of parameters for the distribution, including 'pdf' for the distribution to use
         shape (array):
-            shape of distribution to be created. Default shape = () is the same as used by pymc3
+            shape of distribution to be created. Default shape = () is the same as used by pymc
         
     """
     functionDict = {"uniform":pm.Uniform,
@@ -107,7 +107,7 @@ def inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
             Dictionary containing information about the prior PDF for emissions.
             The entry "pdf" is the name of the analytical PDF used, see
             https://docs.pymc.io/api/distributions/continuous.html for PDFs
-            built into pymc3, although they may have to be coded into the script.
+            built into pymc, although they may have to be coded into the script.
             The other entries in the dictionary should correspond to the shape
             parameters describing that PDF as the online documentation,
             e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
@@ -274,7 +274,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
                 Dictionary containing information about the prior PDF for emissions.
                 The entry "pdf" is the name of the analytical PDF used, see
                 https://docs.pymc.io/api/distributions/continuous.html for PDFs
-                built into pymc3, although they may have to be coded into the script.
+                built into pymc, although they may have to be coded into the script.
                 The other entries in the dictionary should correspond to the shape
                 parameters describing that PDF as the online documentation,
                 e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.

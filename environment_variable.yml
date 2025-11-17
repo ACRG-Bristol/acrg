@@ -3,8 +3,8 @@ name: acrg_var
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
-  - pymc3
+  - python=3.11
+  - pymc
   - matplotlib-base
   - netcdf4
   - numpy
