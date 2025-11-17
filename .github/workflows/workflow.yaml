@@ -17,14 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up micromamba for Python ${{ matrix.python-version }}
+      - name: Set up micromamba for Python 3.11
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-file: environment.yml
           cache-environment: true
           init-shell: bash
           environment-name: test-env
-          create-args: python=${{ matrix.python-version }}
+          create-args: python=3.11
 
       - name: Install dependencies (if needed)
         run: micromamba install pytest
