@@ -29,7 +29,7 @@ import matplotlib.dates as mdates
 from matplotlib import ticker
 from cartopy.feature import BORDERS
 from collections import OrderedDict
-import pymc3 as pm
+import pymc as pm
 import pandas as pd
 
 import acrg.name as name

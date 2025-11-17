@@ -14,7 +14,7 @@ To run this test suite only from within the tests/ directory use the syntax
 """
 
 import pytest
-import pymc3 as pm
+import pymc as pm
 import numpy as np
 import os
 import subprocess
@@ -50,7 +50,7 @@ def example_prior():
 def test_parsePrior(example_prior) :
     '''
     Test that the parse prior function works. May fail if a referenced function
-    does not exist in the current pymc3 version
+    does not exist in the current pymc version
     '''
     with pm.Model() as model:
         test = mcmc.parsePrior("test", example_prior)

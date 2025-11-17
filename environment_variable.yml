@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - pymc3
+  - pymc
   - matplotlib-base
   - netcdf4
   - numpy

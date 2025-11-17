@@ -31,7 +31,7 @@ All calls to species_info.json and site_info.json are now made through the openg
 
 ### Changed
 
-- Updated pinned packages, now expects Python 3.10
+- Updated pinned packages, now expects Python 3.11
 - Paths updated in `process_gcwerks_dagage2.sh` and json files (reflecting recent changes).
 - Additional sites and parameters added to json files.
 
