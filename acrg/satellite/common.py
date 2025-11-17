@@ -497,7 +497,7 @@ def output_filename(output_directory,network,instrument,date,species,inlet=None,
 #    
     return filename
   
-def output(ds,site,network=None,species=None,
+def output(ds,site,species,network=None,
            file_per_day=False,output_directory=obs_directory,
            overwrite=False):
     '''
