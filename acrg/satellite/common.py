@@ -513,9 +513,8 @@ def output(ds,site,species,network=None,
             Should have had co-ordinates and dimensions assigned with gosat_add_coords() function.
         site (str) : 
             Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within site_info.json)
-        species (str, optional) : 
+        species (str) : 
             Species of interest e.g. "ch4" (should be defined within species_info.json).
-            Default = "ch4"
         file_per_day (bool, optional) : 
             Output all results to one file per day rather than splitting out per time point. Default = False.
         output_directory (str, optional) : 
