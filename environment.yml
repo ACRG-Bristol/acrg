@@ -1,6 +1,7 @@
 name: acrg_dry
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - python=3.11
   - pymc
@@ -24,5 +25,6 @@ dependencies:
   - pytest=9.0.1
   - pyfakefs=5.1
   - cachetools=5.3
+  - pip
   - pip:
     - openghg_defs @ git+https://github.com/openghg/openghg_defs
