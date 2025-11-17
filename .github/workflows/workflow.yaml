@@ -30,7 +30,7 @@ jobs:
         environment-file: environment.yml
         environment-name: acrg
         cache-environment: true
-        create-args: python=3.11
+        create-args: python=3.10
         init-shell: bash
     - name: Test with pytest
       run: micromamba run -n acrg pytest --verbose
