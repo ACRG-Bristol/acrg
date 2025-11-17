@@ -25,16 +25,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Set up conda for Python ${{ matrix.python-version }}
-      uses: conda-incubator/setup-miniconda@v2
+      uses: mamba-org/setup-micromamba@v2
       with:
-        python-version: ${{ matrix.python-version }}
-        miniforge-variant: Mambaforge  # This line and line below added based on discussion within: https://github.com/conda-incubator/setup-miniconda/issues/116
-        miniforge-version: latest
         environment-file: environment.yml
-        activate-environment: acrg
-        auto-activate-base: false
+        environment-name: acrg
+        cache-environment: true
+        create-args: python=3.10
+        init-shell: bash
     - name: Test with pytest
-      run: pytest --verbose
+      run: micromamba run -n acrg pytest --verbose
         
     #     --cov=./ --cov-report=xml
 

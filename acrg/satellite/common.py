@@ -6,6 +6,8 @@ import acrg.obs as acrg_obs
 import datetime as dt
 import pandas as pd
 
+import glob
+import numpy as np
 import re
 import random
 import logging
@@ -468,6 +470,8 @@ def output_filename(output_directory,network,instrument,date,species,inlet=None,
         satellite = 'gosat'
     elif 'tccon' in instrument.lower():
         satellite = 'tccon'
+    else:
+        satellite = 'oco2'
     
     date = date.replace('-','') # Turn date from e.g. 2012-09-20 to 20120920
     
@@ -493,7 +497,7 @@ def output_filename(output_directory,network,instrument,date,species,inlet=None,
 #    
     return filename
   
-def output(ds,site,network=None,species="ch4",
+def output(ds,site,species,network=None,
            file_per_day=False,output_directory=obs_directory,
            overwrite=False):
     '''
@@ -509,9 +513,8 @@ def output(ds,site,network=None,species="ch4",
             Should have had co-ordinates and dimensions assigned with gosat_add_coords() function.
         site (str) : 
             Specified sub-set defined for gosat e.g. GOSAT-INDIA (should be defined within site_info.json)
-        species (str, optional) : 
+        species (str) : 
             Species of interest e.g. "ch4" (should be defined within species_info.json).
-            Default = "ch4"
         file_per_day (bool, optional) : 
             Output all results to one file per day rather than splitting out per time point. Default = False.
         output_directory (str, optional) : 
@@ -527,17 +530,40 @@ def output(ds,site,network=None,species="ch4",
         Writes output to multiple .nc files (split on time axis).
     
     '''
-    # Define data variables to be written to output
-    out_data_vars = ["xch4","xch4_uncertainty","lat","lon","pressure_levels","pressure_weights",
-                     "xch4_averaging_kernel","ch4_profile_apriori","exposure_id",
-                     "mode"]
+    if network == "oco2":
+        # Define data variables to be written to output
+        out_data_vars = [
+            f"x{species}",  # Main species variable
+            f"x{species}_uncertainty",  # Uncertainty for the species
+            "lat",
+            "lon",
+            "pressure_levels",
+            "pressure_weights",
+            f"x{species}_averaging_kernel",  # Averaging kernel for the species
+            f"{species.split('_')[0]}_profile_apriori",  # Apriori profile for the species
+            # "mode"
+        ]
+    else:
+        out_data_vars = [
+                f"x{species}",  # Main species variable
+                f"x{species}_uncertainty",  # Uncertainty for the species
+                "lat",
+                "lon",
+                "pressure_levels",
+                "pressure_weights",
+                f"x{species}_averaging_kernel",  # Averaging kernel for the species
+                f"{species.split('_')[0]}_profile_apriori",  # Apriori profile for the species
+                "mode"
+            ]
     
     # Map to input dataset (from GOSAT data)
     data_vars = ["latitude" if item=="lat" else item for item in out_data_vars]
     data_vars = ["longitude" if item=="lon" else item for item in data_vars]
     data_vars = ["pressure_weight" if item=="pressure_weights" else item for item in data_vars]
-    data_vars = ["retr_flag" if item=="mode" else item for item in data_vars]
-    
+
+    if network.lower() != "oco2":
+        data_vars = ["retr_flag" if item=="mode" else item for item in data_vars]
+        
     data_var_mapping = OrderedDict([(name,new_name) for name,new_name in zip(data_vars,out_data_vars)])
     
     #if site == None:
@@ -548,11 +574,14 @@ def output(ds,site,network=None,species="ch4",
     
     # Set name of data variable which includes the data point identifiers
     ident = "exposure_id"    
-    if network!='TCCON':
+    if 'gosat' in network.lower():
         network = find_network(site)[0] # Using first site as default.
         instrument = 'gosat-fts'
-    else:
+    elif 'oco2' in network.lower():
+        instrument = 'oco2-spectrometer'
+    else:  
         instrument = f'tccon-{site}'
+        
     inlet = 'column'
     species = species.lower()
     
@@ -568,7 +597,6 @@ def output(ds,site,network=None,species="ch4",
         wh_date = np.where(all_dates == date)[0] # Find indices for each date
         if file_per_day:
             ds_output = split_output(ds,index=wh_date,mapping=data_var_mapping,split_dim=split_dim,ident=ident)
-            
             # Create filename and write dataset to file
             filename = output_filename(output_directory,network,instrument,date,species,inlet=inlet)
             ds_output.attrs["id"] = os.path.split(filename)[1]
@@ -1311,6 +1339,7 @@ def name_pressure_file(filename,name='surface_pressure',column_names=["latitude"
         return None
     
     return ds
+
 
 def extract_files(directory,search_str=None,start=None,end=None,date_separator='',day=True):
     '''
