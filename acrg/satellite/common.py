@@ -560,7 +560,8 @@ def output(ds,site,species,network=None,
     data_vars = ["latitude" if item=="lat" else item for item in out_data_vars]
     data_vars = ["longitude" if item=="lon" else item for item in data_vars]
     data_vars = ["pressure_weight" if item=="pressure_weights" else item for item in data_vars]
-    if network=="TCCON" or network=='GOSAT':
+
+    if network.lower() != "oco2":
         data_vars = ["retr_flag" if item=="mode" else item for item in data_vars]
         
     data_var_mapping = OrderedDict([(name,new_name) for name,new_name in zip(data_vars,out_data_vars)])
@@ -596,7 +597,6 @@ def output(ds,site,species,network=None,
         wh_date = np.where(all_dates == date)[0] # Find indices for each date
         if file_per_day:
             ds_output = split_output(ds,index=wh_date,mapping=data_var_mapping,split_dim=split_dim,ident=ident)
-            print(instrument)
             # Create filename and write dataset to file
             filename = output_filename(output_directory,network,instrument,date,species,inlet=inlet)
             ds_output.attrs["id"] = os.path.split(filename)[1]
@@ -607,7 +607,6 @@ def output(ds,site,species,network=None,
 
                 # Create filename and write dataset to file
                 ID_str = str(ID+1).zfill(3) # Number to add to filename - three digit with leading zeros
-                print(instrument)
                 filename = output_filename(output_directory,network,instrument,date,species,num=ID_str,inlet=inlet)
                 ds_output.attrs["id"] = os.path.split(filename)[1]
                 write_netcdf(ds_output,filename,overwrite=overwrite)
