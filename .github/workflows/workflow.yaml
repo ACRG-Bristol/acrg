@@ -25,17 +25,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
+    
       - name: Set up micromamba for Python ${{ matrix.python-version }}
         uses: mamba-org/setup-micromamba@v2
         with:
-          environment-file: environment.yaml
+          environment-file: environment.yml
           cache-environment: true
-          post-cleanup: "all"
           init-shell: bash
-          create-args: >-
-            -f environment-dev.yaml
-            python=${{ matrix.python-version }}
-
+          post-cleanup: minimal        
       - name: Test with pytest
         run: pytest --verbose
