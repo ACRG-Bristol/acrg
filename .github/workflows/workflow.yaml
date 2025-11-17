@@ -32,6 +32,5 @@ jobs:
           environment-file: environment.yml
           cache-environment: true
           init-shell: bash
-          post-cleanup: minimal        
       - name: Test with pytest
         run: pytest --verbose
