@@ -19,7 +19,7 @@ dependencies:
   - iris=3.4
   - cartopy=0.21
   - h5py=3.8
-  - numba=0.56
+  - numba=0.57
   - scipy=1.10
   - pytest=7.2
   - pyfakefs=5.1
