@@ -6,7 +6,7 @@ dependencies:
   - pymc3=3.9
   - matplotlib-base=3.7
   - netcdf4=1.6
-  - numpy=>=1.23.4,<2.0a0
+  - numpy=>=1.23.4
   - regionmask=0.9
   - xarray=2023.2
   - iso3166=2.1
