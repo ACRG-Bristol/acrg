@@ -133,6 +133,8 @@ def filenames(site, domain, start, end, height, fp_directory, met_model = None, 
     """
         
     # Read site info for heights
+    
+
     if height is None:
         if not site in list(site_info.keys()):
             print("Site code not found in data/site_info.json to get height information. " + \
@@ -631,7 +633,6 @@ def basis(domain, basis_case, basis_directory = None):
     file_path = os.path.join(basis_directory,domain,f"{basis_case}_{domain}*.nc")
         
     files = sorted(glob.glob(file_path))
-    
     if len(files) == 0:
         raise IOError(f"\nError: Can't find basis function files for domain '{domain}' and basis_case '{basis_case}' ")
 
@@ -967,7 +968,6 @@ def footprints_data_merge(data, domain, met_model = None, load_flux = True, load
                 platform = site_info[site][network_site]["platform"]
             else:
                 platform = None
-            
             if height is not None:
                 if type(height) is not dict:
                     print("Height input needs to be a dictionary with {sitename:height}")
@@ -2251,6 +2251,11 @@ class get_country(object):
         else:
             filename = country_file
             f = xr.open_dataset(filename)
+
+        print("IN GET COUNTRY")
+        print(filename)
+        print("BRAZIL" in f.name)
+        print(f.name)
     
         lon = f.variables['lon'][:].values
         lat = f.variables['lat'][:].values
@@ -2607,3 +2612,52 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS=True
             return timeseries, fpXflux
         elif output_TS:
             return timeseries
+
+
+def load_emulated_bc(fp_data, domain, emulated_bc_directory, attr_name="pred_bc_flux"):
+    """Loads emulated basis boundary conditions from netcdf file
+    
+    """
+    emulated_bcs = {}
+
+    sites = [key for key in list(fp_data.keys()) if key[0] != '.']
+    for site in sites:
+
+        years = np.unique(fp_data[site]['time'].dt.year)
+        if len(years) > 1:
+            raise Exception("Emulated BC loading only works for single year at the moment")
+        
+        year = years[0]
+        emulated_bcs_path = glob.glob(join(emulated_bc_directory, domain, f"emulated_bc_basis_*{domain}_{year}*.nc"))
+
+        if len(emulated_bcs_path) == 0:
+            raise Exception(f"Emulated BC files not found: {emulated_bcs_path}")
+
+        with xr.open_mfdataset(emulated_bcs_path) as ds:
+            if attr_name not in ds.variables:
+                raise Exception(f"Attribute {attr_name} not found in emulated BC file: {emulated_bcs_path}")
+
+            em_bcs_dataset = ds[attr_name]
+
+        emulated_bcs[site] = em_bcs_dataset
+
+    return emulated_bcs
+
+def emulated_boundary_conditions(fp_data, domain, emulated_bc_directory, attr_name="pred_flux"):
+
+    emulated_bcs = load_emulated_bc(fp_data, domain, emulated_bc_directory, attr_name=attr_name)
+
+    sites = [key for key in list(fp_data.keys()) if key[0] != '.']
+    for site in sites:
+
+        valid_timestamps = np.intersect1d(fp_data[site]['time'].values, emulated_bcs[site]['time'].values)
+        fp_data[site] = fp_data[site].sel(time=valid_timestamps)
+        emulated_bcs[site] = emulated_bcs[site].sel(time=valid_timestamps)
+
+        assert "H_bc" in fp_data[site].variables, "H_bc variable not found in fp_data! Load with name.bc_sensitivity() and bc_basis_case='uniform' "
+        assert fp_data[site].region_bc.size == 1, "It seems like there are too many bc regions - make sure you are passing bc_basis_case='uniform' "
+
+        #fp_data[site] = fp_data[site].assign(H_bc = emulated_bcs[site].values)
+        fp_data[site]['H_bc'] = emulated_bcs[site].load()  
+
+    return fp_data
