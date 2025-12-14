@@ -10,12 +10,29 @@ import argparse
 import csv
 import json
 from pathlib import Path
+import re
+import subprocess
 import textwrap
 from typing import Literal, Optional
 
 import pandas as pd
 
 from helpers import make_dates_df
+
+
+def get_modules() -> list[str]:
+    out = subprocess.run("module list", shell=True, capture_output=True, text=True)
+    pat = re.compile(r"\d+\)|\n", re.M)
+    modules = [x.strip() for x in pat.split(out.stderr)]
+    modules = modules[3:]
+    idx = modules.index("")
+    return modules[:idx]
+
+
+def get_modules_str() -> str:
+    modules = get_modules()
+    return "\n".join(["module load " + x for x in modules if not x.endswith("(S)")]) + "\n"
+
 
 # where should jobs be stored?
 DEFAULT_JOB_ROOT = Path.home()
@@ -99,9 +116,6 @@ def make_script(
     if conda_env:
         env_str = f"""\
         # Set up Python environment
-        module purge
-        module load lang/python/anaconda
-        module load tools/git
         eval "$(conda shell.bash hook)"
         conda activate {conda_env}
         """
@@ -114,9 +128,6 @@ def make_script(
     elif python_venv:
         env_str = f"""\
         # Set up Python environment
-        module purge
-        # module load lang/python/anaconda
-        module load tools/git
         source {python_venv}/bin/activate
         """
         env_log_str = f"""\
@@ -224,7 +235,7 @@ def make_script(
 
 
     # remove leading whitespace and combine sections
-    sections = [header_str, env_str, env_log_str, branch_str, param_str, command_str]
+    sections = [header_str, get_modules_str(), env_str, env_log_str, branch_str, param_str, command_str]
     script_str = "\n".join([textwrap.dedent(section) for section in sections])
     return script_str
 
