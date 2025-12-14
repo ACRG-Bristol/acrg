@@ -1,0 +1,104 @@
+# config file for creating experiments
+# toml table layout:
+
+[dates]
+year = 2018
+n_periods = 5
+frequency = "annual"
+
+[setup]
+# root = "/group/chem/acrg/PARIS_inversions"
+root = "/Users/bm13805/Documents/rhime_config_test"
+# ini_file = "<setup.root>/ini_templates/<general.species>_template.ini"
+ini_file = "<setup.root>/ini_templates/template.ini"
+job_root = "<setup.root>/<general.species>/prior_tests"
+python_venv = "/user/work/bm13805/.inv_editable"
+job_name = "paris_<general.species>"  # you can include other variables from the "general" and "dates" sections
+# merged_data_dir = "/group/chem/acrg/PARIS_inversions/merged_data"  # default is job_root / "merged_data", but you can change it
+
+[slurm]
+n_cpu = 4
+time = "02:30:00"
+mem = "40gb"
+account = "acct00xxxx"  # fill with your account code
+
+# general: applied to all experiments/combos
+[general]
+species = "C3F8"
+nuts_sampler = "numpyro"
+nbasis = 250
+basis_algorithm = "weighted"
+emissions_store = "paris_store_zarr"
+fix_basis_outer_regions = true  # NOTE: true/false are lowercase in toml
+use_bc = true
+calculate_min_error = "percentile"
+pollution_events_from_obs = true
+reparameterise_log_normal = true
+sampler_kwargs = { blas_cores = 8 }
+
+save_merged_data = true
+reload_merged_data = true
+merged_data_dir = "<setup.root>/<general.species>/merged_data/"
+
+outputpath = "<setup.root>/<general.species>/"
+
+
+# NOTE: dictionary in toml is different from json/OpenGHG inversions ini files
+# NOTE: there is no "None" type in toml, so we omit the sites without filters and
+# fix this in the parser
+filters = { MHD = ["pblh_inlet_diff", "pblh_min"], TAC = ["pblh_inlet_diff", "pblh_min"] }  # CMN, JFJ omitted
+
+# general.combos: as if you specified multiple values for something in "general" using multiple config files
+# these take precedence over the values in "general"
+# these will be used if you call `get_configs`, if the `Config.from_conf` method is used, they will be ignored
+# and the values from "general" will be used.
+[general.combos]
+species = ["hfc143a", "pfc218"]  # just refer to this via <general.species>
+
+# combos: create one experiment for each combination of the parameters listed below
+[combos]
+emissions_name = [["flat-annual-total"], ["low-flat-annual-total"], ["high-flat-annual-total"]]
+xprior = [
+       { pdf = "lognormal", stdev = 1 },
+       { pdf = "lognormal", stdev = 3 },
+       { pdf = "lognormal", stdev = 8 },
+       { pdf = "lognormal", stdev = 24 },
+]
+merged_data_name = "NAME_prior_tests_^emissions_name$.zarr"
+
+_readme = """
+Annual inversions for <general.species> using ^emissions_name$ prior, RHIME filtering,
+with basis functions fitted and baseline solved for by RHIME.
+
+xprior = ^xprior$
+"""
+
+# put combo variable names between ^ and $
+_name_template = "RHIME_NAME_EUROPE_^emissions_name$_rhime_obs_rhime_baseline_optimized_<general.species>_xprior_^xprior$_yearly"
+
+# use _names to avoid conflict with parameters named "names"
+[combos._names]
+emissions_name = ["FLAT", "LOW-FLAT", "HIGH-FLAT"]
+xprior = ["stdev-1", "stdev-3", "stdev-8", "stdev-24"]
+
+# experiments: specify groups of parameters and a directory name explicitly
+# "general" arguments will be applied, but they will be overwritten by experiment values
+# [experiments]
+# [experiments."RHIME_NAME_EUROPE_<combos._names.emissions_name>_rhime_obs_rhime_baseline_optimized_<general.species>_xprior_<combos._names.xprior>_yearly"]
+# _readme = """
+# Annual inversions for <general.species> using <combos._names.emissions_name> prior, RHIME filtering,
+# with basis functions fitted and baseline solved for by RHIME.
+
+# xprior = <combos._names.xprior>
+# """
+
+
+
+
+# you can add more sections
+# [extra]
+# key = "abc"
+
+# # and these can be referenced elsewhere
+# [experiments.test]
+# emissions_name = ["<extra.key>-annual-total"]  # will be converted to "abc-annual-total"

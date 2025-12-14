@@ -142,7 +142,7 @@ class Param:
     def _format(self, config: Config, skip: list[str] | None) -> None:
         if isinstance(self.value, str):
             # iteratively replace <key1.key2> with {config.key1[key2]} to set up for formatting below
-            while s := self._find_next_sub(skip=skip):
+            while (s := self._find_next_sub(skip=skip)):
                 self.value = s.apply(self.value)
 
             self.value = self.value.format(config=config)

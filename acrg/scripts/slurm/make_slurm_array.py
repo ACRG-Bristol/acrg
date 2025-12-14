@@ -235,7 +235,12 @@ def make_script(
 
 
     # remove leading whitespace and combine sections
-    sections = [header_str, get_modules_str(), env_str, env_log_str, branch_str, param_str, command_str]
+    sections = [header_str]
+    try:
+        sections.append(get_modules_str())
+    except:
+        pass
+    sections.extend([env_str, env_log_str, branch_str, param_str, command_str])
     script_str = "\n".join([textwrap.dedent(section) for section in sections])
     return script_str
 
