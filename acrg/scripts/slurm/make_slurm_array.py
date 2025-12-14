@@ -115,14 +115,14 @@ def make_script(
         env_str = f"""\
         # Set up Python environment
         module purge
-        module load lang/python/anaconda
+        # module load lang/python/anaconda
         module load tools/git
         source {python_venv}/bin/activate
         """
         env_log_str = f"""\
         if [ $SLURM_ARRAY_TASK_ID -eq 1 ]; then
             mkdir -p {log_path}
-            pip list >> {log_path / "packages.txt"}
+            uv pip list >> {log_path / "packages.txt"}
         fi
         """
     else:
@@ -133,7 +133,7 @@ def make_script(
 
     # record what branch and commit was used for these inversions
     branch_str = f"""\
-    inversions_path=$(pip list | grep "openghg_inversions" | awk '{{ print $3 }}')
+    inversions_path=$(uv pip list | grep "openghg_inversions" | awk '{{ print $3 }}')
     git_branch=$(git -C $inversions_path status | awk 'NR==1{{ print $3 }}')
     git_commit=$(git -C $inversions_path log --oneline -n 1 $git_branch | awk '{{ print $1 }}')
     echo "Using commit $git_commit on branch $git_branch in repo $inversions_path" >> {log_path / "git_info.txt"}
