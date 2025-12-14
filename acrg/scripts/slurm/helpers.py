@@ -8,6 +8,12 @@ from openghg.util import synonyms
 import pandas as pd
 
 
+def make_iterable(x):
+    if isinstance(x, str) or not isinstance(x, Iterable):
+        return [x]
+    return x
+
+
 def flatten(x: dict) -> list[dict]:
     """Flatten any iterable values in dictionary.
 
@@ -30,11 +36,6 @@ def flatten(x: dict) -> list[dict]:
     keys, vals = zip(*x.items())  # get keys, values as tuples
 
     # all args of `product` must be Iterable, so convert non-Iterable values to lists of length 1
-    def make_iterable(x):
-        if isinstance(x, str) or not isinstance(x, Iterable):
-            return [x]
-        return x
-
     vals = map(make_iterable, vals)
     vals_prod = product(*vals)  # create tuples containing all combinations of values for each key
 

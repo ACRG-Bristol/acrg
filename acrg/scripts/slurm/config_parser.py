@@ -3,12 +3,13 @@ from dataclasses import dataclass, field
 from functools import reduce
 from operator import attrgetter, itemgetter
 from pathlib import Path
+from pprint import pprint
 import re
 from typing import Any, Callable, Iterator, Literal, Optional, TypeVar, Union
 
 import pandas as pd
 
-from helpers import flatten, make_dates_df, update_ini_file
+from helpers import flatten, make_dates_df, make_iterable, update_ini_file
 from make_slurm_array import make_script
 
 try:
@@ -147,6 +148,7 @@ class Param:
 
     def format(self, config: Config, skip: list[str] | None = None) -> None:
         """Recursively apply _format"""
+        # print("formatting", self.key, self.value)
         if isinstance(self.value, list):
             tmp = [Param(x) for x in self.value]
             for x in tmp:
@@ -270,17 +272,28 @@ CT = TypeVar("CT", bound="Combos")  # for classmethod typing
 class Combos:
     param_lists: dict[str, list[Param]]
     names: dict[str, list[str]] = field(default_factory=dict)
+    name_template: str | None = None
 
     @classmethod
     def from_conf(cls: type[CT], combos_conf: dict) -> CT:
         combos_conf = combos_conf.copy()  # avoid mutating input ...probably not important here
         names = combos_conf.pop("_names", None)
+        name_template = combos_conf.pop("_name_template", None)
+
+        if isinstance(name_template, str):
+            name_template = name_template.replace("^", "{").replace("$", "}")
 
         param_lists = {}
         for k, v in combos_conf.items():
+            v = make_iterable(v)
             param_lists[k] = [Param(value=x, key=k) for x in v]
 
-        return cls(param_lists, names)
+        return cls(param_lists, names, name_template)
+
+    def __getitem__(self, key) -> dict:
+        if key != "_names":
+            raise KeyError(f"Can only access `_names` by key from Combos; received `{key}`.")
+        return self.names
 
     def get_params(self) -> list[Params]:
         return [Params(x) for x in flatten(self.param_lists)]
@@ -292,6 +305,12 @@ class Combos:
     def get_experiments(self, setup: dict, slurm: dict, dates: Dates | None) -> list[Experiment]:
         names_flat = self.get_names()
         params_flat = self.get_params()
+
+        # fill any names from the combo names
+        for params, name_dict in zip(params_flat, flatten(self.parse_names())):
+            for param in params.params.values():
+                if isinstance(param.value, str):
+                    param.value = param.value.replace("^", "{").replace("$", "}").format(**name_dict)
 
         return [
             Experiment(name, params, dates=dates, setup=setup, slurm=slurm)
@@ -311,6 +330,8 @@ class Combos:
         return names_dict
 
     def make_name(self, names_dict: dict) -> str:
+        if self.name_template is not None:
+            return self.name_template.format(**names_dict)
         name_strings = []
         for k, v in names_dict.items():
             if v is None:

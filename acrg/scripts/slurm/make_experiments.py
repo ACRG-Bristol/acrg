@@ -1,14 +1,18 @@
 import argparse
 from pathlib import Path
+from pprint import pprint
 from typing import Union
 
 from config_parser import get_configs
 
 
-def main(toml_path: Union[str, Path]) -> None:
+def main(toml_path: Union[str, Path], verbose: bool = False) -> None:
+    print("Getting configs...")
     confs = get_configs(toml_path)
 
     for conf in confs:
+        if verbose:
+            pprint(conf)
         conf.format()
         for exp in conf.experiments:
             exp.make()
@@ -114,7 +118,8 @@ if __name__ == "__main__":
         description="Make ini files and scripts for running several months of inversion on SLURM, possibly varying kwargs.",
     )
     parser.add_argument("toml_file")
+    parser.add_argument("-v", "--verbose", action="store_true")
 
     args = parser.parse_args()
 
-    main(args.toml_file)
+    main(args.toml_file, verbose=args.verbose)
