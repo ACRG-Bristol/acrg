@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import reduce
+import json
 from operator import attrgetter, itemgetter
 from pathlib import Path
 from pprint import pprint
@@ -409,7 +410,7 @@ class Experiment:
 
         if arrays_dict:
             kwargs = (pd.DataFrame.from_dict(arrays_dict)
-                   .apply(lambda x: x.to_dict(), axis=1)  # combine columns into dict because we need to pass them via --kwargs
+                   .apply(lambda x: json.dumps(x.to_dict()), axis=1)  # combine columns into dict because we need to pass them via --kwargs
                    .rename("kwargs")
                    )
             return df.join(kwargs)
