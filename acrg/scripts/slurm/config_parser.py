@@ -1,4 +1,5 @@
 from __future__ import annotations
+import csv
 from dataclasses import dataclass, field
 from functools import reduce
 import json
@@ -10,7 +11,7 @@ from typing import Any, Callable, Iterator, Literal, Optional, TypeVar, Union
 
 import pandas as pd
 
-from helpers import flatten, make_dates_df, make_iterable, to_tsv, update_ini_file
+from helpers import flatten, make_dates_df, make_iterable, update_ini_file
 from make_slurm_array import make_script
 
 try:
@@ -455,7 +456,7 @@ class Experiment:
 
         # write config file with dates
         config_path = out_path / "inversion_dates.txt"
-        to_tsv(dates_df, config_path)
+        dates_df.to_csv(config_path, sep="\t", quotechar='"', quoting=csv.QUOTE_NONE)
 
         # write ini file with updated kwargs
         ini_out_path = out_path / f"{job_name}.ini"
