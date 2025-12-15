@@ -1,6 +1,6 @@
 from __future__ import annotations
 import csv
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import reduce
 import json
 from operator import attrgetter, itemgetter
@@ -11,8 +11,8 @@ from typing import Any, Callable, Iterator, Literal, Optional, TypeVar, Union
 
 import pandas as pd
 
-from helpers import flatten, make_dates_df, make_iterable, update_ini_file
-from make_slurm_array import make_script
+from .helpers import flatten, make_dates_df, make_iterable, update_ini_file
+from .make_slurm_array import make_script
 
 try:
     import tomllib
@@ -115,6 +115,9 @@ class Param:
 
     def __str__(self) -> str:
         return str(self.value)
+
+    def copy(self):
+        return replace(self)
 
     def find_subsitutions(self):
         if not isinstance(self.value, str):
@@ -248,6 +251,9 @@ class Params:
     def __getitem__(self, key: str) -> Param:
         return self.params[key]
 
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.params[key] = value
+
     def __iter__(self) -> Iterator:
         yield from self.params.keys()
 
@@ -310,9 +316,10 @@ class Combos:
 
         # fill any names from the combo names
         for params, name_dict in zip(params_flat, flatten(self.parse_names())):
-            for param in params.params.values():
-                if isinstance(param.value, str):
-                    param.value = param.value.replace("^", "{").replace("$", "}").format(**name_dict)
+            for k in params:
+                if isinstance(params[k].value, str):
+                    params[k] = params[k].copy()
+                    params[k].value = params[k].value.replace("^", "{").replace("$", "}").format(**name_dict)
 
         return [
             Experiment(name, params, dates=dates, setup=setup, slurm=slurm)
