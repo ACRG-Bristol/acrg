@@ -14,6 +14,13 @@ def make_iterable(x):
     return x
 
 
+def to_tsv(df: pd.DataFrame, path: str | Path):
+    with open(path, "wt") as f:
+        f.write("\t".join(df.columns) + "\n")
+        for _, r in df.iterrows():
+            f.write("\t".join(r.values) + "\n")
+
+
 def flatten(x: dict) -> list[dict]:
     """Flatten any iterable values in dictionary.
 
