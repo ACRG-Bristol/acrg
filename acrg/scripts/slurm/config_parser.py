@@ -11,8 +11,8 @@ from typing import Any, Callable, Iterator, Literal, Optional, TypeVar, Union
 
 import pandas as pd
 
-from .helpers import flatten, make_dates_df, make_iterable, update_ini_file
-from .make_slurm_array import make_script
+from acrg.scripts.slurm.helpers import flatten, make_dates_df, make_iterable, update_ini_file
+from acrg.scripts.slurm.make_slurm_array import make_script
 
 try:
     import tomllib

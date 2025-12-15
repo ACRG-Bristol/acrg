@@ -17,7 +17,7 @@ from typing import Literal, Optional
 
 import pandas as pd
 
-from .helpers import make_dates_df
+from acrg.scripts.slurm.helpers import make_dates_df
 
 
 def get_modules() -> list[str]:

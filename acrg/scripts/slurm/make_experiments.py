@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 from typing import Union
 
-from config_parser import get_configs
+from acrg.scripts.slurm.config_parser import get_configs
 
 
 def main(toml_path: Union[str, Path], verbose: bool = False) -> None:
