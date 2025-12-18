@@ -279,10 +279,14 @@ def inferpymc3_MAP(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
     """
 
     print("using inferpymc3 MAP!!!")
-     
+    
+    print(Hx.shape, Hbc.shape)
     
     hx = Hx.T 
     hbc = Hbc.T
+
+    print(Hx.shape, Hbc.shape)
+
     nx = hx.shape[1]
     nbc = hbc.shape[1]
     ny = len(Y)
@@ -516,6 +520,7 @@ def inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence,
             spec = species if emissions_name == None else list(emissions_name.values())[0]
             emds = name.flux(domain=domain, species=spec, start = start_date, end = end_date, flux_directory=flux_directory)
             emissions_flux = emds.flux.values
+            
         flux = scalemap*emissions_flux[:,:,0]
         
         #Basis functions to save
@@ -862,6 +867,8 @@ def inferpymc3_MAP_postprocessouts(x, xbc, sig, YmodBC, Ymod, Hx, Hbc, Y, error,
         else:
             spec = species if emissions_name == None else list(emissions_name.values())[0]
             emds = name.flux(domain=domain, species=spec, start=start_date, end=end_date, flux_directory=flux_directory)
+            emissions_flux = emds.flux.values
+            
         flux = scalemap*emissions_flux[:,:,0]
         
         #Basis functions to save
