@@ -878,7 +878,7 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     
     if outputdir is None:
         # edited so it automatically saves in the ACRG stratch datadir
-        tempdir = "/group/chemistry/acrg/met_archive/NAME/scratch/"
+        tempdir = "/group/chem/acrg/met_archive/NAME/scratch/"
         try:
             subdir = tempdir + domain 
             os.makedirs(subdir)
@@ -896,4 +896,3 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
             os.makedirs(basisoutpath)
 
         newds.to_netcdf(os.path.join(basisoutpath,f"quadtree_{species}-{outputname}_{domain}_{start_date}.nc"), mode='w')
-    

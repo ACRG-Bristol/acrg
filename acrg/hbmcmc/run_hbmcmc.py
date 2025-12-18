@@ -23,12 +23,15 @@ create a configuration file called `hbmcmc_input.ini` within your acrg_hbmcmc/ d
 This file will need to be edited to add parameters for your MCMC run.
 '''
 
+import sys
+
+
 import os
 import sys
 import argparse
 from shutil import copyfile
 
-import acrg.hbmcmc.hbmcmc_elena as mcmc
+import acrg.hbmcmc.hbmcmc as mcmc
 import acrg.config.config as config
 from acrg.config.paths import Paths
 import acrg.hbmcmc.hbmcmc_output as output
