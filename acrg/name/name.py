@@ -2615,8 +2615,8 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS=True
 
 
 def load_emulated_bc(fp_data, domain, emulated_bc_directory, bc_file_name = None, attr_name="pred_bc_flux"):
-    """Loads emulated basis boundary conditions from netcdf file
-    
+    """Loads emulated boundary conditions from netcdf file
+
     """
     if attr_name is None:
         attr_name = "pred_bc_flux"
@@ -2624,7 +2624,7 @@ def load_emulated_bc(fp_data, domain, emulated_bc_directory, bc_file_name = None
     emulated_bcs = {}
 
     if bc_file_name is None:
-        bc_file_name = "emulated_bc_basis"
+        bc_file_name = "emulated_bc"
 
     sites = [key for key in list(fp_data.keys()) if key[0] != '.']
     for site in sites:
