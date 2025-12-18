@@ -20,6 +20,7 @@ being annoying it will also slow down your run due to unnecessary forking.
 
 """
 
+import sys
 
 
 import numpy as np
@@ -55,7 +56,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None, add_offset = False,site_modifier = {},
-                   verbose = False):
+                   verbose = False, load_emulated_bcs = False, emulated_bc_directory = None, emulated_bc_filename=None, emulated_bc_attr_name = None):
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
@@ -176,7 +177,14 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Default is none and no scaling will be applied (output in g).
         add_offset (bool):
             Add an offset (intercept) to all sites but the first in the site list. Default False.
-
+        load_emulated_bcs (bool):
+            Load emulated boundary conditions from a specified directory, replacing the calculated boundary conditions. Note that currently this only works if the bc basis case is "uniform"
+        emulated_bc_directory (str, optional):
+            Directory containing the emulated boundary condition data (it should contain a subdirectory with the domain name)
+        emulated_bc_filename (str, optional):
+            Filename for the emulated boundary condition data. If none, defaults to "emulated_bc". File is searched as {bc_file_name}_*{domain}_{year}*.nc.  
+        emulated_bc_attr_name (str, optional):
+            Attribute name for the emulated boundary condition data, to be extracted from the netcdf file. Default is "pred_bc_flux".
             
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.
@@ -185,109 +193,28 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         Add a wishlist...
     """    
     keep_missing = True if HiTRes else False
-    if verbose and species_footprint is not None:
-        print(f'species_footprint: {species_footprint}')
     
-    data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
-                         average = meas_period, data_directory=obs_directory,
-                          keep_missing=keep_missing,inlet=inlet, instrument=instrument,
-                          max_level=max_level)
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
-                                        HiTRes = HiTRes,
-                                        height = fpheight,
-                                        calc_timeseries = False,
-                                        fp_directory = fp_directory,
-                                        bc_directory = bc_directory,
-                                        flux_directory = flux_directory,
-                                        emissions_name=emissions_name,
-                                        species_footprint = species_footprint, site_modifier=site_modifier)
+    inversion_inputs, fp_data = _set_up_inversion_inputs(species=species, sites=sites, domain=domain, meas_period=meas_period, start_date=start_date,
+                   end_date=end_date, outputname=outputname,
+                   met_model=met_model, xprior=xprior, bcprior=bcprior, sigprior=sigprior, emissions_name=emissions_name, inlet=inlet, fpheight=fpheight, instrument=instrument, species_footprint = species_footprint,
+                   fp_basis_case=fp_basis_case, basis_directory=basis_directory, bc_basis_case=bc_basis_case,
+                   obs_directory=obs_directory, country_file=country_file,
+                   fp_directory=fp_directory, bc_directory=bc_directory, flux_directory=flux_directory,
+                   max_level=max_level,
+                   quadtree_basis=quadtree_basis, nbasis=nbasis,
+                   filters=filters,
+                   averagingerror=averagingerror, bc_freq=bc_freq, sigma_freq=sigma_freq,
+                   site_modifier=site_modifier,
+                   load_emulated_bcs=load_emulated_bcs, emulated_bc_directory=emulated_bc_directory, emulated_bc_filename=emulated_bc_filename, emulated_bc_attr_name=emulated_bc_attr_name)
     
-    for site in sites:
-        for j in range(len(data[site])):
-            if len(data[site][j].mf) == 0:
-                print("No observations for %s to %s for %s" % (start_date, end_date, site))
-    if sites[0] not in fp_all.keys():
-        print("No footprints for %s to %s" % (start_date, end_date))
-        return
-    
-    print('Running for %s to %s' % (start_date, end_date))
-    
-    #If site contains measurement errors given as repeatability and variability, 
-    #use variability to replace missing repeatability values, then drop variability
-    for site in sites:
-        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
-            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
-                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
-            fp_all[site] = fp_all[site].drop_vars("mf_variability")
-    #Add measurement variability in averaging period to measurement error
-    if averagingerror:
-        fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
-                                   meas_period, inlet=inlet, instrument=instrument,
-                                   obs_directory=obs_directory)
-    
-    #Create basis function using quadtree algorithm if needed
-    if quadtree_basis:
-        if fp_basis_case != None:
-            print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
-            print("Assuming you want to use %s " % fp_basis_case)
-        else:
-            tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
-                          start_date, domain, species, outputname,
-                          nbasis=nbasis)
-            fp_basis_case= "quadtree_"+species+"-"+outputname
-            basis_directory = tempdir
-    else:
-        basis_directory = basis_directory
-    
-    # from Elena: originally calc_timeseries=True, I turned it off but cannot remember why... 
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
-                                  calc_timeseries = False)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
-    
-    if HiTRes:
-        for site in sites:
-            fp_data[site] = fp_data[site].dropna(dim='time')
-        
-    #apply named filters to the data
-    fp_data = name.filtering(fp_data, filters)
-    
-    for si, site in enumerate(sites):     
-        fp_data[site].attrs['Domain']=domain
-    
-    #Get inputs ready
-    error = np.zeros(0)
-    Hbc = np.zeros(0)
-    Hx = np.zeros(0)
-    Y = np.zeros(0)
-    siteindicator = np.zeros(0)
-    for si, site in enumerate(sites):
-        if 'mf_repeatability' in fp_data[site]:           
-            error = np.concatenate((error, fp_data[site].mf_repeatability.values))
-        if 'mf_variability' in fp_data[site]:
-            error = np.concatenate((error, fp_data[site].mf_variability.values))
-            
-        Y = np.concatenate((Y,fp_data[site].mf.values)) 
-        siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
-        if si == 0:
-            Ytime=fp_data[site].time.values
-        else:
-            Ytime = np.concatenate((Ytime,fp_data[site].time.values))
-        
-        if bc_freq == "monthly":
-            Hmbc = setup.monthly_bcs(start_date, end_date, site, fp_data)
-        elif bc_freq == None:
-            Hmbc = fp_data[site].H_bc.values
-        else:
-            Hmbc = setup.create_bc_sensitivity(start_date, end_date, site, fp_data, bc_freq)
-            
-        if si == 0:
-            Hbc = np.copy(Hmbc) #fp_data[site].H_bc.values 
-            Hx = fp_data[site].H.values
-        else:
-            Hbc = np.hstack((Hbc, Hmbc))
-            Hx = np.hstack((Hx, fp_data[site].H.values))
-    
-    sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
+    print("Set-up done, running inversion")
+    Hx = inversion_inputs["Hx"]
+    Hbc = inversion_inputs["Hbc"]
+    Y = inversion_inputs["Y"]
+    error = inversion_inputs["error"]
+    siteindicator = inversion_inputs["siteindicator"]
+    sigma_freq_index = inversion_inputs["sigma_freq_index"]
+    Ytime = inversion_inputs["Ytime"]
 
     #Run Pymc3 inversion
     xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
@@ -313,6 +240,141 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     print("All done")
 
+
+
+def _set_up_inversion_inputs(species, sites, domain, meas_period, start_date, 
+                   end_date, outputname,
+                   met_model = None,
+                   xprior={"pdf":"lognormal", "mu":1, "sd":1},
+                   bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
+                   sigprior={"pdf":"uniform", "lower":0.5, "upper":3}, species_footprint = None, 
+                   emissions_name=None, inlet=None, fpheight=None, instrument=None, 
+                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
+                   obs_directory = None, 
+                   fp_directory = None, bc_directory = None, flux_directory = None,
+                   max_level=None,
+                   quadtree_basis=True,nbasis=100,
+                   filters = [],
+                   averagingerror=True, bc_freq=None, sigma_freq=None,
+                   site_modifier = {},
+                   load_emulated_bcs = False, emulated_bc_directory = None, emulated_bc_filename=None, emulated_bc_attr_name = None, **kwargs):
+    
+    data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
+                         average = meas_period, data_directory=obs_directory,
+                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
+                                        height=fpheight, 
+                                        fp_directory = fp_directory,
+                                        bc_directory = bc_directory,
+                                        flux_directory = flux_directory,
+                                        emissions_name=emissions_name,
+                                        species_footprint = species_footprint, 
+                                        site_modifier=site_modifier)
+    
+    for site in sites:
+        for j in range(len(data[site])):
+            if len(data[site][j].mf) == 0:
+                print("No observations for %s to %s for %s" % (start_date, end_date, site))
+    if sites[0] not in fp_all.keys():
+        print("No footprints for %s to %s" % (start_date, end_date))
+        return
+    
+    print('Running for %s to %s' % (start_date, end_date))
+    
+    #If site contains measurement errors given as repeatability and variability, 
+    #use variability to replace missing repeatability values, then drop variability
+    for site in sites:
+        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
+            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
+                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
+            fp_all[site] = fp_all[site].drop_vars("mf_variability")
+    
+    #Add measurement variability in averaging period to measurement error
+    if averagingerror:
+        fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
+                                   meas_period, inlet=inlet, instrument=instrument,
+                                   obs_directory=obs_directory)
+    
+    #quadtree_f = True
+    #Create basis function using quadtree algorithm if needed
+    if quadtree_basis:
+        if fp_basis_case != None:
+            print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
+            print("Assuming you want to use %s " % fp_basis_case)
+        else:
+            tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
+                          start_date, domain, species, outputname,
+                          nbasis=nbasis)
+            fp_basis_case= "quadtree_"+species+"-"+outputname 
+            basis_directory = tempdir
+
+            
+            #basis_directory = "/group/chemistry/acrg/met_archive/NAME/scratch/"
+    else:
+        basis_directory = basis_directory
+
+    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
+    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
+    
+    if load_emulated_bcs:
+        print("Loading emulated BCs from ", emulated_bc_directory)
+        fp_data = name.emulated_boundary_conditions(fp_data, domain=domain, emulated_bc_directory=emulated_bc_directory, bc_file_name=emulated_bc_filename, attr_name=emulated_bc_attr_name)
+
+    #apply named filters to the data
+    fp_data = name.filtering(fp_data, filters)
+    
+    for si, site in enumerate(sites):     
+        fp_data[site].attrs['Domain']=domain
+    
+    #Get inputs ready
+    error = np.zeros(0)
+    Hbc = np.zeros(0)
+    Hx = np.zeros(0)
+    Y = np.zeros(0)
+    siteindicator = np.zeros(0)
+    for si, site in enumerate(sites):
+        if 'mf_repeatability' in fp_data[site]:           
+            error = np.concatenate((error, fp_data[site].mf_repeatability.values))
+        if 'mf_variability' in fp_data[site]:
+            error = np.concatenate((error, fp_data[site].mf_variability.values))
+            
+        Y = np.concatenate((Y,fp_data[site].mf.values)) 
+        #print(f"fp_data[site].mf.values {fp_data[site].mf.values}")
+        siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
+        if si == 0:
+            Ytime=fp_data[site].time.values
+        else:
+            Ytime = np.concatenate((Ytime,fp_data[site].time.values ))
+        
+        if bc_freq == "monthly":
+            Hmbc = setup.monthly_bcs(start_date, end_date, site, fp_data)
+        elif bc_freq == None:
+            Hmbc = fp_data[site].H_bc.values
+        else:
+            Hmbc = setup.create_bc_sensitivity(start_date, end_date, site, fp_data, bc_freq)
+            
+        if si == 0:
+            Hbc = np.copy(Hmbc) #fp_data[site].H_bc.values 
+            Hx = fp_data[site].H.values
+        else:
+            Hbc = np.hstack((Hbc, Hmbc))
+            Hx = np.hstack((Hx, fp_data[site].H.values))
+    
+    sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
+
+    # Set up inversion inputs
+    inversion_inputs = {
+        "sigma_freq_index": sigma_freq_index,
+        "Hbc": Hbc,
+        "Hx": Hx,
+        "Y": Y,
+        "error": error,
+        "siteindicator": siteindicator,
+        "Ytime": Ytime
+    }
+
+    return inversion_inputs, fp_data
+
 def MAP(species, sites, domain, meas_period, start_date, 
                    end_date, outputpath, outputname,
                    met_model = None,
@@ -320,7 +382,6 @@ def MAP(species, sites, domain, meas_period, start_date,
                    bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
                    sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
                    offsetprior={"pdf":"normal", "mu":0, "sd":1},
-                   nit=2.5e5, burn=50000, tune=1.25e5, nchain=2,
                    emissions_name=None, inlet=None, fpheight=None, instrument=None, 
                    fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
                    obs_directory = None, country_file = None,
@@ -331,7 +392,7 @@ def MAP(species, sites, domain, meas_period, start_date,
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
                    country_unit_prefix=None, add_offset = False,
                    site_modifier = {},
-                   verbose = False):
+                   verbose = False, load_emulated_bcs = False, emulated_bc_directory = None, emulated_bc_filename=None, emulated_bc_attr_name = None, **kwargs):
 
     """
     Script to get MAP (Maximum a posteriori) for inference of emissions using
@@ -372,16 +433,6 @@ def MAP(species, sites, domain, meas_period, start_date,
             Same as above but for model error.
         offsetprior (dict):
             Same as above but for bias offset. Only used is addoffset=True.
-        nit (int):
-            Number of iterations for MCMC
-        burn (int):
-            Number of iterations to burn in MCMC
-        tune (int):
-            Number of iterations to use to tune step size
-        nchain (int):
-            Number of independent chains to run (there is no way at all of 
-            knowing whether your distribution has converged by running only
-            one chain)    
         emissions_name (dict, optional):
             Allows emissions files with filenames that are longer than just the species name
             to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
@@ -449,112 +500,41 @@ def MAP(species, sites, domain, meas_period, start_date,
             Default is none and no scaling will be applied (output in g).
         add_offset (bool):
             Add an offset (intercept) to all sites but the first in the site list. Default False.
+        load_emulated_bcs (bool):
+            Load emulated boundary conditions from a specified directory, replacing the calculated boundary conditions. Note that currently this only works if the bc basis case is "uniform"
+        emulated_bc_directory (str, optional):
+            Directory containing the emulated boundary condition data (it should contain a subdirectory with the domain name)
+        emulated_bc_filename (str, optional):
+            Filename for the emulated boundary condition data. If none, defaults to "emulated_bc". File is searched as {bc_file_name}_*{domain}_{year}*.nc.  
+        emulated_bc_attr_name (str, optional):
+            Attribute name for the emulated boundary condition data, to be extracted from the netcdf file. Default is "pred_bc_flux".
 
-            
     Returns:
         Saves an output from the inversion code using inferpymc3_MAP_postprocessouts.
         
-    """    
+    """
 
-    data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
-                         average = meas_period, data_directory=obs_directory,
-                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
-                                        height=fpheight, 
-                                        fp_directory = fp_directory,
-                                        bc_directory = bc_directory,
-                                        flux_directory = flux_directory,
-                                        emissions_name=emissions_name,
-                                        site_modifier=site_modifier)
-    
-    for site in sites:
-        for j in range(len(data[site])):
-            if len(data[site][j].mf) == 0:
-                print("No observations for %s to %s for %s" % (start_date, end_date, site))
-    if sites[0] not in fp_all.keys():
-        print("No footprints for %s to %s" % (start_date, end_date))
-        return
-    
-    print('Running for %s to %s' % (start_date, end_date))
-    
-    #If site contains measurement errors given as repeatability and variability, 
-    #use variability to replace missing repeatability values, then drop variability
-    for site in sites:
-        if "mf_variability" in fp_all[site] and "mf_repeatability" in fp_all[site]:
-            fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
-                fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
-            fp_all[site] = fp_all[site].drop_vars("mf_variability")
-    
-    #Add measurement variability in averaging period to measurement error
-    if averagingerror:
-        fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
-                                   meas_period, inlet=inlet, instrument=instrument,
-                                   obs_directory=obs_directory)
-    
-    #quadtree_f = True
-    #Create basis function using quadtree algorithm if needed
-    if quadtree_basis:
-        if fp_basis_case != None:
-            print("Basis case %s supplied but quadtree_basis set to True" % fp_basis_case)
-            print("Assuming you want to use %s " % fp_basis_case)
-        else:
-            tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
-                          start_date, domain, species, outputname,
-                          nbasis=nbasis)
-            fp_basis_case= "quadtree_"+species+"-"+outputname 
-            basis_directory = tempdir
+    inversion_inputs, fp_data = _set_up_inversion_inputs(species=species, sites=sites, domain=domain, meas_period=meas_period, start_date=start_date,
+                   end_date=end_date, outputname=outputname,
+                   met_model=met_model, xprior=xprior, bcprior=bcprior, sigprior=sigprior, emissions_name=emissions_name, inlet=inlet, fpheight=fpheight, instrument=instrument, 
+                   fp_basis_case=fp_basis_case, basis_directory=basis_directory, bc_basis_case=bc_basis_case,
+                   obs_directory=obs_directory, country_file=country_file,
+                   fp_directory=fp_directory, bc_directory=bc_directory, flux_directory=flux_directory,
+                   max_level=max_level,
+                   quadtree_basis=quadtree_basis, nbasis=nbasis,
+                   filters=filters,
+                   averagingerror=averagingerror, bc_freq=bc_freq, sigma_freq=sigma_freq,
+                   site_modifier=site_modifier,
+                   load_emulated_bcs=load_emulated_bcs, emulated_bc_directory=emulated_bc_directory, emulated_bc_filename=emulated_bc_filename, emulated_bc_attr_name=emulated_bc_attr_name)
 
-            
-            #basis_directory = "/group/chemistry/acrg/met_archive/NAME/scratch/"
-    else:
-        basis_directory = basis_directory
+    Hx = inversion_inputs["Hx"]
+    Hbc = inversion_inputs["Hbc"]
+    Y = inversion_inputs["Y"]
+    error = inversion_inputs["error"]
+    siteindicator = inversion_inputs["siteindicator"]
+    sigma_freq_index = inversion_inputs["sigma_freq_index"]
+    Ytime = inversion_inputs["Ytime"]
 
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
-    
-    #apply named filters to the data
-    fp_data = name.filtering(fp_data, filters)
-    
-    for si, site in enumerate(sites):     
-        fp_data[site].attrs['Domain']=domain
-    
-    #Get inputs ready
-    error = np.zeros(0)
-    Hbc = np.zeros(0)
-    Hx = np.zeros(0)
-    Y = np.zeros(0)
-    siteindicator = np.zeros(0)
-    for si, site in enumerate(sites):
-        if 'mf_repeatability' in fp_data[site]:           
-            error = np.concatenate((error, fp_data[site].mf_repeatability.values))
-        if 'mf_variability' in fp_data[site]:
-            error = np.concatenate((error, fp_data[site].mf_variability.values))
-            
-        Y = np.concatenate((Y,fp_data[site].mf.values)) 
-        print(f"fp_data[site].mf.values {fp_data[site].mf.values}")
-        siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
-        if si == 0:
-            Ytime=fp_data[site].time.values
-        else:
-            Ytime = np.concatenate((Ytime,fp_data[site].time.values ))
-        
-        if bc_freq == "monthly":
-            Hmbc = setup.monthly_bcs(start_date, end_date, site, fp_data)
-        elif bc_freq == None:
-            Hmbc = fp_data[site].H_bc.values
-        else:
-            Hmbc = setup.create_bc_sensitivity(start_date, end_date, site, fp_data, bc_freq)
-            
-        if si == 0:
-            Hbc = np.copy(Hmbc) #fp_data[site].H_bc.values 
-            Hx = fp_data[site].H.values
-        else:
-            Hbc = np.hstack((Hbc, Hmbc))
-            Hx = np.hstack((Hx, fp_data[site].H.values))
-    
-    sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
-
-    #Run Pymc3 inversion
 
     x, xbc, sig, YmodBC, Ymod = mcmc.inferpymc3_MAP(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
            xprior,bcprior, sigprior, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)

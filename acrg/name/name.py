@@ -2614,11 +2614,17 @@ def timeseries_HiTRes(flux_dict, fp_HiTRes_ds=None, fp_file=None, output_TS=True
             return timeseries
 
 
-def load_emulated_bc(fp_data, domain, emulated_bc_directory, attr_name="pred_bc_flux"):
+def load_emulated_bc(fp_data, domain, emulated_bc_directory, bc_file_name = None, attr_name="pred_bc_flux"):
     """Loads emulated basis boundary conditions from netcdf file
     
     """
+    if attr_name is None:
+        attr_name = "pred_bc_flux"
+
     emulated_bcs = {}
+
+    if bc_file_name is None:
+        bc_file_name = "emulated_bc_basis"
 
     sites = [key for key in list(fp_data.keys()) if key[0] != '.']
     for site in sites:
@@ -2628,7 +2634,7 @@ def load_emulated_bc(fp_data, domain, emulated_bc_directory, attr_name="pred_bc_
             raise Exception("Emulated BC loading only works for single year at the moment")
         
         year = years[0]
-        emulated_bcs_path = glob.glob(join(emulated_bc_directory, domain, f"emulated_bc_basis_*{domain}_{year}*.nc"))
+        emulated_bcs_path = glob.glob(join(emulated_bc_directory, domain, f"{bc_file_name}_*{domain}_{year}*.nc"))
 
         if len(emulated_bcs_path) == 0:
             raise Exception(f"Emulated BC files not found: {emulated_bcs_path}")
@@ -2643,21 +2649,26 @@ def load_emulated_bc(fp_data, domain, emulated_bc_directory, attr_name="pred_bc_
 
     return emulated_bcs
 
-def emulated_boundary_conditions(fp_data, domain, emulated_bc_directory, attr_name="pred_flux"):
+def emulated_boundary_conditions(fp_data, domain, emulated_bc_directory, bc_file_name=None, attr_name="pred_bc_flux"):
 
-    emulated_bcs = load_emulated_bc(fp_data, domain, emulated_bc_directory, attr_name=attr_name)
+    if attr_name is None:
+        attr_name = "pred_bc_flux"
+
+    emulated_bcs = load_emulated_bc(fp_data, domain, emulated_bc_directory, bc_file_name=bc_file_name, attr_name=attr_name)
 
     sites = [key for key in list(fp_data.keys()) if key[0] != '.']
     for site in sites:
-
         valid_timestamps = np.intersect1d(fp_data[site]['time'].values, emulated_bcs[site]['time'].values)
-        fp_data[site] = fp_data[site].sel(time=valid_timestamps)
+        fp_data_cropped = fp_data[site].sel(time=valid_timestamps)
         emulated_bcs[site] = emulated_bcs[site].sel(time=valid_timestamps)
 
-        assert "H_bc" in fp_data[site].variables, "H_bc variable not found in fp_data! Load with name.bc_sensitivity() and bc_basis_case='uniform' "
-        assert fp_data[site].region_bc.size == 1, "It seems like there are too many bc regions - make sure you are passing bc_basis_case='uniform' "
+        emulated_bcs[site] = emulated_bcs[site].assign_coords(region_bc=fp_data_cropped.region_bc.values[0]).expand_dims(dim="region_bc")
+
+        assert "H_bc" in fp_data_cropped.variables, "H_bc variable not found in fp_data! Load with name.bc_sensitivity() and bc_basis_case='uniform' "
+        assert fp_data_cropped.region_bc.size == 1, "It seems like there are too many bc regions - make sure you are passing bc_basis_case='uniform' "
 
         #fp_data[site] = fp_data[site].assign(H_bc = emulated_bcs[site].values)
-        fp_data[site]['H_bc'] = emulated_bcs[site].load()  
+        fp_data_cropped['H_bc'] = emulated_bcs[site].load()
+        fp_data[site] = fp_data_cropped  
 
     return fp_data
