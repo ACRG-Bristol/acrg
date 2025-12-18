@@ -877,14 +877,22 @@ def quadtreebasisfunction(emissions_name, fp_all, sites,
     newds.attrs['date created'] = str(pd.Timestamp.today())
     
     if outputdir is None:
-        cwd = os.getcwd()
-        tempdir = os.path.join(cwd,f"Temp_{str(uuid.uuid4())}")
-        os.mkdir(tempdir)    
-        os.mkdir(os.path.join(tempdir,f"{domain}/"))
-        newds.to_netcdf(os.path.join(tempdir,domain,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+        # edited so it automatically saves in the ACRG stratch datadir
+        tempdir = "/group/chem/acrg/met_archive/NAME/scratch/"
+        try:
+            subdir = tempdir + domain 
+            os.makedirs(subdir)
+            print("created scratch dir", subdir)
+        except:
+            print("scratch dir already exists")
+
+        filename = os.path.join(tempdir,domain,f"quadtree_{species}-{outputname}_{domain}_{start_date}.nc")
+        print(filename)
+        newds.to_netcdf(filename, mode='w')
         return tempdir
     else:
         basisoutpath = os.path.join(outputdir,domain)
         if not os.path.exists(basisoutpath):
             os.makedirs(basisoutpath)
-        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree_{species}-{outputname}_{domain}_{start_date.split('-')[0]}.nc"), mode='w')
+
+        newds.to_netcdf(os.path.join(basisoutpath,f"quadtree_{species}-{outputname}_{domain}_{start_date}.nc"), mode='w')

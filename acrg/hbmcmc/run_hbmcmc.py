@@ -23,6 +23,9 @@ create a configuration file called `hbmcmc_input.ini` within your acrg_hbmcmc/ d
 This file will need to be edited to add parameters for your MCMC run.
 '''
 
+import sys
+
+
 import os
 import sys
 import argparse
@@ -32,6 +35,9 @@ import acrg.hbmcmc.hbmcmc as mcmc
 import acrg.config.config as config
 from acrg.config.paths import Paths
 import acrg.hbmcmc.hbmcmc_output as output
+
+
+
 
 def fixed_basis_expected_param():
     '''
@@ -94,7 +100,7 @@ def define_mcmc_function(mcmc_type):
     Returns:
         Function
     '''
-    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC}
+    function_dict = {"fixed_basis":mcmc.fixedbasisMCMC, "MAP":mcmc.MAP}
     
     return function_dict[mcmc_type]
 
@@ -122,6 +128,8 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
     '''
     
     if mcmc_type == "fixed_basis":
+        expected_param = fixed_basis_expected_param()
+    if mcmc_type == "MAP":
         expected_param = fixed_basis_expected_param()
 
     # If an expected parameter has been passed from the command line, this does not need to be within the config file
@@ -152,8 +160,10 @@ def hbmcmc_extract_param(config_file,mcmc_type="fixed_basis",print_param=True,**
 
 if __name__=="__main__":
 
+    print("RUN HBMCMC:", sys.path)
+
     acrg_path = Paths.acrg
-    default_config_file = os.path.join(acrg_path,"acrg_hbmcmc/hbmcmc_input.ini")
+    default_config_file = os.path.join(acrg_path,"/hbmcmc/hbmcmc_input.ini")
     config_file = default_config_file
 
     parser = argparse.ArgumentParser(description="Running Hierarchical Bayesian MCMC script")
@@ -172,7 +182,7 @@ if __name__=="__main__":
         command_line_args["end_date"] = args.end
 
     if args.generate == True:
-        template_file = os.path.join(acrg_path,"acrg_hbmcmc/config/hbmcmc_input_template.ini")
+        template_file = os.path.join(acrg_path,"/hbmcmc/config/hbmcmc_input_template.ini")
         if os.path.exists(config_file):
             write = input(f"Config file {config_file} already exists.\nOverwrite? (y/n): ")
             if write.lower() == "y" or write.lower() == "yes":        

@@ -19,6 +19,10 @@ before launching Spyder, else you will use every available thread. Apart from
 being annoying it will also slow down your run due to unnecessary forking.
 
 """
+
+import sys
+
+
 import numpy as np
 import shutil
 
@@ -51,8 +55,8 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
                    quadtree_basis=True,nbasis=100,
                    filters = [],
                    averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
-                   country_unit_prefix=None, add_offset = False,
-                   verbose = False):
+                   country_unit_prefix=None, add_offset = False,site_modifier = {},
+                   verbose = False, load_emulated_bcs = False, emulated_bc_directory = None, emulated_bc_filename=None, emulated_bc_attr_name = None):
 
     """
     Script to run hierarchical Bayesian MCMC for inference of emissions using
@@ -173,7 +177,14 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             Default is none and no scaling will be applied (output in g).
         add_offset (bool):
             Add an offset (intercept) to all sites but the first in the site list. Default False.
-
+        load_emulated_bcs (bool):
+            Load emulated boundary conditions from a specified directory, replacing the calculated boundary conditions. Note that currently this only works if the bc basis case is "uniform"
+        emulated_bc_directory (str, optional):
+            Directory containing the emulated boundary condition data (it should contain a subdirectory with the domain name)
+        emulated_bc_filename (str, optional):
+            Filename for the emulated boundary condition data. If none, defaults to "emulated_bc". File is searched as {bc_file_name}_*{domain}_{year}*.nc.  
+        emulated_bc_attr_name (str, optional):
+            Attribute name for the emulated boundary condition data, to be extracted from the netcdf file. Default is "pred_bc_flux".
             
     Returns:
         Saves an output from the inversion code using inferpymc3_postprocessouts.
@@ -182,22 +193,83 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
         Add a wishlist...
     """    
     keep_missing = True if HiTRes else False
-    if verbose and species_footprint is not None:
-        print(f'species_footprint: {species_footprint}')
+    
+    inversion_inputs, fp_data = _set_up_inversion_inputs(species=species, sites=sites, domain=domain, meas_period=meas_period, start_date=start_date,
+                   end_date=end_date, outputname=outputname,
+                   met_model=met_model, xprior=xprior, bcprior=bcprior, sigprior=sigprior, emissions_name=emissions_name, inlet=inlet, fpheight=fpheight, instrument=instrument, species_footprint = species_footprint,
+                   fp_basis_case=fp_basis_case, basis_directory=basis_directory, bc_basis_case=bc_basis_case,
+                   obs_directory=obs_directory, country_file=country_file,
+                   fp_directory=fp_directory, bc_directory=bc_directory, flux_directory=flux_directory,
+                   max_level=max_level,
+                   quadtree_basis=quadtree_basis, nbasis=nbasis,
+                   filters=filters,
+                   averagingerror=averagingerror, bc_freq=bc_freq, sigma_freq=sigma_freq,
+                   site_modifier=site_modifier,
+                   load_emulated_bcs=load_emulated_bcs, emulated_bc_directory=emulated_bc_directory, emulated_bc_filename=emulated_bc_filename, emulated_bc_attr_name=emulated_bc_attr_name)
+    
+    print("Set-up done, running inversion")
+    Hx = inversion_inputs["Hx"]
+    Hbc = inversion_inputs["Hbc"]
+    Y = inversion_inputs["Y"]
+    error = inversion_inputs["error"]
+    siteindicator = inversion_inputs["siteindicator"]
+    sigma_freq_index = inversion_inputs["sigma_freq_index"]
+    Ytime = inversion_inputs["Ytime"]
+
+    #Run Pymc3 inversion
+    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+           xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
+    #Process and save inversion output
+    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
+                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
+                               step1, step2, 
+                               xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
+                               domain, species, sites,
+                               start_date, end_date, outputname, outputpath,
+                               country_unit_prefix,
+                               burn, tune, nchain, sigma_per_site,
+                               fp_data=fp_data, flux_directory=flux_directory, emissions_name=emissions_name, 
+                               basis_directory=basis_directory, country_file=country_file,
+                               add_offset=add_offset, fp_directory=fp_directory)
+
+
+    #if quadtree_basis is True:
+        # remove the temporary basis function directory
+        #shutil.rmtree(tempdir)
+    # removing by hand due to errors
+    
+    print("All done")
+
+
+
+def _set_up_inversion_inputs(species, sites, domain, meas_period, start_date, 
+                   end_date, outputname,
+                   met_model = None,
+                   xprior={"pdf":"lognormal", "mu":1, "sd":1},
+                   bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
+                   sigprior={"pdf":"uniform", "lower":0.5, "upper":3}, species_footprint = None, 
+                   emissions_name=None, inlet=None, fpheight=None, instrument=None, 
+                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
+                   obs_directory = None, 
+                   fp_directory = None, bc_directory = None, flux_directory = None,
+                   max_level=None,
+                   quadtree_basis=True,nbasis=100,
+                   filters = [],
+                   averagingerror=True, bc_freq=None, sigma_freq=None,
+                   site_modifier = {},
+                   load_emulated_bcs = False, emulated_bc_directory = None, emulated_bc_filename=None, emulated_bc_attr_name = None, **kwargs):
     
     data = getobs.get_obs(sites, species, start_date = start_date, end_date = end_date, 
                          average = meas_period, data_directory=obs_directory,
-                          keep_missing=keep_missing,inlet=inlet, instrument=instrument,
-                          max_level=max_level)
-    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True,
-                                        HiTRes = HiTRes,
-                                        height = fpheight,
-                                        calc_timeseries = False,
+                          keep_missing=False,inlet=inlet, instrument=instrument, max_level=max_level)
+    fp_all = name.footprints_data_merge(data, domain=domain, met_model = met_model, calc_bc=True, 
+                                        height=fpheight, 
                                         fp_directory = fp_directory,
                                         bc_directory = bc_directory,
                                         flux_directory = flux_directory,
-                                        emissions_name = emissions_name,
-                                        species_footprint = species_footprint)
+                                        emissions_name=emissions_name,
+                                        species_footprint = species_footprint, 
+                                        site_modifier=site_modifier)
     
     for site in sites:
         for j in range(len(data[site])):
@@ -216,13 +288,14 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             fp_all[site]["mf_repeatability"][np.isnan(fp_all[site]["mf_repeatability"])] = \
                 fp_all[site]["mf_variability"][np.logical_and(np.isfinite(fp_all[site]["mf_variability"]),np.isnan(fp_all[site]["mf_repeatability"]) )]
             fp_all[site] = fp_all[site].drop_vars("mf_variability")
-
+    
     #Add measurement variability in averaging period to measurement error
     if averagingerror:
         fp_all = setup.addaveragingerror(fp_all, sites, species, start_date, end_date,
                                    meas_period, inlet=inlet, instrument=instrument,
                                    obs_directory=obs_directory)
     
+    #quadtree_f = True
     #Create basis function using quadtree algorithm if needed
     if quadtree_basis:
         if fp_basis_case != None:
@@ -232,19 +305,21 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             tempdir = basis.quadtreebasisfunction(emissions_name, fp_all, sites, 
                           start_date, domain, species, outputname,
                           nbasis=nbasis)
-            fp_basis_case= "quadtree_"+species+"-"+outputname
+            fp_basis_case= "quadtree_"+species+"-"+outputname 
             basis_directory = tempdir
+
+            
+            #basis_directory = "/group/chemistry/acrg/met_archive/NAME/scratch/"
     else:
         basis_directory = basis_directory
+
+    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case,basis_directory=basis_directory)
+    fp_data = name.bc_sensitivity(fp_data, domain=domain,basis_case=bc_basis_case)
     
-    fp_data = name.fp_sensitivity(fp_all, domain=domain, basis_case=fp_basis_case, basis_directory=basis_directory,
-                                  calc_timeseries = True)
-    fp_data = name.bc_sensitivity(fp_data, domain=domain, basis_case=bc_basis_case)
-    
-    if HiTRes:
-        for site in sites:
-            fp_data[site] = fp_data[site].dropna(dim='time')
-        
+    if load_emulated_bcs:
+        print("Loading emulated BCs from ", emulated_bc_directory)
+        fp_data = name.emulated_boundary_conditions(fp_data, domain=domain, emulated_bc_directory=emulated_bc_directory, bc_file_name=emulated_bc_filename, attr_name=emulated_bc_attr_name)
+
     #apply named filters to the data
     fp_data = name.filtering(fp_data, filters)
     
@@ -264,6 +339,7 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
             error = np.concatenate((error, fp_data[site].mf_variability.values))
             
         Y = np.concatenate((Y,fp_data[site].mf.values)) 
+        #print(f"fp_data[site].mf.values {fp_data[site].mf.values}")
         siteindicator = np.concatenate((siteindicator, np.ones_like(fp_data[site].mf.values)*si))
         if si == 0:
             Ytime=fp_data[site].time.values
@@ -286,25 +362,197 @@ def fixedbasisMCMC(species, sites, domain, meas_period, start_date,
     
     sigma_freq_index = setup.sigma_freq_indicies(Ytime, sigma_freq)
 
-    #Run Pymc3 inversion
-    xouts, bcouts, sigouts, Ytrace, YBCtrace, convergence, step1, step2 = mcmc.inferpymc3(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
-           xprior,bcprior, sigprior, nit, burn, tune, nchain, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
-    #Process and save inversion output
-    mcmc.inferpymc3_postprocessouts(xouts,bcouts, sigouts, convergence, 
-                               Hx, Hbc, Y, error, Ytrace, YBCtrace,
-                               step1, step2, 
+    # Set up inversion inputs
+    inversion_inputs = {
+        "sigma_freq_index": sigma_freq_index,
+        "Hbc": Hbc,
+        "Hx": Hx,
+        "Y": Y,
+        "error": error,
+        "siteindicator": siteindicator,
+        "Ytime": Ytime
+    }
+
+    return inversion_inputs, fp_data
+
+def MAP(species, sites, domain, meas_period, start_date, 
+                   end_date, outputpath, outputname,
+                   met_model = None,
+                   xprior={"pdf":"lognormal", "mu":1, "sd":1},
+                   bcprior={"pdf":"lognormal", "mu":0.004, "sd":0.02},
+                   sigprior={"pdf":"uniform", "lower":0.5, "upper":3},
+                   offsetprior={"pdf":"normal", "mu":0, "sd":1},
+                   emissions_name=None, inlet=None, fpheight=None, instrument=None, 
+                   fp_basis_case=None, basis_directory = None, bc_basis_case="NESW", 
+                   obs_directory = None, country_file = None,
+                   fp_directory = None, bc_directory = None, flux_directory = None,
+                   max_level=None,
+                   quadtree_basis=True,nbasis=100,
+                   filters = [],
+                   averagingerror=True, bc_freq=None, sigma_freq=None, sigma_per_site=True,
+                   country_unit_prefix=None, add_offset = False,
+                   site_modifier = {},
+                   verbose = False, load_emulated_bcs = False, emulated_bc_directory = None, emulated_bc_filename=None, emulated_bc_attr_name = None, **kwargs):
+
+    """
+    Script to get MAP (Maximum a posteriori) for inference of emissions using
+    pymc3 to solve the inverse problem - INSTEAD of running MCMC
+    
+    created by @elenafillo from fixedbasisMCMC
+    
+    Args:
+        species (str):
+            Species of interest
+        sites (list):
+            List of site names
+        domain (str):
+            Inversion spatial domain.
+        meas_period (list):
+            Averaging period of measurements
+        start_date (str):
+            Start time of inversion "YYYY-mm-dd"
+        end_date (str):
+            End time of inversion "YYYY-mm-dd"
+        outputname (str):
+            Unique identifier for output/run name.
+        outputpath (str):
+            Path to where output should be saved.
+        xprior (dict):
+            Dictionary containing information about the prior PDF for emissions.
+            The entry "pdf" is the name of the analytical PDF used, see
+            https://docs.pymc.io/api/distributions/continuous.html for PDFs
+            built into pymc3, although they may have to be coded into the script.
+            The other entries in the dictionary should correspond to the shape
+            parameters describing that PDF as the online documentation,
+            e.g. N(1,1**2) would be: xprior={pdf:"normal", "mu":1, "sd":1}.
+            Note that the standard deviation should be used rather than the 
+            precision. Currently all variables are considered iid.
+        bcprior (dict):
+            Same as above but for boundary conditions.
+        sigprior (dict):
+            Same as above but for model error.
+        offsetprior (dict):
+            Same as above but for bias offset. Only used is addoffset=True.
+        emissions_name (dict, optional):
+            Allows emissions files with filenames that are longer than just the species name
+            to be read in (e.g. co2-ff-mth_EUROPE_2014.nc). This should be a dictionary
+            with {source_name: emissions_file_identifier} (e.g. {'anth':'co2-ff-mth'}). This way
+            multiple sources can be read in simultaneously if they are added as separate entries to
+            the emissions_name dictionary.
+        inlet (str/list, optional):
+            Specific inlet height for the site (must match number of sites)
+        fpheight (dict, optional):
+            Specific release height for the sites' footprints. 
+            E.g. fpheight={"TAC":"185m"}(must match number of sites).
+        instrument (str/list, optional):
+            Specific instrument for the site (must match number of sites).
+        fp_basis_case (str, optional):
+            Name of basis function to use for emissions.
+        bc_basis_case (str, optional):
+            Name of basis case type for boundary conditions (NOTE, I don't 
+            think that currently you can do anything apart from scaling NSEW 
+            boundary conditions if you want to scale these monthly.)
+        obs_directory (str, optional):
+            Directory containing the obs data (with site codes as subdirectories)
+            if not default.
+        fp_directory (str, optional):
+            Directory containing the footprint data
+            if not default.
+        bc_directory (str, optional):
+            Directory containing the boundary condition data
+            if not default.
+        flux_directory (str, optional):
+            Directory containing the emissions data if not default
+        basis_directory (str, optional):
+            Directory containing the basis function
+            if not default.
+        country_file (str, optional):
+            Path to the country definition file
+        max_level (int, optional):
+            The maximum level for a column measurement to be used for getting obs data
+        quadtree_basis (bool, optional):
+            Creates a basis function file for emissions on the fly using a 
+            quadtree algorithm based on the a priori contribution to the mole
+            fraction if set to True.
+        nbasis (int):
+            Number of basis functions that you want if using quadtree derived
+            basis function. This will optimise to closest value that fits with
+            quadtree splitting algorithm, i.e. nbasis % 4 = 1.
+        filters (list, optional):
+            list of filters to apply from name.filtering. Defaults to empty list
+        averagingerror (bool, optional):
+            Adds the variability in the averaging period to the measurement 
+            error if set to True.
+        bc_freq (str, optional):
+            The perdiod over which the baseline is estimated. Set to "monthly"
+            to estimate per calendar month; set to a number of days,
+            as e.g. "30D" for 30 days; or set to None to estimate to have one
+            scaling for the whole inversion period.
+        sigma_freq (str, optional):
+            as bc_freq, but for model sigma
+        sigma_per_site (bool):
+            Whether a model sigma value will be calculated for each site independantly (True) or all sites together (False).
+            Default: True
+        country_unit_prefix ('str', optional)
+            A prefix for scaling the country emissions. Current options are: 
+            'T' will scale to Tg, 'G' to Gg, 'M' to Mg, 'P' to Pg.
+            To add additional options add to acrg_convert.prefix
+            Default is none and no scaling will be applied (output in g).
+        add_offset (bool):
+            Add an offset (intercept) to all sites but the first in the site list. Default False.
+        load_emulated_bcs (bool):
+            Load emulated boundary conditions from a specified directory, replacing the calculated boundary conditions. Note that currently this only works if the bc basis case is "uniform"
+        emulated_bc_directory (str, optional):
+            Directory containing the emulated boundary condition data (it should contain a subdirectory with the domain name)
+        emulated_bc_filename (str, optional):
+            Filename for the emulated boundary condition data. If none, defaults to "emulated_bc". File is searched as {bc_file_name}_*{domain}_{year}*.nc.  
+        emulated_bc_attr_name (str, optional):
+            Attribute name for the emulated boundary condition data, to be extracted from the netcdf file. Default is "pred_bc_flux".
+
+    Returns:
+        Saves an output from the inversion code using inferpymc3_MAP_postprocessouts.
+        
+    """
+
+    inversion_inputs, fp_data = _set_up_inversion_inputs(species=species, sites=sites, domain=domain, meas_period=meas_period, start_date=start_date,
+                   end_date=end_date, outputname=outputname,
+                   met_model=met_model, xprior=xprior, bcprior=bcprior, sigprior=sigprior, emissions_name=emissions_name, inlet=inlet, fpheight=fpheight, instrument=instrument, 
+                   fp_basis_case=fp_basis_case, basis_directory=basis_directory, bc_basis_case=bc_basis_case,
+                   obs_directory=obs_directory, country_file=country_file,
+                   fp_directory=fp_directory, bc_directory=bc_directory, flux_directory=flux_directory,
+                   max_level=max_level,
+                   quadtree_basis=quadtree_basis, nbasis=nbasis,
+                   filters=filters,
+                   averagingerror=averagingerror, bc_freq=bc_freq, sigma_freq=sigma_freq,
+                   site_modifier=site_modifier,
+                   load_emulated_bcs=load_emulated_bcs, emulated_bc_directory=emulated_bc_directory, emulated_bc_filename=emulated_bc_filename, emulated_bc_attr_name=emulated_bc_attr_name)
+
+    Hx = inversion_inputs["Hx"]
+    Hbc = inversion_inputs["Hbc"]
+    Y = inversion_inputs["Y"]
+    error = inversion_inputs["error"]
+    siteindicator = inversion_inputs["siteindicator"]
+    sigma_freq_index = inversion_inputs["sigma_freq_index"]
+    Ytime = inversion_inputs["Ytime"]
+
+
+    x, xbc, sig, YmodBC, Ymod = mcmc.inferpymc3_MAP(Hx, Hbc, Y, error, siteindicator, sigma_freq_index,
+           xprior,bcprior, sigprior, sigma_per_site, offsetprior=offsetprior, add_offset=add_offset, verbose=verbose)
+
+    mcmc.inferpymc3_MAP_postprocessouts(x, xbc, sig, YmodBC, Ymod,  
+                               Hx, Hbc, Y, error,
                                xprior, bcprior, sigprior, offsetprior, Ytime, siteindicator, sigma_freq_index,
                                domain, species, sites,
                                start_date, end_date, outputname, outputpath,
                                country_unit_prefix,
-                               burn, tune, nchain, sigma_per_site,
+                               sigma_per_site,
                                fp_data=fp_data, flux_directory=flux_directory, emissions_name=emissions_name, 
                                basis_directory=basis_directory, country_file=country_file,
                                add_offset=add_offset)
 
-    if quadtree_basis is True:
+    #if quadtree_basis is True:
         # remove the temporary basis function directory
-        shutil.rmtree(tempdir)
+        #shutil.rmtree(tempdir)
     
     print("All done")
 
