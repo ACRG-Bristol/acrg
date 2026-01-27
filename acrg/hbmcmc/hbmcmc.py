@@ -21,7 +21,8 @@ being annoying it will also slow down your run due to unnecessary forking.
 """
 
 import sys
-
+sys.path.insert(0,"/user/home/kr21883/miniconda3/envs/acrg/lib/python3.10/site-packages")
+sys.path.append("/user/work/kr21883/acrg/")
 
 import numpy as np
 import shutil
